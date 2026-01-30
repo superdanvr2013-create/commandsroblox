@@ -9,20 +9,21 @@ local title = Instance.new("TextLabel")
 local closebutton = Instance.new("TextButton")
 
 -- Кнопки
+local espBtn = Instance.new("TextButton") -- НОВАЯ КНОПКА
 local jumpBtn = Instance.new("TextButton")
 local speedLockBtn = Instance.new("TextButton")
 local onof = Instance.new("TextButton")
-local flySpeedDisplay = Instance.new("TextLabel")
 
 -- Настройки
 local speaker = Players.LocalPlayer
 local speeds = 1
 local speedLockActive = false
+local espActive = false
 local nowe = false
-local targetSpeed = 50 -- Твоя новая скорость
+local targetSpeed = 50
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Final_V15"
+main.Name = "EliteX_Final_V16"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -30,13 +31,13 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.05, 0, 0.05, 0)
-Frame.Size = UDim2.new(0, 260, 0, 400)
+Frame.Size = UDim2.new(0, 260, 0, 480) -- Увеличил высоту для ESP
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
 
 title.Parent = Frame
-title.Text = "ELITEX V15 (CTRL JUMP)"
+title.Text = "ELITEX V16 (ESP UPDATE)"
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
@@ -53,30 +54,64 @@ local function createBtn(name, text, pos, size, color)
 end
 
 -------------------------------------------------------------------
--- ЛОГИКА AIR JUMP (ФУНКЦИЯ)
+-- ЛОГИКА ESP (ПОДСВЕТКА ИГРОКОВ)
+-------------------------------------------------------------------
+espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.1, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(80, 80, 80))
+
+local function updateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= speaker and player.Character then
+            local char = player.Character
+            local oldHighlight = char:FindFirstChild("EliteX_ESP")
+            
+            if espActive then
+                if not oldHighlight then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "EliteX_ESP"
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Красный цвет внутри
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- Белый контур
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.Adornee = char
+                    highlight.Parent = char
+                end
+            else
+                if oldHighlight then oldHighlight:Destroy() end
+            end
+        end
+    end
+end
+
+espBtn.MouseButton1Click:Connect(function()
+    espActive = not espActive
+    espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
+    espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
+    updateESP()
+end)
+
+-- Следим за новыми игроками, если ESP включен
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(1)
+        if espActive then updateESP() end
+    end)
+end)
+
+-------------------------------------------------------------------
+-- ЛОГИКА AIR JUMP (L-CTRL)
 -------------------------------------------------------------------
 local function doAirJump()
     local char = speaker.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    
     if root then
-        local part = Instance.new("Part")
+        local part = Instance.new("Part", workspace)
         part.Size = Vector3.new(7, 1, 7)
         part.CFrame = root.CFrame * CFrame.new(0, -3.5, 0)
-        part.Anchored = true
-        part.CanCollide = true
-        part.Material = Enum.Material.ForceField
-        part.Color = Color3.fromRGB(0, 255, 255)
-        part.Transparency = 0.5
-        part.Parent = workspace
-        
+        part.Anchored = true; part.Material = Enum.Material.ForceField
+        part.Color = Color3.fromRGB(0, 255, 255); part.Transparency = 0.5
         task.spawn(function()
-            local duration = 1
-            local startTime = tick()
-            while tick() - startTime < duration do
-                if part and part.Parent then
-                    part.Position = part.Position + Vector3.new(0, 0.6, 0) -- Чуть быстрее подброс
-                end
+            for i = 1, 30 do
+                part.Position = part.Position + Vector3.new(0, 0.6, 0)
                 task.wait()
             end
             part:Destroy()
@@ -84,22 +119,14 @@ local function doAirJump()
     end
 end
 
--- Привязка к кнопке в меню
-jumpBtn = createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.12, 0), UDim2.new(0.9, 0, 0, 40), Color3.fromRGB(0, 150, 255))
+jumpBtn = createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.2, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 150, 255))
 jumpBtn.MouseButton1Click:Connect(doAirJump)
-
--- Привязка к клавише Left Control
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end -- Игнорировать, если открыт чат
-    if input.KeyCode == Enum.KeyCode.LeftControl then
-        doAirJump()
-    end
-end)
+UserInputService.InputBegan:Connect(function(i, p) if not p and i.KeyCode == Enum.KeyCode.LeftControl then doAirJump() end end)
 
 -------------------------------------------------------------------
 -- ЛОГИКА СКОРОСТИ (SPEED LOCK: 50)
 -------------------------------------------------------------------
-speedLockBtn = createBtn("SpeedLockBtn", "SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.25, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(120, 40, 200))
+speedLockBtn = createBtn("SpeedBtn", "SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.3, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(120, 40, 200))
 
 task.spawn(function()
     while true do
@@ -107,6 +134,8 @@ task.spawn(function()
         if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
             speaker.Character.Humanoid.WalkSpeed = targetSpeed
         end
+        -- Обновляем ESP для персонажей, которые могли обновиться
+        if espActive then updateESP() end
     end
 end)
 
@@ -114,21 +143,16 @@ speedLockBtn.MouseButton1Click:Connect(function()
     speedLockActive = not speedLockActive
     speedLockBtn.Text = speedLockActive and "SPEED LOCK (50): ON" or "SPEED LOCK (50): OFF"
     speedLockBtn.BackgroundColor3 = speedLockActive and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(120, 40, 200)
-    
-    if not speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
-        speaker.Character.Humanoid.WalkSpeed = 16 -- Сброс на стандартную
-    end
 end)
 
 -------------------------------------------------------------------
 -- ПОЛЕТ И ЗАКРЫТИЕ
 -------------------------------------------------------------------
-onof = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.38, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0))
-
+onof = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.4, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0))
 onof.MouseButton1Click:Connect(function() nowe = not nowe end)
 
 RunService.Heartbeat:Connect(function()
-    if nowe and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then 
+    if nowe and speaker.Character then 
         speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds) 
     end
 end)
