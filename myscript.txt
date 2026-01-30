@@ -1,378 +1,302 @@
+-- Инициализация основных компонентов
 local main = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
-local up = Instance.new("TextButton")
-local down = Instance.new("TextButton")
-local onof = Instance.new("TextButton")
-local TextLabel = Instance.new("TextLabel")
-local plus = Instance.new("TextButton")
-local speed = Instance.new("TextLabel")
-local mine = Instance.new("TextButton")
+local title = Instance.new("TextLabel")
 local closebutton = Instance.new("TextButton")
 local mini = Instance.new("TextButton")
 local mini2 = Instance.new("TextButton")
 
--- Новые элементы для работы с позицией
-local copyPosBtn = Instance.new("TextButton")
-local posDisplay = Instance.new("TextLabel")
-local tpPosBtn = Instance.new("TextButton")
-local pos1 = nil -- Переменная для хранения позиции
+-- Компоненты Полета
+local up = Instance.new("TextButton")
+local down = Instance.new("TextButton")
+local onof = Instance.new("TextButton")
+local plus = Instance.new("TextButton")
+local mine = Instance.new("TextButton")
+local flySpeedDisplay = Instance.new("TextLabel")
 
-main.Name = "main"
-main.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-main.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Компоненты Позиции (Pos1)
+local copyPosBtn = Instance.new("TextButton")
+local tpPosBtn = Instance.new("TextButton")
+local posDisplay = Instance.new("TextLabel")
+local pos1 = nil
+
+-- Компоненты Характеристик (TextBox)
+local speedInput = Instance.new("TextBox")
+local jumpInput = Instance.new("TextBox")
+local speedTitle = Instance.new("TextLabel")
+local jumpTitle = Instance.new("TextLabel")
+
+-- Компоненты Сканера
+local scannerLabel = Instance.new("TextLabel")
+local scannerTitle = Instance.new("TextLabel")
+
+-- Настройки игрока
+local speaker = game:GetService("Players").LocalPlayer
+local speeds = 1
+local nowe = false
+local tpwalking = false
+
+-- ГЛАВНЫЙ ИНТЕРФЕЙС
+main.Name = "EliteX_Premium_GUI"
+main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
+Frame.Name = "MainFrame"
 Frame.Parent = main
-Frame.BackgroundColor3 = Color3.fromRGB(163, 255, 137)
-Frame.BorderColor3 = Color3.fromRGB(103, 221, 213)
-Frame.Position = UDim2.new(0.1, 0, 0.38, 0)
-Frame.Size = UDim2.new(0, 190, 0, 95) -- Увеличена высота для новых кнопок
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+Frame.BorderSizePixel = 0
+Frame.Position = UDim2.new(0.1, 0, 0.2, 0)
+Frame.Size = UDim2.new(0, 240, 0, 420) -- Увеличена высота для всех модулей
+Frame.Active = true
+Frame.Draggable = true
 
--- Кнопка UP
-up.Name = "up"
-up.Parent = Frame
-up.BackgroundColor3 = Color3.fromRGB(79, 255, 152)
-up.Size = UDim2.new(0, 44, 0, 28)
-up.Font = Enum.Font.SourceSans
-up.Text = "UP"
-up.TextColor3 = Color3.fromRGB(0, 0, 0)
-up.TextSize = 14.000
-
--- Кнопка DOWN
-down.Name = "down"
-down.Parent = Frame
-down.BackgroundColor3 = Color3.fromRGB(215, 255, 121)
-down.Position = UDim2.new(0, 0, 0.3, 0)
-down.Size = UDim2.new(0, 44, 0, 28)
-down.Font = Enum.Font.SourceSans
-down.Text = "DOWN"
-down.TextColor3 = Color3.fromRGB(0, 0, 0)
-down.TextSize = 14.000
-
--- Кнопка FLY
-onof.Name = "onof"
-onof.Parent = Frame
-onof.BackgroundColor3 = Color3.fromRGB(255, 249, 74)
-onof.Position = UDim2.new(0.7, 0, 0.3, 0)
-onof.Size = UDim2.new(0, 56, 0, 28)
-onof.Font = Enum.Font.SourceSans
-onof.Text = "fly"
-onof.TextColor3 = Color3.fromRGB(0, 0, 0)
-onof.TextSize = 14.000
+-- Скругление углов (для красоты)
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = Frame
 
 -- Заголовок
-TextLabel.Parent = Frame
-TextLabel.BackgroundColor3 = Color3.fromRGB(242, 60, 255)
-TextLabel.Position = UDim2.new(0.47, 0, 0, 0)
-TextLabel.Size = UDim2.new(0, 100, 0, 28)
-TextLabel.Font = Enum.Font.SourceSans
-TextLabel.Text = "FLY GUI V3"
-TextLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextLabel.TextScaled = true
+title.Parent = Frame
+title.Text = "ULTIMATE CONTROL V4"
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+title.TextColor3 = Color3.fromRGB(0, 255, 127)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
 
--- Кнопка Скорость +
-plus.Name = "plus"
-plus.Parent = Frame
-plus.BackgroundColor3 = Color3.fromRGB(133, 145, 255)
-plus.Position = UDim2.new(0.23, 0, 0, 0)
-plus.Size = UDim2.new(0, 45, 0, 28)
-plus.Text = "+"
-plus.TextScaled = true
+-- Универсальная функция для создания кнопок
+local function createBtn(name, text, pos, size, color)
+    local btn = Instance.new("TextButton", Frame)
+    btn.Name = name
+    btn.Text = text
+    btn.Position = pos
+    btn.Size = size
+    btn.BackgroundColor3 = color
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BorderSizePixel = 0
+    local c = Instance.new("UICorner", btn)
+    c.CornerRadius = UDim.new(0, 4)
+    return btn
+end
 
--- Поле скорости
-speed.Name = "speed"
-speed.Parent = Frame
-speed.BackgroundColor3 = Color3.fromRGB(255, 85, 0)
-speed.Position = UDim2.new(0.47, 0, 0.3, 0)
-speed.Size = UDim2.new(0, 44, 0, 28)
-speed.Text = "1"
-speed.TextScaled = true
+-------------------------------------------------------------------
+-- 1. МОДУЛЬ ПОЛЕТА (FLY)
+-------------------------------------------------------------------
+onof = createBtn("FlyToggle", "ВКЛЮЧИТЬ ПОЛЕТ", UDim2.new(0.05, 0, 0.1, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(200, 160, 0))
+up = createBtn("UpBtn", "ВВЕРХ", UDim2.new(0.05, 0, 0.2, 0), UDim2.new(0, 70, 0, 30), Color3.fromRGB(60, 150, 60))
+down = createBtn("DownBtn", "ВНИЗ", UDim2.new(0.05, 0, 0.28, 0), UDim2.new(0, 70, 0, 30), Color3.fromRGB(150, 60, 60))
 
--- Кнопка Скорость -
-mine.Name = "mine"
-mine.Parent = Frame
-mine.BackgroundColor3 = Color3.fromRGB(123, 255, 247)
-mine.Position = UDim2.new(0.23, 0, 0.3, 0)
-mine.Size = UDim2.new(0, 45, 0, 29)
-mine.Text = "-"
-mine.TextScaled = true
+plus = createBtn("SpeedPlus", "+", UDim2.new(0.4, 0, 0.2, 0), UDim2.new(0, 40, 0, 30), Color3.fromRGB(70, 70, 100))
+mine = createBtn("SpeedMinus", "-", UDim2.new(0.4, 0, 0.28, 0), UDim2.new(0, 40, 0, 30), Color3.fromRGB(70, 70, 100))
 
--- Кнопка COPY (Новая)
-copyPosBtn.Name = "copyPos"
-copyPosBtn.Parent = Frame
-copyPosBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
-copyPosBtn.Position = UDim2.new(0, 0, 0.65, 0)
-copyPosBtn.Size = UDim2.new(0, 44, 0, 28)
-copyPosBtn.Font = Enum.Font.SourceSans
-copyPosBtn.Text = "COPY"
-copyPosBtn.TextSize = 12
+flySpeedDisplay.Parent = Frame
+flySpeedDisplay.Text = "СКОРОСТЬ: 1"
+flySpeedDisplay.Position = UDim2.new(0.6, 0, 0.2, 0)
+flySpeedDisplay.Size = UDim2.new(0.35, 0, 0, 60)
+flySpeedDisplay.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+flySpeedDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
+flySpeedDisplay.Font = Enum.Font.Gotham
+flySpeedDisplay.TextSize = 12
 
--- TextLabel для позиции (Новый)
-posDisplay.Name = "posDisplay"
+-------------------------------------------------------------------
+-- 2. МОДУЛЬ ТЕЛЕПОРТАЦИИ (POS)
+-------------------------------------------------------------------
+copyPosBtn = createBtn("CopyBtn", "СОХРАНИТЬ ПОЗ", UDim2.new(0.05, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(100, 100, 110))
+tpPosBtn = createBtn("TpBtn", "ТП К ТОЧКЕ", UDim2.new(0.52, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(0, 120, 180))
+
 posDisplay.Parent = Frame
-posDisplay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-posDisplay.Position = UDim2.new(0.23, 0, 0.65, 0)
-posDisplay.Size = UDim2.new(0, 90, 0, 28)
-posDisplay.Font = Enum.Font.SourceSans
-posDisplay.Text = "No Position"
-posDisplay.TextScaled = true
+posDisplay.Text = "КООРДИНАТЫ: НЕ СОХРАНЕНЫ"
+posDisplay.Position = UDim2.new(0.05, 0, 0.46, 0)
+posDisplay.Size = UDim2.new(0.9, 0, 0, 25)
+posDisplay.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+posDisplay.TextColor3 = Color3.fromRGB(200, 200, 0)
+posDisplay.Font = Enum.Font.Code
+posDisplay.TextSize = 11
 
--- Кнопка TELEPORT (Новая)
-tpPosBtn.Name = "tpPos"
-tpPosBtn.Parent = Frame
-tpPosBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 255)
-tpPosBtn.Position = UDim2.new(0.7, 0, 0.65, 0)
-tpPosBtn.Size = UDim2.new(0, 56, 0, 28)
-tpPosBtn.Font = Enum.Font.SourceSans
-tpPosBtn.Text = "TP"
-tpPosBtn.TextSize = 14
+-------------------------------------------------------------------
+-- 3. МОДУЛЬ ХАРАКТЕРИСТИК (TEXTBOX)
+-------------------------------------------------------------------
+speedTitle.Parent = Frame
+speedTitle.Text = "СКОРОСТЬ БЕГА:"
+speedTitle.Position = UDim2.new(0.05, 0, 0.54, 0)
+speedTitle.Size = UDim2.new(0, 110, 0, 20)
+speedTitle.BackgroundTransparency = 1
+speedTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+speedTitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- Остальные кнопки (Закрыть, Свернуть)
-closebutton.Name = "Close"
-closebutton.Parent = Frame
-closebutton.BackgroundColor3 = Color3.fromRGB(225, 25, 0)
-closebutton.Size = UDim2.new(0, 45, 0, 28)
-closebutton.Text = "X"
-closebutton.Position =  UDim2.new(0, 0, -1, 27)
+speedInput.Parent = Frame
+speedInput.Name = "SpeedInput"
+speedInput.Position = UDim2.new(0.55, 0, 0.54, 0)
+speedInput.Size = UDim2.new(0, 95, 0, 25)
+speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+speedInput.Text = "16"
+speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedInput.PlaceholderText = "Введите число..."
 
-mini.Name = "minimize"
-mini.Parent = Frame
-mini.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
-mini.Size = UDim2.new(0, 45, 0, 28)
-mini.Text = "-"
-mini.Position = UDim2.new(0, 44, -1, 27)
+jumpTitle.Parent = Frame
+jumpTitle.Text = "ВЫСОТА ПРЫЖКА:"
+jumpTitle.Position = UDim2.new(0.05, 0, 0.62, 0)
+jumpTitle.Size = UDim2.new(0, 110, 0, 20)
+jumpTitle.BackgroundTransparency = 1
+jumpTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+jumpTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-mini2.Name = "minimize2"
-mini2.Parent = Frame
-mini2.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
-mini2.Size = UDim2.new(0, 45, 0, 28)
-mini2.Text = "+"
-mini2.Position = UDim2.new(0, 44, -1, 57)
+jumpInput.Parent = Frame
+jumpInput.Name = "JumpInput"
+jumpInput.Position = UDim2.new(0.55, 0, 0.62, 0)
+jumpInput.Size = UDim2.new(0, 95, 0, 25)
+jumpInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+jumpInput.Text = "50"
+jumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+jumpInput.PlaceholderText = "Введите число..."
+
+-------------------------------------------------------------------
+-- 4. МОДУЛЬ СКАНЕРА (DEEP SCAN)
+-------------------------------------------------------------------
+scannerTitle.Parent = Frame
+scannerTitle.Text = "МОНИТОРИНГ СКРИПТОВ:"
+scannerTitle.Position = UDim2.new(0.05, 0, 0.72, 0)
+scannerTitle.Size = UDim2.new(0.9, 0, 0, 20)
+scannerTitle.BackgroundTransparency = 1
+scannerTitle.TextColor3 = Color3.fromRGB(0, 255, 127)
+scannerTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+scannerLabel.Parent = Frame
+scannerLabel.Name = "ScannerLog"
+scannerLabel.Text = "Инициализация системы защиты..."
+scannerLabel.Position = UDim2.new(0.05, 0, 0.78, 0)
+scannerLabel.Size = UDim2.new(0.9, 0, 0, 80) -- Большая высота для лога
+scannerLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+scannerLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+scannerLabel.Font = Enum.Font.Code
+scannerLabel.TextSize = 11
+scannerLabel.TextWrapped = true
+scannerLabel.TextYAlignment = Enum.TextYAlignment.Top
+Instance.new("UICorner", scannerLabel).CornerRadius = UDim.new(0, 4)
+
+-- Кнопки закрытия и сворачивания
+closebutton = createBtn("Close", "X", UDim2.new(0.85, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(200, 0, 0))
+mini = createBtn("Mini", "-", UDim2.new(0.7, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(100, 100, 100))
+mini2 = createBtn("Mini2", "+", UDim2.new(0.7, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(100, 100, 100))
 mini2.Visible = false
 
--- ЛОГИКА НОВЫХ КНОПОК
+-------------------------------------------------------------------
+-- ЛОГИКА ФУНКЦИЙ
+-------------------------------------------------------------------
+
+-- Полет
+onof.MouseButton1Down:connect(function()
+    if nowe == true then
+        nowe = false
+        onof.Text = "ВКЛЮЧИТЬ ПОЛЕТ"
+        onof.BackgroundColor3 = Color3.fromRGB(200, 160, 0)
+        if speaker.Character then
+            speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+        end
+    else
+        nowe = true
+        onof.Text = "ПОЛЕТ АКТИВЕН"
+        onof.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+        spawn(function()
+            local hb = game:GetService("RunService").Heartbeat
+            tpwalking = true
+            while tpwalking and hb:Wait() and speaker.Character do
+                if speaker.Character.Humanoid.MoveDirection.Magnitude > 0 then
+                    speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
+                end
+                if not nowe then tpwalking = false break end
+            end
+        end)
+        speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+    end
+end)
+
+plus.MouseButton1Down:connect(function() speeds += 1 flySpeedDisplay.Text = "СКОРОСТЬ: "..speeds end)
+mine.MouseButton1Down:connect(function() if speeds > 1 then speeds -= 1 flySpeedDisplay.Text = "СКОРОСТЬ: "..speeds end end)
+
+-- Движение Вверх/Вниз
+local movingUp, movingDown = false, false
+up.MouseButton1Down:Connect(function() movingUp = true while movingUp do wait() if speaker.Character then speaker.Character.HumanoidRootPart.CFrame *= CFrame.new(0,1,0) end end end)
+up.MouseButton1Up:Connect(function() movingUp = false end)
+down.MouseButton1Down:Connect(function() movingDown = true while movingDown do wait() if speaker.Character then speaker.Character.HumanoidRootPart.CFrame *= CFrame.new(0,-1,0) end end end)
+down.MouseButton1Up:Connect(function() movingDown = false end)
+
+-- Копирование и ТП
 copyPosBtn.MouseButton1Click:Connect(function()
-    local character = game.Players.LocalPlayer.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        pos1 = character.HumanoidRootPart.CFrame
-        local p = character.HumanoidRootPart.Position
-        posDisplay.Text = string.format("%.0f, %.0f, %.0f", p.X, p.Y, p.Z)
+    local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        pos1 = root.CFrame
+        posDisplay.Text = string.format("X: %.1f Y: %.1f Z: %.1f", root.Position.X, root.Position.Y, root.Position.Z)
     end
 end)
 
 tpPosBtn.MouseButton1Click:Connect(function()
-    local character = game.Players.LocalPlayer.Character
-    if character and character:FindFirstChild("HumanoidRootPart") and pos1 then
-        character.HumanoidRootPart.CFrame = pos1
+    if pos1 and speaker.Character then
+        speaker.Character.HumanoidRootPart.CFrame = pos1
     end
 end)
 
--- ЛОГИКА ПОЛЕТА
-speeds = 1
-local speaker = game:GetService("Players").LocalPlayer
-nowe = false
-
-game:GetService("StarterGui"):SetCore("SendNotification", { 
-	Title = "FLY GUI V3";
-	Text = "BY XNEO";
-	Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"})
-
-Frame.Active = true
-Frame.Draggable = true
-
-onof.MouseButton1Down:connect(function()
-	if nowe == true then
-		nowe = false
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,true)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,true)
-		speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-	else 
-		nowe = true
-		for i = 1, speeds do
-			spawn(function()
-				local hb = game:GetService("RunService").Heartbeat	
-				tpwalking = true
-				local chr = game.Players.LocalPlayer.Character
-				local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-				while tpwalking and hb:Wait() and chr and hum and hum.Parent do
-					if hum.MoveDirection.Magnitude > 0 then
-						chr:TranslateBy(hum.MoveDirection)
-					end
-				end
-			end)
-		end
-		game.Players.LocalPlayer.Character.Animate.Disabled = true
-		local Char = game.Players.LocalPlayer.Character
-		local Hum = Char:FindFirstChildOfClass("Humanoid") or Char:FindFirstChildOfClass("AnimationController")
-
-		for i,v in next, Hum:GetPlayingAnimationTracks() do
-			v:AdjustSpeed(0)
-		end
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,false)
-		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,false)
-		speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-	end
-
-	if game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R6 then
-		local plr = game.Players.LocalPlayer
-		local torso = plr.Character.Torso
-		local ctrl = {f = 0, b = 0, l = 0, r = 0}
-		local lastctrl = {f = 0, b = 0, l = 0, r = 0}
-		local maxspeed = 50
-		local flyspeed = 0
-
-		local bg = Instance.new("BodyGyro", torso)
-		bg.P = 9e4
-		bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-		bg.cframe = torso.CFrame
-		local bv = Instance.new("BodyVelocity", torso)
-		bv.velocity = Vector3.new(0,0.1,0)
-		bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-		if nowe == true then
-			plr.Character.Humanoid.PlatformStand = true
-		end
-		while nowe == true or game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 do
-			game:GetService("RunService").RenderStepped:Wait()
-			if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
-				flyspeed = flyspeed+.5+(flyspeed/maxspeed)
-				if flyspeed > maxspeed then flyspeed = maxspeed end
-			elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and flyspeed ~= 0 then
-				flyspeed = flyspeed-1
-				if flyspeed < 0 then flyspeed = 0 end
-			end
-			if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
-				bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*flyspeed
-				lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
-			elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and flyspeed ~= 0 then
-				bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*flyspeed
-			else
-				bv.velocity = Vector3.new(0,0,0)
-			end
-			bg.cframe = game.Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*flyspeed/maxspeed),0,0)
-		end
-		bg:Destroy()
-		bv:Destroy()
-		plr.Character.Humanoid.PlatformStand = false
-		game.Players.LocalPlayer.Character.Animate.Disabled = false
-		tpwalking = false
-	else
-		-- Логика для R15 (аналогично)
-		local plr = game.Players.LocalPlayer
-		local UpperTorso = plr.Character.UpperTorso
-		local ctrl = {f = 0, b = 0, l = 0, r = 0}
-		local lastctrl = {f = 0, b = 0, l = 0, r = 0}
-		local maxspeed = 50
-		local flyspeed = 0
-		local bg = Instance.new("BodyGyro", UpperTorso)
-		bg.P = 9e4
-		bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-		local bv = Instance.new("BodyVelocity", UpperTorso)
-		bv.velocity = Vector3.new(0,0.1,0)
-		bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-		if nowe == true then plr.Character.Humanoid.PlatformStand = true end
-		while nowe == true or game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 do
-			wait()
-			if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
-				flyspeed = flyspeed+.5+(flyspeed/maxspeed)
-				if flyspeed > maxspeed then flyspeed = maxspeed end
-			elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and flyspeed ~= 0 then
-				flyspeed = flyspeed-1
-				if flyspeed < 0 then flyspeed = 0 end
-			end
-			if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
-				bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*flyspeed
-				lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
-			elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and flyspeed ~= 0 then
-				bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*flyspeed
-			else
-				bv.velocity = Vector3.new(0,0,0)
-			end
-			bg.cframe = game.Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*flyspeed/maxspeed),0,0)
-		end
-		bg:Destroy()
-		bv:Destroy()
-		plr.Character.Humanoid.PlatformStand = false
-		game.Players.LocalPlayer.Character.Animate.Disabled = false
-		tpwalking = false
-	end
+-- TextBox логика (Скорость и Прыжок)
+speedInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local val = tonumber(speedInput.Text)
+        local hum = speaker.Character and speaker.Character:FindFirstChildOfClass("Humanoid")
+        if hum and val then hum.WalkSpeed = val end
+    end
 end)
 
--- Управление высотой зажатием
-local tis
-up.MouseButton1Down:connect(function()
-	tis = up.MouseEnter:connect(function()
-		while tis do
-			wait()
-			game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,1,0)
-		end
-	end)
-end)
-up.MouseLeave:connect(function() if tis then tis:Disconnect() tis = nil end end)
-
-local dis
-down.MouseButton1Down:connect(function()
-	dis = down.MouseEnter:connect(function()
-		while dis do
-			wait()
-			game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,-1,0)
-		end
-	end)
-end)
-down.MouseLeave:connect(function() if dis then dis:Disconnect() dis = nil end end)
-
--- Скорость
-plus.MouseButton1Down:connect(function()
-	speeds = speeds + 1
-	speed.Text = speeds
-end)
-mine.MouseButton1Down:connect(function()
-	if speeds > 1 then
-		speeds = speeds - 1
-		speed.Text = speeds
-	end
+jumpInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local val = tonumber(jumpInput.Text)
+        local hum = speaker.Character and speaker.Character:FindFirstChildOfClass("Humanoid")
+        if hum and val then
+            if hum.UseJumpPower then hum.JumpPower = val else hum.JumpHeight = val end
+        end
+    end
 end)
 
--- Интерфейс
+-- ГЛУБОКИЙ СКАНЕР (АВТО-УДАЛЕНИЕ)
+spawn(function()
+    while wait(2) do
+        local found = {}
+        -- game:GetDescendants() ищет ВЕЗДЕ: в папках, моделях, секретных сервисах
+        for _, obj in pairs(game:GetDescendants()) do
+            if obj:IsA("LuaSourceContainer") then -- Поиск Script, LocalScript, ModuleScript
+                local name = obj.Name:lower()
+                if name:find("cheat") or name:find("anti") then
+                    table.insert(found, obj.Name)
+                    obj:Destroy()
+                end
+            end
+        end
+        
+        if #found > 0 then
+            scannerLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            scannerLabel.Text = "УДАЛЕНО ("..#found.."): " .. table.concat(found, ", ")
+        else
+            scannerLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            scannerLabel.Text = "Система чиста. Угрозы не обнаружены."
+        end
+    end
+end)
+
+-- Управление окном
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
 
 mini.MouseButton1Click:Connect(function()
-	up.Visible = false; down.Visible = false; onof.Visible = false
-	plus.Visible = false; speed.Visible = false; mine.Visible = false
-	copyPosBtn.Visible = false; posDisplay.Visible = false; tpPosBtn.Visible = false
-	mini.Visible = false; mini2.Visible = true
-	Frame.BackgroundTransparency = 1
+    for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = false end end
+    title.Visible = true; mini2.Visible = true; Frame.BackgroundTransparency = 1; Frame.Size = UDim2.new(0, 240, 0, 35)
 end)
 
 mini2.MouseButton1Click:Connect(function()
-	up.Visible = true; down.Visible = true; onof.Visible = true
-	plus.Visible = true; speed.Visible = true; mine.Visible = true
-	copyPosBtn.Visible = true; posDisplay.Visible = true; tpPosBtn.Visible = true
-	mini.Visible = true; mini2.Visible = false
-	Frame.BackgroundTransparency = 0 
+    for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = true end end
+    mini2.Visible = false; Frame.BackgroundTransparency = 0; Frame.Size = UDim2.new(0, 240, 0, 420)
 end)
+
+-- Уведомление о запуске
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Система Активна",
+    Text = "Deep Scan & Fly Control загружены",
+    Duration = 5
+})
