@@ -15,8 +15,8 @@ local mine = Instance.new("TextButton")
 local flySpeedDisplay = Instance.new("TextLabel")
 
 -- Компоненты Позиции (Рывок вперед)
-local tpForwardShort = Instance.new("TextButton")
-local tpForwardLong = Instance.new("TextButton")
+local tpShort = Instance.new("TextButton")
+local tpLong = Instance.new("TextButton")
 local posDisplay = Instance.new("TextLabel")
 
 -- Компоненты Характеристик
@@ -97,19 +97,19 @@ flySpeedDisplay.Font = Enum.Font.Gotham
 flySpeedDisplay.TextSize = 12
 
 -------------------------------------------------------------------
--- 2. МОДУЛЬ ТЕЛЕПОРТАЦИИ (ВПЕРЕД)
+-- 2. МОДУЛЬ РЫВКА (FORWARD DASH)
 -------------------------------------------------------------------
-tpForwardShort = createBtn("TpShort", "ВПЕРЕД (5)", UDim2.new(0.05, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(100, 100, 110))
-tpForwardLong = createBtn("TpLong", "ВПЕРЕД (15)", UDim2.new(0.52, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(0, 120, 180))
+tpShort = createBtn("TpShort", "РЫВОК (2)", UDim2.new(0.05, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(100, 100, 110))
+tpLong = createBtn("TpLong", "РЫВОК (4)", UDim2.new(0.52, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(0, 120, 180))
 
 posDisplay.Parent = Frame
-posDisplay.Text = "ДИСТАНЦИЯ РЫВКА"
+posDisplay.Text = "ОЖИДАНИЕ ДЕЙСТВИЯ"
 posDisplay.Position = UDim2.new(0.05, 0, 0.46, 0)
 posDisplay.Size = UDim2.new(0.9, 0, 0, 25)
 posDisplay.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 posDisplay.TextColor3 = Color3.fromRGB(200, 200, 0)
 posDisplay.Font = Enum.Font.Code
-posDisplay.TextSize = 11
+posDisplay.TextSize = 10
 
 -------------------------------------------------------------------
 -- 3. МОДУЛЬ ХАРАКТЕРИСТИК
@@ -145,21 +145,22 @@ jumpInput.Text = "50"
 jumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 
 -------------------------------------------------------------------
--- 4. МОДУЛЬ СКАНЕРА
+-- 4. МОДУЛЬ СКАНЕРА (ОБНОВЛЕННЫЙ)
 -------------------------------------------------------------------
 scannerTitle.Parent = Frame
-scannerTitle.Text = "МОНИТОРИНГ СКРИПТОВ:"
+scannerTitle.Text = "УДАЛЕНИЕ СКРИПТОВ (LOG):"
 scannerTitle.Position = UDim2.new(0.05, 0, 0.72, 0)
 scannerTitle.Size = UDim2.new(0.9, 0, 0, 20)
 scannerTitle.BackgroundTransparency = 1
 scannerTitle.TextColor3 = Color3.fromRGB(0, 255, 127)
+scannerTitle.TextSize = 12
 
 scannerLabel.Parent = Frame
-scannerLabel.Text = "Сканер запущен..."
+scannerLabel.Text = "Поиск опасных скриптов..."
 scannerLabel.Position = UDim2.new(0.05, 0, 0.78, 0)
 scannerLabel.Size = UDim2.new(0.9, 0, 0, 80)
 scannerLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-scannerLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+scannerLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
 scannerLabel.Font = Enum.Font.Code
 scannerLabel.TextSize = 10
 scannerLabel.TextWrapped = true
@@ -173,22 +174,22 @@ mini2 = createBtn("Mini2", "+", UDim2.new(0.7, 0, 0, 0), UDim2.new(0, 35, 0, 35)
 mini2.Visible = false
 
 -------------------------------------------------------------------
--- ЛОГИКА
+-- ЛОГИКА ФУНКЦИЙ
 -------------------------------------------------------------------
 
--- Функция телепортации ВПЕРЕД
-local function tpForward(dist)
+-- Функция рывка вперед
+local function dash(distance)
     local char = speaker.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then
-        -- Используем LookVector для перемещения в направлении взгляда
-        root.CFrame = root.CFrame + (root.CFrame.LookVector * dist)
-        posDisplay.Text = "Рывок на " .. dist .. " студов"
+        -- Телепортация вперед по вектору взгляда
+        root.CFrame = root.CFrame + (root.CFrame.LookVector * distance)
+        posDisplay.Text = "Прыжок на " .. distance .. " ед."
     end
 end
 
-tpForwardShort.MouseButton1Click:Connect(function() tpForward(5) end)
-tpForwardLong.MouseButton1Click:Connect(function() tpForward(15) end)
+tpShort.MouseButton1Click:Connect(function() dash(2) end)
+tpLong.MouseButton1Click:Connect(function() dash(4) end)
 
 -- Полет
 onof.MouseButton1Down:connect(function()
@@ -243,32 +244,39 @@ jumpInput.FocusLost:Connect(function(enter)
     end
 end)
 
--- Сканер (с защитой от ошибок доступа)
+-- СКАНЕР (ОБНОВЛЕННЫЙ ФИЛЬТР)
 spawn(function()
+    local deletedNames = {} -- Список для лога имен
     while task.wait(3) do
-        local found = {}
+        local foundInThisTurn = false
         for _, obj in pairs(game:GetDescendants()) do
-            pcall(function() -- Используем pcall чтобы скрипт не падал при сканировании защищенных папок
+            pcall(function()
                 if obj:IsA("LuaSourceContainer") then
-                    local n = obj.Name:lower()
-                    if n:find("cheat") or n:find("anti") then
-                        table.insert(found, obj.Name)
+                    local name = obj.Name:lower()
+                    -- Расширенный фильтр
+                    if name:find("cheat") or name:find("anti") or name:find("kick") or name:find("ban") then
+                        if not table.find(deletedNames, obj.Name) then
+                            table.insert(deletedNames, obj.Name)
+                        end
                         obj:Destroy()
+                        foundInThisTurn = true
                     end
                 end
             end)
         end
-        if #found > 0 then
+        
+        -- Обновление Label именами удаленных файлов
+        if #deletedNames > 0 then
             scannerLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-            scannerLabel.Text = "УДАЛЕНО: " .. table.concat(found, ", ")
+            scannerLabel.Text = "УДАЛЕНО: " .. table.concat(deletedNames, ", ")
         else
             scannerLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            scannerLabel.Text = "Угроз не обнаружено."
+            scannerLabel.Text = "Угроз не обнаружено. Система чиста."
         end
     end
 end)
 
--- Окно
+-- Управление окном
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
 mini.MouseButton1Click:Connect(function()
     for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = false end end
@@ -279,4 +287,4 @@ mini2.MouseButton1Click:Connect(function()
     mini2.Visible = false; Frame.BackgroundTransparency = 0; Frame.Size = UDim2.new(0, 240, 0, 420)
 end)
 
-game:GetService("StarterGui"):SetCore("SendNotification", {Title = "EliteX Premium", Text = "Скрипт успешно загружен", Duration = 5})
+game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Система Активна", Text = "Рывок (2/4) и Расширенный Скан загружены", Duration = 5})
