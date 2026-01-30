@@ -14,7 +14,7 @@ local espActive = false
 local targetSpeed = 50
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Final_V23"
+main.Name = "EliteX_Final_V22"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -22,52 +22,36 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.Size = UDim2.new(0, 320, 0, 420) -- Немного шире для путей
+Frame.Size = UDim2.new(0, 260, 0, 380)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame)
 
 title.Parent = Frame
-title.Text = "TOP 3 GEN PATHS"
+title.Text = "TOP 3 GENERATION"
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-title.TextColor3 = Color3.fromRGB(0, 255, 127)
+title.TextColor3 = Color3.fromRGB(255, 215, 0)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 Instance.new("UICorner", title)
 
 local topBox = Instance.new("TextLabel", Frame)
-topBox.Size = UDim2.new(0.94, 0, 0, 140)
-topBox.Position = UDim2.new(0.03, 0, 0.62, 0)
+topBox.Size = UDim2.new(0.9, 0, 0, 100)
+topBox.Position = UDim2.new(0.05, 0, 0.7, 0)
 topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 topBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-topBox.TextSize = 11
+topBox.TextSize = 14
 topBox.Font = Enum.Font.Code
-topBox.Text = "Searching for Generation objects..."
-topBox.TextWrapped = true
-topBox.TextXAlignment = Enum.TextXAlignment.Left
+topBox.Text = "Searching..."
 Instance.new("UICorner", topBox)
 
 -------------------------------------------------------------------
--- ЛОГИКА ПАРСИНГА ПУТИ И ЗНАЧЕНИЙ
+-- ЛОГИКА ПАРСИНГА И СОРТИРОВКИ
 -------------------------------------------------------------------
 
--- Функция получения пути родителей через точку
-local function getParentPath(obj)
-    local path = ""
-    local current = obj.Parent
-    while current and current ~= workspace and current ~= game do
-        if path == "" then
-            path = current.Name
-        else
-            path = current.Name .. "." .. path
-        end
-        current = current.Parent
-    end
-    return path ~= "" and path or "Workspace"
-end
-
 local function getNumericValue(text)
+    -- Извлекаем число и суффикс (M или B)
     local valStr, suffix = text:match("([%d%.]+)([MB])")
     if valStr and suffix then
         local num = tonumber(valStr)
@@ -82,14 +66,14 @@ task.spawn(function()
         local found = {}
         
         for _, v in pairs(workspace:GetDescendants()) do
+            -- Условие: Имя "Generation" и наличие свойства Text
             if v.Name == "Generation" then
                 local success, text = pcall(function() return v.Text end)
                 if success and text then
                     local numeric = getNumericValue(text)
                     -- Фильтр: 10M и выше
                     if numeric >= 10000000 then
-                        local path = getParentPath(v)
-                        table.insert(found, {original = text, value = numeric, path = path})
+                        table.insert(found, {original = text, value = numeric})
                     end
                 end
             end
@@ -98,22 +82,17 @@ task.spawn(function()
         -- Сортировка по убыванию
         table.sort(found, function(a, b) return a.value > b.value end)
         
-        -- Формирование вывода
-        if #found > 0 then
-            local resultText = " TOP 3 (Sorted by Value):\n"
-            for i = 1, 3 do
-                if found[i] then
-                    -- Формат: [Путь.Родителей] -> Текст
-                    resultText = resultText .. i .. ". [" .. found[i].path .. "] = " .. found[i].original .. "\n\n"
-                else
-                    resultText = resultText .. i .. ". ---\n"
-                end
+        -- Вывод только ТОП-3
+        local resultText = ""
+        for i = 1, 3 do
+            if found[i] then
+                resultText = resultText .. i .. ". " .. found[i].original .. "\n"
+            else
+                resultText = resultText .. i .. ". ---\n"
             end
-            topBox.Text = resultText
-        else
-            topBox.Text = "No Generation objects found over 10M."
         end
         
+        topBox.Text = resultText
         task.wait(3)
     end
 end)
@@ -125,18 +104,18 @@ end)
 local function createBtn(text, pos, color, func)
     local btn = Instance.new("TextButton", Frame)
     btn.Text = text; btn.Position = pos
-    btn.Size = UDim2.new(0.94, 0, 0, 35); btn.BackgroundColor3 = color
+    btn.Size = UDim2.new(0.9, 0, 0, 35); btn.BackgroundColor3 = color
     btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.GothamSemibold
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(func)
     return btn
 end
 
-createBtn("ESP: PLAYERS", UDim2.new(0.03, 0, 0.1, 0), Color3.fromRGB(60, 60, 70), function()
+createBtn("ESP: PLAYERS", UDim2.new(0.05, 0, 0.12, 0), Color3.fromRGB(60, 60, 70), function()
     espActive = not espActive
 end)
 
-createBtn("SPEED LOCK (50)", UDim2.new(0.03, 0, 0.2, 0), Color3.fromRGB(100, 40, 150), function()
+createBtn("SPEED LOCK (50)", UDim2.new(0.05, 0, 0.23, 0), Color3.fromRGB(100, 40, 150), function()
     speedLockActive = not speedLockActive
 end)
 
