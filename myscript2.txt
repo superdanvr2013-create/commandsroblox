@@ -1,0 +1,156 @@
+-- Сервисы
+local Players = game:GetService("Players")
+local speaker = Players.LocalPlayer
+
+-- Создание GUI
+local main = Instance.new("ScreenGui")
+main.Name = "EliteX_Scanner_Lite"
+main.Parent = speaker:WaitForChild("PlayerGui")
+main.ResetOnSpawn = false
+
+local Frame = Instance.new("Frame")
+Frame.Name = "MainFrame"
+Frame.Parent = main
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -200) -- Центр экрана
+Frame.Size = UDim2.new(0, 300, 0, 400)
+Frame.Active = true
+Frame.Draggable = true
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+
+-- Заголовок
+local title = Instance.new("TextLabel")
+title.Parent = Frame
+title.Text = "OBJECT RADAR"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+title.TextColor3 = Color3.fromRGB(0, 255, 127)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+Instance.new("UICorner", title)
+
+-- 1. Маленькое окно ввода радиуса (TextBox)
+local radiusLabel = Instance.new("TextLabel", Frame)
+radiusLabel.Text = "Radius:"
+radiusLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
+radiusLabel.Size = UDim2.new(0.3, 0, 0, 30)
+radiusLabel.BackgroundTransparency = 1
+radiusLabel.TextColor3 = Color3.new(1, 1, 1)
+radiusLabel.Font = Enum.Font.GothamSemibold
+radiusLabel.TextSize = 12
+
+local radiusBox = Instance.new("TextBox", Frame)
+radiusBox.PlaceholderText = "10"
+radiusBox.Text = "10" -- Значение по умолчанию
+radiusBox.Position = UDim2.new(0.4, 0, 0.1, 0)
+radiusBox.Size = UDim2.new(0.55, 0, 0, 30)
+radiusBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+radiusBox.TextColor3 = Color3.fromRGB(0, 200, 255)
+radiusBox.Font = Enum.Font.Code
+radiusBox.TextSize = 12
+Instance.new("UICorner", radiusBox)
+
+-- 2. Кнопка сканирования (Button)
+local scanBtn = Instance.new("TextButton", Frame)
+scanBtn.Text = "SCAN OBJECTS"
+scanBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+scanBtn.Size = UDim2.new(0.9, 0, 0, 35)
+scanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+scanBtn.TextColor3 = Color3.new(1, 1, 1)
+scanBtn.Font = Enum.Font.GothamBold
+scanBtn.TextSize = 12
+Instance.new("UICorner", scanBtn)
+
+-- 3. Большое окно вывода (TextBox внутри ScrollingFrame для прокрутки)
+local scroll = Instance.new("ScrollingFrame", Frame)
+scroll.Position = UDim2.new(0.05, 0, 0.32, 0)
+scroll.Size = UDim2.new(0.9, 0, 0.65, 0)
+scroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+scroll.ScrollBarThickness = 6
+Instance.new("UICorner", scroll)
+
+local outputBox = Instance.new("TextBox", scroll)
+outputBox.Size = UDim2.new(1, 0, 1, 0) -- Растягивается по контенту
+outputBox.BackgroundTransparency = 1
+outputBox.TextColor3 = Color3.new(1, 1, 1)
+outputBox.TextSize = 10
+outputBox.Font = Enum.Font.Code
+outputBox.TextXAlignment = Enum.TextXAlignment.Left
+outputBox.TextYAlignment = Enum.TextYAlignment.Top
+outputBox.MultiLine = true
+outputBox.TextEditable = false
+outputBox.ClearTextOnFocus = false
+outputBox.Text = "Ready to scan..."
+outputBox.TextWrapped = false -- Чтобы длинные пути не ломались некорректно
+
+-- Кнопка закрытия
+local closeBtn = Instance.new("TextButton", Frame)
+closeBtn.Text = "X"
+closeBtn.Position = UDim2.new(0.9, 0, 0, 0)
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.MouseButton1Click:Connect(function() main:Destroy() end)
+
+-------------------------------------------------------------------
+-- ЛОГИКА СКАНИРОВАНИЯ
+-------------------------------------------------------------------
+
+-- Функция для получения пути объекта до Workspace
+local function getPathToWorkspace(obj)
+    local path = obj.Name
+    local current = obj.Parent
+    while current and current ~= game and current ~= workspace do
+        path = current.Name .. " > " .. path
+        current = current.Parent
+    end
+    return path
+end
+
+scanBtn.MouseButton1Click:Connect(function()
+    local char = speaker.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if not root then
+        outputBox.Text = "Error: Character/RootPart not found!"
+        return
+    end
+
+    -- Получаем радиус из маленького TextBox
+    local radius = tonumber(radiusBox.Text)
+    if not radius then radius = 10 end -- Если ввели буквы, ставим 10 по умолчанию
+
+    outputBox.Text = "Scanning radius: " .. radius .. "...\n"
+    local foundObjects = {}
+    local origin = root.Position
+
+    -- Сканируем Workspace
+    for _, part in pairs(workspace:GetDescendants()) do
+        -- Проверяем, является ли объект физической частью (BasePart)
+        if part:IsA("BasePart") and part ~= root then
+            local distance = (part.Position - origin).Magnitude
+            
+            if distance <= radius then
+                -- Формируем строку: [Дистанция] Имя > Родитель...
+                local distStr = string.format("[%.1f]", distance)
+                local fullPath = getPathToWorkspace(part)
+                table.insert(foundObjects, distStr .. " " .. fullPath)
+            end
+        end
+    end
+
+    -- Вывод результатов
+    if #foundObjects > 0 then
+        -- Сортируем по имени для удобства (опционально)
+        table.sort(foundObjects)
+        
+        -- Выводим в TextBox
+        outputBox.Text = "Found " .. #foundObjects .. " objects:\n\n" .. table.concat(foundObjects, "\n")
+        
+        -- Увеличиваем размер поля внутри скролла, чтобы всё влезло
+        outputBox.Size = UDim2.new(1, 0, 0, #foundObjects * 15 + 50)
+        scroll.CanvasSize = UDim2.new(0, 0, 0, #foundObjects * 15 + 50)
+    else
+        outputBox.Text = "No objects found in radius " .. radius
+    end
+end)
