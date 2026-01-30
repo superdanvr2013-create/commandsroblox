@@ -7,9 +7,9 @@ local mini = Instance.new("TextButton")
 local mini2 = Instance.new("TextButton")
 
 -- Компоненты Полета
+local onof = Instance.new("TextButton")
 local up = Instance.new("TextButton")
 local down = Instance.new("TextButton")
-local onof = Instance.new("TextButton")
 local plus = Instance.new("TextButton")
 local mine = Instance.new("TextButton")
 local flySpeedDisplay = Instance.new("TextLabel")
@@ -25,29 +25,29 @@ local infoBox = Instance.new("TextBox")
 local targetNameInput = Instance.new("TextBox")
 local destroyTargetBtn = Instance.new("TextButton")
 
--- Компоненты Изменения Размера ОБЪЕКТА
+-- Компоненты Изменения Размера и Перемещения ОБЪЕКТА
 local sizeInput = Instance.new("TextBox")
 local resizeBtn = Instance.new("TextButton")
-
--- Компоненты Перемещения ОБЪЕКТА
 local inputX = Instance.new("TextBox")
 local inputY = Instance.new("TextBox")
 local inputZ = Instance.new("TextBox")
 local moveObjBtn = Instance.new("TextButton")
 
--- НОВЫЕ КОМПОНЕНТЫ: Размер Игрока
+-- Компоненты Игрока (Размер и Инвентарь)
 local playerScaleTitle = Instance.new("TextLabel")
 local playerScaleInput = Instance.new("TextBox")
 local setPlayerScaleBtn = Instance.new("TextButton")
+local enableInvBtn = Instance.new("TextButton") -- НОВАЯ КНОПКА
 
 -- Настройки
 local speaker = game:GetService("Players").LocalPlayer
+local starterGui = game:GetService("StarterGui") -- Сервис для инвентаря
 local speeds = 1
 local nowe = false
 local noclipActive = false
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Final_V9"
+main.Name = "EliteX_Final_V10"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -56,7 +56,7 @@ Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.BorderSizePixel = 0
 Frame.Position = UDim2.new(0.05, 0, 0.05, 0)
-Frame.Size = UDim2.new(0, 260, 0, 660) -- Увеличил высоту для новых кнопок
+Frame.Size = UDim2.new(0, 260, 0, 710) -- Еще немного увеличил высоту
 Frame.Active = true
 Frame.Draggable = true
 
@@ -65,7 +65,7 @@ corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = Frame
 
 title.Parent = Frame
-title.Text = "ELITEX ULTIMATE V9"
+title.Text = "ELITEX ULTIMATE V10"
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
@@ -89,7 +89,7 @@ local function createBtn(name, text, pos, size, color)
 end
 
 -------------------------------------------------------------------
--- 1. МОДУЛИ ИГРОКА (Fly, Noclip)
+-- 1. МОДУЛИ ПЕРЕМЕЩЕНИЯ
 -------------------------------------------------------------------
 onof = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.06, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0))
 up = createBtn("UpBtn", "UP", UDim2.new(0.05, 0, 0.11, 0), UDim2.new(0, 60, 0, 25), Color3.fromRGB(60, 150, 60))
@@ -179,76 +179,64 @@ Instance.new("UICorner", inputX); Instance.new("UICorner", inputY); Instance.new
 moveObjBtn = createBtn("MoveObjBtn", "TP OBJ", UDim2.new(0.74, 0, 0.62, 0), UDim2.new(0.21, 0, 0, 25), Color3.fromRGB(100, 50, 150))
 
 -------------------------------------------------------------------
--- 4. НОВЫЙ МОДУЛЬ: PLAYER SCALING (В ПРОЦЕНТАХ)
+-- 4. ХАРАКТЕРИСТИКИ ИГРОКА
 -------------------------------------------------------------------
 playerScaleTitle.Parent = Frame
-playerScaleTitle.Text = "РАЗМЕР ИГРОКА (%):"
-playerScaleTitle.Position = UDim2.new(0.05, 0, 0.68, 0)
+playerScaleTitle.Text = "ИГРОК: РАЗМЕР И ИНВЕНТАРЬ"
+playerScaleTitle.Position = UDim2.new(0.05, 0, 0.67, 0)
 playerScaleTitle.Size = UDim2.new(0.9, 0, 0, 20)
 playerScaleTitle.BackgroundTransparency = 1
-playerScaleTitle.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
+playerScaleTitle.TextColor3 = Color3.fromRGB(255, 215, 0) 
 playerScaleTitle.Font = Enum.Font.GothamBold
 playerScaleTitle.TextSize = 11
 
 playerScaleInput.Parent = Frame
-playerScaleInput.Position = UDim2.new(0.05, 0, 0.72, 0)
+playerScaleInput.Position = UDim2.new(0.05, 0, 0.71, 0)
 playerScaleInput.Size = UDim2.new(0.4, 0, 0, 30)
 playerScaleInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-playerScaleInput.Text = "100" -- Стандартный размер 100%
+playerScaleInput.Text = "100" 
 playerScaleInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", playerScaleInput)
 
-setPlayerScaleBtn = createBtn("SetScaleBtn", "ИЗМЕНИТЬ", UDim2.new(0.5, 0, 0.72, 0), UDim2.new(0.45, 0, 0, 30), Color3.fromRGB(255, 140, 0))
+setPlayerScaleBtn = createBtn("SetScaleBtn", "СМЕНИТЬ РАЗМЕР", UDim2.new(0.5, 0, 0.71, 0), UDim2.new(0.45, 0, 0, 30), Color3.fromRGB(255, 140, 0))
+
+-- >>> НОВАЯ КНОПКА <<<
+enableInvBtn = createBtn("InvBtn", "ВКЛЮЧИТЬ ИНВЕНТАРЬ", UDim2.new(0.05, 0, 0.77, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(50, 150, 255))
 
 -------------------------------------------------------------------
 -- ЛОГИКА
 -------------------------------------------------------------------
 
--- ЛОГИКА ИЗМЕНЕНИЯ РАЗМЕРА ИГРОКА
+-- ЛОГИКА ВКЛЮЧЕНИЯ ИНВЕНТАРЯ
+enableInvBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "EliteX System",
+            Text = "Инвентарь активирован",
+            Duration = 3
+        })
+    end)
+end)
+
+-- ЛОГИКА РАЗМЕРА ИГРОКА
 setPlayerScaleBtn.MouseButton1Click:Connect(function()
     local percentage = tonumber(playerScaleInput.Text)
     if not percentage then return end
-    
-    local scaleFactor = percentage / 100 -- Перевод процентов в множитель (100% = 1, 150% = 1.5)
-    
+    local scaleFactor = percentage / 100 
     local char = speaker.Character
     local hum = char and char:FindFirstChild("Humanoid")
-    
     if hum then
-        -- Попытка найти стандартные ScaleValues (Работает для R15)
-        local scales = {
-            "BodyHeightScale",
-            "BodyWidthScale",
-            "BodyDepthScale",
-            "HeadScale"
-        }
-        
+        local scales = {"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}
         local found = false
         for _, scaleName in pairs(scales) do
             local val = hum:FindFirstChild(scaleName)
-            if val then
-                val.Value = scaleFactor
-                found = true
-            end
-        end
-        
-        if found then
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Успешно",
-                Text = "Размер игрока: " .. percentage .. "%",
-                Duration = 3
-            })
-        else
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Ошибка",
-                Text = "Скейл доступен только для R15",
-                Duration = 3
-            })
+            if val then val.Value = scaleFactor; found = true end
         end
     end
 end)
 
--- ЛОГИКА УПРАВЛЕНИЯ ОБЪЕКТАМИ (Как в прошлой версии)
+-- ЛОГИКА ОБЪЕКТОВ
 game:GetService("RunService").Heartbeat:Connect(function()
     local char = speaker.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -271,8 +259,7 @@ local function modifyObject(action)
     for _, v in pairs(workspace:GetDescendants()) do
         if v.Name == targetName and v:IsA("BasePart") then
             if action == "destroy" then
-                v:Destroy()
-                count = count + 1
+                v:Destroy(); count = count + 1
             elseif action == "resize" then
                 local s = tonumber(sizeInput.Text)
                 if s then v.Size = Vector3.new(s, s, s); v.CanCollide = false; count = count + 1 end
@@ -331,5 +318,5 @@ mini.MouseButton1Click:Connect(function()
 end)
 mini2.MouseButton1Click:Connect(function()
     for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = true end end
-    mini2.Visible = false; Frame.BackgroundTransparency = 0; Frame.Size = UDim2.new(0, 260, 0, 660)
+    mini2.Visible = false; Frame.BackgroundTransparency = 0; Frame.Size = UDim2.new(0, 260, 0, 710)
 end)
