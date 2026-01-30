@@ -19,13 +19,10 @@ local tpShort = Instance.new("TextButton")
 local tpLong = Instance.new("TextButton")
 local noclipBtn = Instance.new("TextButton")
 
--- Компоненты Менеджера Объектов
-local infoTitle = Instance.new("TextLabel")
+-- Менеджер Объектов
 local infoBox = Instance.new("TextBox") 
 local targetNameInput = Instance.new("TextBox")
 local destroyTargetBtn = Instance.new("TextButton")
-
--- Компоненты Изменения Размера и Перемещения ОБЪЕКТА
 local sizeInput = Instance.new("TextBox")
 local resizeBtn = Instance.new("TextButton")
 local inputX = Instance.new("TextBox")
@@ -33,8 +30,7 @@ local inputY = Instance.new("TextBox")
 local inputZ = Instance.new("TextBox")
 local moveObjBtn = Instance.new("TextButton")
 
--- Компоненты Игрока (Размер и Инвентарь)
-local playerScaleTitle = Instance.new("TextLabel")
+-- Игрок
 local playerScaleInput = Instance.new("TextBox")
 local setPlayerScaleBtn = Instance.new("TextButton")
 local enableInvBtn = Instance.new("TextButton")
@@ -45,9 +41,10 @@ local starterGui = game:GetService("StarterGui")
 local speeds = 1
 local nowe = false
 local noclipActive = false
+local autoEquipActive = true -- Переменная для контроля цикла
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Final_V11"
+main.Name = "EliteX_Final_V12"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -65,7 +62,7 @@ corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = Frame
 
 title.Parent = Frame
-title.Text = "ELITEX ULTIMATE V11"
+title.Text = "ELITEX ULTIMATE V12"
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
@@ -73,158 +70,134 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 
 local function createBtn(name, text, pos, size, color)
-	local btn = Instance.new("TextButton", Frame)
-	btn.Name = name
-	btn.Text = text
-	btn.Position = pos
-	btn.Size = size
-	btn.BackgroundColor3 = color
-	btn.Font = Enum.Font.GothamSemibold
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.BorderSizePixel = 0
-	btn.TextSize = 10
-	local c = Instance.new("UICorner", btn)
-	c.CornerRadius = UDim.new(0, 4)
-	return btn
+    local btn = Instance.new("TextButton", Frame)
+    btn.Name = name
+    btn.Text = text
+    btn.Position = pos
+    btn.Size = size
+    btn.BackgroundColor3 = color
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BorderSizePixel = 0
+    btn.TextSize = 10
+    local c = Instance.new("UICorner", btn)
+    c.CornerRadius = UDim.new(0, 4)
+    return btn
 end
 
 -------------------------------------------------------------------
--- КНОПКИ (Те же, что в v10)
+-- КНОПКИ (UI элементы)
 -------------------------------------------------------------------
 onof = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.06, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0))
 up = createBtn("UpBtn", "UP", UDim2.new(0.05, 0, 0.11, 0), UDim2.new(0, 60, 0, 25), Color3.fromRGB(60, 150, 60))
 down = createBtn("DownBtn", "DN", UDim2.new(0.05, 0, 0.16, 0), UDim2.new(0, 60, 0, 25), Color3.fromRGB(150, 60, 60))
 plus = createBtn("SpeedPlus", "+", UDim2.new(0.35, 0, 0.11, 0), UDim2.new(0, 30, 0, 25), Color3.fromRGB(70, 70, 100))
 mine = createBtn("SpeedMinus", "-", UDim2.new(0.35, 0, 0.16, 0), UDim2.new(0, 30, 0, 25), Color3.fromRGB(70, 70, 100))
-
-flySpeedDisplay.Parent = Frame
-flySpeedDisplay.Text = "SPD: 1"
-flySpeedDisplay.Position = UDim2.new(0.5, 0, 0.11, 0)
-flySpeedDisplay.Size = UDim2.new(0.45, 0, 0, 55)
-flySpeedDisplay.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-flySpeedDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
-flySpeedDisplay.Font = Enum.Font.Gotham
-flySpeedDisplay.TextSize = 12
-Instance.new("UICorner", flySpeedDisplay)
+flySpeedDisplay.Parent = Frame; flySpeedDisplay.Text = "SPD: 1"; flySpeedDisplay.Position = UDim2.new(0.5, 0, 0.11, 0); flySpeedDisplay.Size = UDim2.new(0.45, 0, 0, 55); flySpeedDisplay.BackgroundColor3 = Color3.fromRGB(20, 20, 20); flySpeedDisplay.TextColor3 = Color3.fromRGB(255, 255, 255); flySpeedDisplay.Font = Enum.Font.Gotham; flySpeedDisplay.TextSize = 12; Instance.new("UICorner", flySpeedDisplay)
 
 tpShort = createBtn("TpShort", "DASH (2)", UDim2.new(0.05, 0, 0.22, 0), UDim2.new(0, 110, 0, 25), Color3.fromRGB(100, 100, 110))
 tpLong = createBtn("TpLong", "DASH (4)", UDim2.new(0.52, 0, 0.22, 0), UDim2.new(0, 110, 0, 25), Color3.fromRGB(100, 100, 110))
 noclipBtn = createBtn("NoclipBtn", "NOCLIP: OFF", UDim2.new(0.05, 0, 0.27, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(80, 80, 80))
 
-infoBox.Parent = Frame
-infoBox.Position = UDim2.new(0.05, 0, 0.35, 0)
-infoBox.Size = UDim2.new(0.9, 0, 0, 50)
-infoBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-infoBox.TextColor3 = Color3.fromRGB(255, 255, 0)
-infoBox.TextSize = 10
-infoBox.Text = "EliteX Loaded..."
-Instance.new("UICorner", infoBox)
+infoBox.Parent = Frame; infoBox.Position = UDim2.new(0.05, 0, 0.35, 0); infoBox.Size = UDim2.new(0.9, 0, 0, 50); infoBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20); infoBox.TextColor3 = Color3.fromRGB(255, 255, 0); infoBox.TextSize = 10; infoBox.Text = "EliteX Loaded..."; Instance.new("UICorner", infoBox)
 
-targetNameInput.Parent = Frame
-targetNameInput.PlaceholderText = "Имя объекта..."
-targetNameInput.Position = UDim2.new(0.05, 0, 0.47, 0)
-targetNameInput.Size = UDim2.new(0.9, 0, 0, 25)
-targetNameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-targetNameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", targetNameInput)
-
+targetNameInput.Parent = Frame; targetNameInput.PlaceholderText = "Имя объекта..."; targetNameInput.Position = UDim2.new(0.05, 0, 0.47, 0); targetNameInput.Size = UDim2.new(0.9, 0, 0, 25); targetNameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 70); targetNameInput.TextColor3 = Color3.fromRGB(255, 255, 255); Instance.new("UICorner", targetNameInput)
 destroyTargetBtn = createBtn("DestroyTarget", "УДАЛИТЬ ПО ИМЕНИ", UDim2.new(0.05, 0, 0.52, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(220, 20, 60))
 
-sizeInput.Parent = Frame; sizeInput.Position = UDim2.new(0.05, 0, 0.57, 0); sizeInput.Size = UDim2.new(0.3, 0, 0, 25); sizeInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60); sizeInput.Text = "50"; sizeInput.TextColor3 = Color3.new(1,1,1)
+sizeInput.Parent = Frame; sizeInput.Position = UDim2.new(0.05, 0, 0.57, 0); sizeInput.Size = UDim2.new(0.3, 0, 0, 25); sizeInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60); sizeInput.Text = "50"; sizeInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", sizeInput)
 resizeBtn = createBtn("ResizeBtn", "РАЗМЕР OBJ", UDim2.new(0.4, 0, 0.57, 0), UDim2.new(0.55, 0, 0, 25), Color3.fromRGB(0, 120, 180))
 
-inputX.Parent = Frame; inputX.PlaceholderText="X"; inputX.Position=UDim2.new(0.05,0,0.62,0); inputX.Size=UDim2.new(0.2,0,0,25); inputX.BackgroundColor3=Color3.fromRGB(50,50,60); inputX.TextColor3=Color3.new(1,1,1)
-inputY.Parent = Frame; inputY.PlaceholderText="Y"; inputY.Position=UDim2.new(0.28,0,0.62,0); inputY.Size=UDim2.new(0.2,0,0,25); inputY.BackgroundColor3=Color3.fromRGB(50,50,60); inputY.TextColor3=Color3.new(1,1,1)
-inputZ.Parent = Frame; inputZ.PlaceholderText="Z"; inputZ.Position=UDim2.new(0.51,0,0.62,0); inputZ.Size=UDim2.new(0.2,0,0,25); inputZ.BackgroundColor3=Color3.fromRGB(50,50,60); inputZ.TextColor3=Color3.new(1,1,1)
+inputX.Parent = Frame; inputX.PlaceholderText="X"; inputX.Position=UDim2.new(0.05,0,0.62,0); inputX.Size=UDim2.new(0.2,0,0,25); inputX.BackgroundColor3=Color3.fromRGB(50,50,60); inputX.TextColor3=Color3.new(1,1,1); Instance.new("UICorner", inputX)
+inputY.Parent = Frame; inputY.PlaceholderText="Y"; inputY.Position=UDim2.new(0.28,0,0.62,0); inputY.Size=UDim2.new(0.2,0,0,25); inputY.BackgroundColor3=Color3.fromRGB(50,50,60); inputY.TextColor3=Color3.new(1,1,1); Instance.new("UICorner", inputY)
+inputZ.Parent = Frame; inputZ.PlaceholderText="Z"; inputZ.Position=UDim2.new(0.51,0,0.62,0); inputZ.Size=UDim2.new(0.2,0,0,25); inputZ.BackgroundColor3=Color3.fromRGB(50,50,60); inputZ.TextColor3=Color3.new(1,1,1); Instance.new("UICorner", inputZ)
 moveObjBtn = createBtn("MoveObjBtn", "TP OBJ", UDim2.new(0.74, 0, 0.62, 0), UDim2.new(0.21, 0, 0, 25), Color3.fromRGB(100, 50, 150))
 
-playerScaleInput.Parent = Frame; playerScaleInput.Position = UDim2.new(0.05, 0, 0.71, 0); playerScaleInput.Size = UDim2.new(0.4, 0, 0, 30); playerScaleInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60); playerScaleInput.Text = "100"; playerScaleInput.TextColor3 = Color3.new(1,1,1)
+playerScaleInput.Parent = Frame; playerScaleInput.Position = UDim2.new(0.05, 0, 0.71, 0); playerScaleInput.Size = UDim2.new(0.4, 0, 0, 30); playerScaleInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60); playerScaleInput.Text = "100"; playerScaleInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", playerScaleInput)
 setPlayerScaleBtn = createBtn("SetScaleBtn", "СМЕНИТЬ РАЗМЕР", UDim2.new(0.5, 0, 0.71, 0), UDim2.new(0.45, 0, 0, 30), Color3.fromRGB(255, 140, 0))
 enableInvBtn = createBtn("InvBtn", "ВКЛЮЧИТЬ ИНВЕНТАРЬ", UDim2.new(0.05, 0, 0.77, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(50, 150, 255))
 
 -------------------------------------------------------------------
--- НОВАЯ ЛОГИКА: АВТО-ЭКИПИРОВКА
+-- НОВАЯ ЛОГИКА: ЦИКЛИЧНАЯ ЭКИПИРОВКА (Inventory -> Character)
 -------------------------------------------------------------------
 
--- Функция принудительной экипировки
-local function handleAutoEquip(character)
-	character.ChildAdded:Connect(function(child)
-		if child:IsA("Tool") then
-			local humanoid = character:WaitForChild("Humanoid")
-			child.Parent = humanoid
-			-- Команда Humanoid:EquipTool заставляет персонажа взять инструмент в руки
-			-- Но так как он уже ВНУТРИ персонажа, мы просто убеждаемся, что он активен
-			--task.wait(0.1) -- Короткая задержка для корректной инициализации
-		--	humanoid:EquipTool(child)
-		end
-	end)
-end
-
--- Запуск для текущего и будущих спавнов
-if speaker.Character then handleAutoEquip(speaker.Character) end
-speaker.CharacterAdded:Connect(handleAutoEquip)
+task.spawn(function()
+    while true do
+        task.wait() -- Каждые wait() срабатывает цикл
+        if autoEquipActive then
+            local backpack = speaker:FindFirstChild("Backpack")
+            local character = speaker.Character
+            
+            if backpack and character then
+                local tool = backpack:FindFirstChildOfClass("Tool")
+                if tool then
+                    -- Перемещение через Parent, как ты просил
+                    tool.Parent = character
+                end
+            end
+        end
+    end
+end)
 
 -------------------------------------------------------------------
--- ОСТАЛЬНАЯ ЛОГИКА (Fly, Noclip, Objects)
+-- ВСПОМОГАТЕЛЬНАЯ ЛОГИКА (Fly, Noclip, Objects)
 -------------------------------------------------------------------
 
 enableInvBtn.MouseButton1Click:Connect(function()
-	pcall(function() starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true) end)
+    pcall(function() starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true) end)
 end)
 
 setPlayerScaleBtn.MouseButton1Click:Connect(function()
-	local scaleFactor = tonumber(playerScaleInput.Text) / 100 
-	local hum = speaker.Character:FindFirstChild("Humanoid")
-	if hum then
-		for _, name in pairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}) do
-			local v = hum:FindFirstChild(name) if v then v.Value = scaleFactor end
-		end
-	end
+    local scaleFactor = tonumber(playerScaleInput.Text) / 100 
+    local hum = speaker.Character:FindFirstChild("Humanoid")
+    if hum then
+        for _, name in pairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}) do
+            local v = hum:FindFirstChild(name) if v then v.Value = scaleFactor end
+        end
+    end
 end)
 
 -- Рэйкаст для инфо
 game:GetService("RunService").Heartbeat:Connect(function()
-	local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
-	if root then
-		local result = workspace:Raycast(root.Position, root.CFrame.LookVector * 5)
-		if result and result.Instance then
-			infoBox.Text = "OBJ: " .. result.Instance.Name .. "\nPARENT: " .. result.Instance.Parent.Name
-		end
-	end
+    local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        local result = workspace:Raycast(root.Position, root.CFrame.LookVector * 5)
+        if result and result.Instance then
+            infoBox.Text = "OBJ: " .. result.Instance.Name .. "\nPARENT: " .. result.Instance.Parent.Name
+        end
+    end
 end)
 
--- Функции кнопок (упрощено)
 local function modify(a)
-	local target = targetNameInput.Text
-	for _, v in pairs(workspace:GetDescendants()) do
-		if v.Name == target and v:IsA("BasePart") then
-			if a == "d" then v:Destroy()
-			elseif a == "r" then v.Size = Vector3.new(tonumber(sizeInput.Text), tonumber(sizeInput.Text), tonumber(sizeInput.Text))
-			elseif a == "m" then v.Position = Vector3.new(tonumber(inputX.Text), tonumber(inputY.Text), tonumber(inputZ.Text))
-			end
-		end
-	end
+    local target = targetNameInput.Text
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name == target and v:IsA("BasePart") then
+            if a == "d" then v:Destroy()
+            elseif a == "r" then v.Size = Vector3.new(tonumber(sizeInput.Text), tonumber(sizeInput.Text), tonumber(sizeInput.Text))
+            elseif a == "m" then v.Position = Vector3.new(tonumber(inputX.Text), tonumber(inputY.Text), tonumber(inputZ.Text))
+            end
+        end
+    end
 end
 
 destroyTargetBtn.MouseButton1Click:Connect(function() modify("d") end)
 resizeBtn.MouseButton1Click:Connect(function() modify("r") end)
 moveObjBtn.MouseButton1Click:Connect(function() modify("m") end)
 
--- Стандартное управление
+-- Управление полетом и коллизией
 noclipBtn.MouseButton1Click:Connect(function() noclipActive = not noclipActive end)
 game:GetService("RunService").Stepped:Connect(function()
-	if noclipActive and speaker.Character then
-		for _, v in pairs(speaker.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-	end
+    if noclipActive and speaker.Character then
+        for _, v in pairs(speaker.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+    end
 end)
 onof.MouseButton1Click:Connect(function() nowe = not nowe end)
 task.spawn(function()
-	while true do
-		game:GetService("RunService").Heartbeat:Wait()
-		if nowe and speaker.Character then speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds) end
-	end
+    while true do
+        game:GetService("RunService").Heartbeat:Wait()
+        if nowe and speaker.Character then speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds) end
+    end
 end)
-plus.MouseButton1Click:Connect(function() speeds += 1 flySpeedDisplay.Text = "SPD: "..speeds end)
-mine.MouseButton1Click:Connect(function() speeds -= 1 flySpeedDisplay.Text = "SPD: "..speeds end)
+plus.MouseButton1Click:Connect(function() speeds += 1 flySpeedDisplay.Text = "SPD: "..speeds end end)
+mine.MouseButton1Click:Connect(function() speeds -= 1 flySpeedDisplay.Text = "SPD: "..speeds end end)
 
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
