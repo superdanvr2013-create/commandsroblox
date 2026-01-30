@@ -24,28 +24,28 @@ Frame.Name = "MainFrame"
 Frame.Parent = main 
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30) 
 Frame.Position = UDim2.new(0.05, 0, 0.05, 0) 
-Frame.Size = UDim2.new(0, 280, 0, 520)
+Frame.Size = UDim2.new(0, 280, 0, 520) -- Увеличен размер для нового блока
 Frame.Active = true 
 Frame.Draggable = true 
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
 
 title.Parent = Frame 
-title.Text = "ELITEX V23 (DEBRIS SCAN)" 
+title.Text = "ELITEX V23 (GEN SCANNER)" 
 title.Size = UDim2.new(1, 0, 0, 35) 
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50) 
 title.TextColor3 = Color3.fromRGB(0, 255, 127) 
 title.Font = Enum.Font.GothamBold 
 title.TextSize = 14 
 
--- Блок вывода ТОП-3
+-- Блок для вывода ТОП-3 Generation (Логика из Скрипта 1)
 local topBox = Instance.new("TextLabel", Frame) 
 topBox.Size = UDim2.new(0.9, 0, 0, 100) 
 topBox.Position = UDim2.new(0.05, 0, 0.75, 0) 
 topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
 topBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
-topBox.TextSize = 11 
+topBox.TextSize = 12 
 topBox.Font = Enum.Font.Code 
-topBox.Text = "Searching for Debris..." 
+topBox.Text = "Searching for Gen..." 
 topBox.TextWrapped = true
 Instance.new("UICorner", topBox) 
 
@@ -61,22 +61,8 @@ local function createBtn(name, text, pos, size, color)
 end
 
 -------------------------------------------------------------------
--- ЛОГИКА ПОИСКА "DEBRIS" И СОРТИРОВКИ
+-- ЛОГИКА ПАРСИНГА И СОРТИРОВКИ (ИЗ СКРИПТА 1)
 -------------------------------------------------------------------
-
--- Поиск родителя с именем "Debris" вверх по иерархии
-local function findDebrisParent(obj)
-	local current = obj.Parent
-	while current and current ~= workspace do
-		if current.Name == "Debris" then
-			current.Transparency = 0
-			return current
-		end
-		current = current.Parent
-	end
-	return nil
-end
-
 local function getNumericValue(text)
 	local valStr, suffix = text:match("([%d%.]+)([MB])") 
 	if valStr and suffix then 
@@ -100,40 +86,23 @@ end
 task.spawn(function()
 	while true do
 		local found = {} 
-		-- Очистка старой подсветки
-		for _, v in pairs(workspace:GetDescendants()) do
-			if v.Name == "GenHighlight" then v:Destroy() end
-		end
-
 		for _, v in pairs(workspace:GetDescendants()) do 
 			if v.Name == "Generation" then 
 				local success, text = pcall(function() return v.Text end) 
 				if success and text then 
 					local numeric = getNumericValue(text) 
 					if numeric >= 10000000 then 
-						table.insert(found, {instance = v, original = text, value = numeric, path = getParentPath(v)}) 
+						table.insert(found, {original = text, value = numeric, path = getParentPath(v)}) 
 					end
 				end
 			end
 		end
 		table.sort(found, function(a, b) return a.value > b.value end) 
 
-		local resultText = "TOP 3 (DEBRIS TARGETS):\n"
+		local resultText = "TOP 3 GENERATION:\n"
 		for i = 1, 3 do
 			if found[i] then
 				resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
-
-				-- Подсветка родителя с именем "Debris"
-				local debrisTarget = findDebrisParent(found[i].instance)
-				if debrisTarget then
-					local hl = Instance.new("Highlight")
-					hl.Name = "GenHighlight"
-					hl.FillColor = Color3.fromRGB(0, 255, 255) 
-					hl.OutlineColor = Color3.new(1, 1, 1)
-					hl.FillTransparency = 0.4
-					hl.Adornee = debrisTarget
-					hl.Parent = debrisTarget
-				end
 			else 
 				resultText = resultText .. i .. ". ---\n" 
 			end
@@ -144,7 +113,7 @@ task.spawn(function()
 end)
 
 -------------------------------------------------------------------
--- КНОПКИ УПРАВЛЕНИЯ
+-- КНОПКИ УПРАВЛЕНИЯ (ИЗ СКРИПТА 2)
 -------------------------------------------------------------------
 local espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.1, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(80, 80, 80))
 
@@ -177,6 +146,7 @@ espBtn.MouseButton1Click:Connect(function()
 	updateESP()
 end)
 
+-- Air Jump
 local function doAirJump()
 	local char = speaker.Character 
 	local root = char and char:FindFirstChild("HumanoidRootPart") 
@@ -197,9 +167,11 @@ local function doAirJump()
 	end
 end
 
-createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.2, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 150, 255)).MouseButton1Click:Connect(doAirJump)
+local jumpBtn = createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.2, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 150, 255))
+jumpBtn.MouseButton1Click:Connect(doAirJump)
 UserInputService.InputBegan:Connect(function(i, p) if not p and i.KeyCode == Enum.KeyCode.LeftControl then doAirJump() end end)
 
+-- Speed Lock
 local speedLockBtn = createBtn("SpeedBtn", "SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.3, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(120, 40, 200))
 speedLockBtn.MouseButton1Click:Connect(function()
 	speedLockActive = not speedLockActive
@@ -207,8 +179,11 @@ speedLockBtn.MouseButton1Click:Connect(function()
 	speedLockBtn.BackgroundColor3 = speedLockActive and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(120, 40, 200)
 end)
 
-createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.4, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0)).MouseButton1Click:Connect(function() nowe = not nowe end)
+-- Fly Toggle
+local onof = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.4, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0))
+onof.MouseButton1Click:Connect(function() nowe = not nowe end)
 
+-- Циклы обновления
 RunService.Heartbeat:Connect(function()
 	if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
 		speaker.Character.Humanoid.WalkSpeed = targetSpeed
@@ -219,6 +194,7 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
+-- Закрытие
 local closebutton = Instance.new("TextButton", Frame)
 closebutton.Text = "X"; 
 closebutton.Position = UDim2.new(0.9, 0, 0, 0); closebutton.Size = UDim2.new(0, 25, 0, 25)
