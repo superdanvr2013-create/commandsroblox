@@ -14,7 +14,7 @@ local espActive = false
 local targetSpeed = 50
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Logger_V20"
+main.Name = "EliteX_Scanner_V21"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -22,13 +22,13 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 Frame.Position = UDim2.new(0.05, 0, 0.1, 0)
-Frame.Size = UDim2.new(0, 350, 0, 550) -- Увеличена ширина для путей
+Frame.Size = UDim2.new(0, 280, 0, 500)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame)
 
 title.Parent = Frame
-title.Text = "ELITEX OBJECT LOGGER"
+title.Text = "ELITEX MINI-TEXT SCANNER"
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 title.TextColor3 = Color3.fromRGB(0, 255, 150)
@@ -36,13 +36,13 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 Instance.new("UICorner", title)
 
--- СОЗДАНИЕ ОКНА ВЫВОДА (ScrollingFrame + TextBox)
+-- ОКНО ВЫВОДА
 local scroll = Instance.new("ScrollingFrame", Frame)
-scroll.Size = UDim2.new(0.94, 0, 0, 300)
-scroll.Position = UDim2.new(0.03, 0, 0.42, 0)
+scroll.Size = UDim2.new(0.94, 0, 0, 280)
+scroll.Position = UDim2.new(0.03, 0, 0.4, 0)
 scroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-scroll.ScrollBarThickness = 6
-scroll.CanvasSize = UDim2.new(0, 0, 10, 0) -- Большой размер для текста
+scroll.ScrollBarThickness = 4
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
 local logBox = Instance.new("TextBox", scroll)
 logBox.Size = UDim2.new(1, 0, 1, 0)
@@ -53,51 +53,40 @@ logBox.Font = Enum.Font.Code
 logBox.TextXAlignment = Enum.TextXAlignment.Left
 logBox.TextYAlignment = Enum.TextYAlignment.Top
 logBox.MultiLine = true
-logBox.ClearTextOnFocus = false
 logBox.TextEditable = false
-logBox.Text = "Scanning for text objects..."
+logBox.Text = "Scanning for short texts..."
 
 -------------------------------------------------------------------
--- ЛОГИКА СБОРА ПУТИ И ТЕКСТА
+-- ЛОГИКА ФИЛЬТРАЦИИ ТЕКСТА
 -------------------------------------------------------------------
 
--- Функция получения полного пути через точку
-local function getFullPath(obj)
-    local path = obj.Name
-    local current = obj.Parent
-    while current and current ~= game do
-        path = current.Name .. "." .. path
-        current = current.Parent
-    end
-    return path
-end
-
--- Функция проверки наличия свойства Text
 local function hasTextProperty(obj)
     local success, _ = pcall(function() return obj.Text end)
     return success
 end
 
--- Цикл обновления лога (каждые 3 секунды)
 task.spawn(function()
     while true do
         local logs = {}
+        -- Сканируем workspace
         for _, v in pairs(workspace:GetDescendants()) do
             if hasTextProperty(v) then
-                local fullPath = getFullPath(v)
-                local content = v.Text:gsub("\n", " ") -- Убираем переносы внутри текста
-                table.insert(logs, "[" .. fullPath .. "] = \"" .. content .. "\"")
+                local content = v.Text
+                -- УСЛОВИЕ: Длина текста не более 10 символов и текст не пустой
+                if #content > 0 and #content <= 10 then
+                    table.insert(logs, v.Name .. " : " .. content)
+                end
             end
         end
         
         logBox.Text = table.concat(logs, "\n")
-        scroll.CanvasSize = UDim2.new(0, 0, 0, logBox.TextBounds.Y + 20)
+        scroll.CanvasSize = UDim2.new(0, 0, 0, logBox.TextBounds.Y + 10)
         task.wait(3)
     end
 end)
 
 -------------------------------------------------------------------
--- КНОПКИ УПРАВЛЕНИЯ
+-- КНОПКИ (ESP, SPEED, JUMP)
 -------------------------------------------------------------------
 
 local function createBtn(text, pos, color, func)
@@ -122,17 +111,16 @@ createBtn("SPEED LOCK (50)", UDim2.new(0.05, 0, 0.15, 0), Color3.fromRGB(100, 40
 end)
 
 createBtn("AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.22, 0), Color3.fromRGB(0, 120, 200), function()
-    -- Функция прыжка вручную
     local char = speaker.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
         local p = Instance.new("Part", workspace)
-        p.Size = Vector3.new(8, 1, 8); p.Anchored = true; p.Transparency = 0.5
-        p.Material = Enum.Material.ForceField; p.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
+        p.Size = Vector3.new(8, 1, 8); p.Anchored = true; p.Transparency = 0.5; p.Material = Enum.Material.ForceField
+        p.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
         game:GetService("Debris"):AddItem(p, 1)
     end
 end)
 
--- Обработка CTRL и Speed Lock
+-- Системные циклы
 RunService.Heartbeat:Connect(function()
     if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
         speaker.Character.Humanoid.WalkSpeed = targetSpeed
@@ -152,14 +140,13 @@ UserInputService.InputBegan:Connect(function(i, p)
         local char = speaker.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local p = Instance.new("Part", workspace)
-            p.Size = Vector3.new(8, 1, 8); p.Anchored = true; p.Transparency = 0.5
-            p.Material = Enum.Material.ForceField; p.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
+            p.Size = Vector3.new(8, 1, 8); p.Anchored = true; p.Transparency = 0.5; p.Material = Enum.Material.ForceField
+            p.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
             game:GetService("Debris"):AddItem(p, 1)
         end
     end
 end)
 
--- Кнопка закрытия
 local close = Instance.new("TextButton", Frame)
 close.Text = "X"; close.Position = UDim2.new(0.9, 0, 0, 0); close.Size = UDim2.new(0, 25, 0, 25)
 close.BackgroundColor3 = Color3.new(0.7, 0, 0); close.TextColor3 = Color3.new(1,1,1)
