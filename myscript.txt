@@ -16,7 +16,7 @@ local speeds = 1
 local nowe = false 
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Final_V24" 
+main.Name = "EliteX_Final_V25" 
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -24,13 +24,13 @@ Frame.Name = "MainFrame"
 Frame.Parent = main 
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30) 
 Frame.Position = UDim2.new(0.05, 0, 0.05, 0) 
-Frame.Size = UDim2.new(0, 300, 0, 600) -- Увеличена высота для нового TextBox
+Frame.Size = UDim2.new(0, 280, 0, 580) -- Увеличена высота для видимости всех блоков
 Frame.Active = true 
 Frame.Draggable = true 
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
 
 title.Parent = Frame 
-title.Text = "ELITEX V24 (FINDER UPDATE)" 
+title.Text = "ELITEX V25 (FINDER & GEN)" 
 title.Size = UDim2.new(1, 0, 0, 35) 
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50) 
 title.TextColor3 = Color3.fromRGB(0, 255, 127) 
@@ -38,77 +38,154 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14 
 
 -------------------------------------------------------------------
--- НОВЫЙ БЛОК: FINDER (ПОИСК КОНКРЕТНОГО ТЕКСТА)
+-- НОВЫЙ БЛОК: FINDER (ПОИСК ПО СЛОВУ "Saturno")
 -------------------------------------------------------------------
 local finderLabel = Instance.new("TextLabel", Frame)
-finderLabel.Text = "FOUND PARENTS (La Vacca):"
+finderLabel.Text = "FINDER: *Saturno*"
 finderLabel.Size = UDim2.new(0.9, 0, 0, 20)
-finderLabel.Position = UDim2.new(0.05, 0, 0.72, 0)
+finderLabel.Position = UDim2.new(0.05, 0, 0.48, 0)
 finderLabel.BackgroundTransparency = 1
-finderLabel.TextColor3 = Color3.new(1, 1, 1)
+finderLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 finderLabel.Font = Enum.Font.GothamBold
 finderLabel.TextSize = 10
 
 local finderBox = Instance.new("TextBox", Frame)
-finderBox.Size = UDim2.new(0.9, 0, 0, 80)
-finderBox.Position = UDim2.new(0.05, 0, 0.76, 0)
+finderBox.Size = UDim2.new(0.9, 0, 0, 70)
+finderBox.Position = UDim2.new(0.05, 0, 0.52, 0)
 finderBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-finderBox.TextColor3 = Color3.fromRGB(0, 200, 255)
-finderBox.TextSize = 10
+finderBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+finderBox.TextSize = 9
 finderBox.Font = Enum.Font.Code
-finderBox.Text = "Scanning..."
+finderBox.Text = "Scanning for 'Saturno'..."
 finderBox.TextWrapped = true
 finderBox.ClearTextOnFocus = false
 finderBox.MultiLine = true
 finderBox.TextEditable = false
 Instance.new("UICorner", finderBox)
 
--- Функция получения полного пути
+-------------------------------------------------------------------
+-- БЛОК GENERATION (TOP 3)
+-------------------------------------------------------------------
+local topLabel = Instance.new("TextLabel", Frame)
+topLabel.Text = "TOP 3 GENERATION (OVER 10M):"
+topLabel.Size = UDim2.new(0.9, 0, 0, 20)
+topLabel.Position = UDim2.new(0.05, 0, 0.66, 0)
+topLabel.BackgroundTransparency = 1
+topLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+topLabel.Font = Enum.Font.GothamBold
+topLabel.TextSize = 10
+
+local topBox = Instance.new("TextLabel", Frame) 
+topBox.Size = UDim2.new(0.9, 0, 0, 80) 
+topBox.Position = UDim2.new(0.05, 0, 0.70, 0) 
+topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
+topBox.TextColor3 = Color3.fromRGB(0, 255, 150) 
+topBox.TextSize = 9 
+topBox.Font = Enum.Font.Code 
+topBox.Text = "Scanning Gen..." 
+topBox.TextWrapped = true
+Instance.new("UICorner", topBox)
+
+-------------------------------------------------------------------
+-- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+-------------------------------------------------------------------
+
 local function getFullParentPath(obj)
     local path = ""
     local current = obj.Parent
-    while current and current ~= game do
+    while current and current ~= game and current ~= workspace do
         path = (path == "" and current.Name or current.Name .. "." .. path)
         current = current.Parent
     end
-    return path
+    return path ~= "" and path or "Workspace"
 end
+
+local function findDebrisParent(obj)
+    local current = obj.Parent
+    while current and current ~= workspace do
+        if current.Name == "Debris" then return current.Parent end -- Подсвечиваем родителя Debris
+        current = current.Parent
+    end
+    return nil
+end
+
+local function getNumericValue(text)
+    local valStr, suffix = text:match("([%d%.]+)([MB])") 
+    if valStr and suffix then 
+        local num = tonumber(valStr) 
+        if suffix == "M" then return num * 1e6 end 
+        if suffix == "B" then return num * 1e9 end 
+    end 
+    return 0 
+end
+
+-------------------------------------------------------------------
+-- ОСНОВНОЙ ЦИКЛ ОБРАБОТКИ
+-------------------------------------------------------------------
 
 task.spawn(function()
     while true do
-        local foundPaths = {}
-        for _, v in pairs(game:GetDescendants()) do
-            -- Проверяем наличие свойства Text и его значение
+        local foundGen = {}
+        local foundSaturno = {}
+        
+        -- Очистка старой подсветки
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v.Name == "GenHighlight" then v:Destroy() end
+        end
+
+        for _, v in pairs(workspace:GetDescendants()) do
             local success, text = pcall(function() return v.Text end)
-            if success and text == "La Vacca Saturno Saturnita" then
-                table.insert(foundPaths, getFullParentPath(v))
+            if success and text then
+                -- 1. Поиск Saturno (Частичное совпадение)
+                if string.find(text, "Saturno") then
+                    table.insert(foundSaturno, getFullParentPath(v))
+                end
+                
+                -- 2. Логика Generation
+                if v.Name == "Generation" then
+                    local numeric = getNumericValue(text)
+                    if numeric >= 10000000 then
+                        table.insert(foundGen, {instance = v, original = text, value = numeric, path = getFullParentPath(v)})
+                    end
+                end
             end
         end
-        
-        if #foundPaths > 0 then
-            finderBox.Text = table.concat(foundPaths, "\n")
+
+        -- Обновление FinderBox
+        if #foundSaturno > 0 then
+            finderBox.Text = table.concat(foundSaturno, "\n")
         else
-            finderBox.Text = "None found."
+            finderBox.Text = "No 'Saturno' found."
         end
-        task.wait(5) -- Интервал поиска
+
+        -- Сортировка и обновление TopBox + Highlight
+        table.sort(foundGen, function(a, b) return a.value > b.value end)
+        local genResult = ""
+        for i = 1, 3 do
+            if foundGen[i] then
+                genResult = genResult .. i .. ". [" .. foundGen[i].path .. "] " .. foundGen[i].original .. "\n"
+                local target = findDebrisParent(foundGen[i].instance)
+                if target then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "GenHighlight"
+                    hl.FillColor = Color3.fromRGB(0, 255, 255)
+                    hl.FillTransparency = 0.4
+                    hl.Adornee = target
+                    hl.Parent = target
+                end
+            else
+                genResult = genResult .. i .. ". ---\n"
+            end
+        end
+        topBox.Text = genResult
+        
+        task.wait(4)
     end
 end)
 
 -------------------------------------------------------------------
--- ОСТАЛЬНАЯ ЛОГИКА (Generation, ESP, Speed, Jump)
+-- КНОПКИ (ESP, JUMP, SPEED, FLY)
 -------------------------------------------------------------------
--- [Тут оставлен ваш код для TOP 3 Generation и кнопок]
-
-local topBox = Instance.new("TextLabel", Frame) 
-topBox.Size = UDim2.new(0.9, 0, 0, 60) 
-topBox.Position = UDim2.new(0.05, 0, 0.9, 0) 
-topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
-topBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
-topBox.TextSize = 10 
-topBox.Font = Enum.Font.Code 
-topBox.Text = "Gen Scanner Active" 
-Instance.new("UICorner", topBox)
-
 local function createBtn(name, text, pos, size, color)
     local btn = Instance.new("TextButton", Frame)
     btn.Name = name; btn.Text = text; btn.Position = pos; btn.Size = size 
@@ -118,16 +195,47 @@ local function createBtn(name, text, pos, size, color)
     return btn
 end
 
--- Кнопки и функции (сокращено для краткости, функционал сохранен)
-local espBtn = createBtn("EspBtn", "ESP", UDim2.new(0.05, 0, 0.1, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(80, 80, 80))
-local jumpBtn = createBtn("JumpBtn", "JUMP", UDim2.new(0.05, 0, 0.2, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(0, 150, 255))
-local speedBtn = createBtn("SpeedBtn", "SPEED", UDim2.new(0.05, 0, 0.3, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(120, 40, 200))
-local flyBtn = createBtn("FlyBtn", "FLY", UDim2.new(0.05, 0, 0.4, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(200, 160, 0))
+local espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.08, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(80, 80, 80))
+local jumpBtn = createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.15, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(0, 150, 255))
+local speedBtn = createBtn("SpeedBtn", "SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.22, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(120, 40, 200))
+local flyBtn = createBtn("FlyBtn", "FLY MODE", UDim2.new(0.05, 0, 0.29, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(200, 160, 0))
 
--- Логика кнопок и циклы RunService остаются такими же как в вашем исходном коде
--- ...
+-- Логика кнопок
+espBtn.MouseButton1Click:Connect(function()
+    espActive = not espActive
+    espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
+    espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
+end)
 
-local closebutton = Instance.new("TextButton", Frame)
-closebutton.Text = "X"; closebutton.Position = UDim2.new(0.9, 0, 0, 0); closebutton.Size = UDim2.new(0, 25, 0, 25)
-closebutton.BackgroundColor3 = Color3.new(0.8,0,0); closebutton.TextColor3 = Color3.new(1,1,1)
-closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
+speedBtn.MouseButton1Click:Connect(function()
+    speedLockActive = not speedLockActive
+    speedBtn.Text = speedLockActive and "SPEED LOCK: ON" or "SPEED LOCK: OFF"
+end)
+
+flyBtn.MouseButton1Click:Connect(function() nowe = not nowe end)
+
+local function doAirJump()
+    local char = speaker.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local p = Instance.new("Part", workspace)
+        p.Size = Vector3.new(10, 1, 10); p.Anchored = true; p.Transparency = 0.5; p.Material = Enum.Material.ForceField
+        p.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
+        game:GetService("Debris"):AddItem(p, 1)
+    end
+end
+jumpBtn.MouseButton1Click:Connect(doAirJump)
+UserInputService.InputBegan:Connect(function(i, p) if not p and i.KeyCode == Enum.KeyCode.LeftControl then doAirJump() end end)
+
+-- Обновление физики
+RunService.Heartbeat:Connect(function()
+    if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
+        speaker.Character.Humanoid.WalkSpeed = targetSpeed
+    end
+    if nowe and speaker.Character then 
+        speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
+    end
+end)
+
+-- Закрытие
+local close = createBtn("Close", "X", UDim2.new(0.9, 0, 0, 0), UDim2.new(0, 25, 0, 25), Color3.new(0.7,0,0))
+close.MouseButton1Click:Connect(function() main:Destroy() end)
