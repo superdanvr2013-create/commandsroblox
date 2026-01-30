@@ -14,13 +14,12 @@ local plus = Instance.new("TextButton")
 local mine = Instance.new("TextButton")
 local flySpeedDisplay = Instance.new("TextLabel")
 
--- Компоненты Позиции (Pos1)
-local copyPosBtn = Instance.new("TextButton")
-local tpPosBtn = Instance.new("TextButton")
+-- Компоненты Позиции (Рывок вперед)
+local tpForwardShort = Instance.new("TextButton")
+local tpForwardLong = Instance.new("TextButton")
 local posDisplay = Instance.new("TextLabel")
-local pos1 = nil
 
--- Компоненты Характеристик (TextBox)
+-- Компоненты Характеристик
 local speedInput = Instance.new("TextBox")
 local jumpInput = Instance.new("TextBox")
 local speedTitle = Instance.new("TextLabel")
@@ -46,25 +45,22 @@ Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 Frame.BorderSizePixel = 0
 Frame.Position = UDim2.new(0.1, 0, 0.2, 0)
-Frame.Size = UDim2.new(0, 240, 0, 420) -- Увеличена высота для всех модулей
+Frame.Size = UDim2.new(0, 240, 0, 420)
 Frame.Active = true
 Frame.Draggable = true
 
--- Скругление углов (для красоты)
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = Frame
 
--- Заголовок
 title.Parent = Frame
 title.Text = "ULTIMATE CONTROL V4"
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 16
+title.TextSize = 14
 
--- Универсальная функция для создания кнопок
 local function createBtn(name, text, pos, size, color)
     local btn = Instance.new("TextButton", Frame)
     btn.Name = name
@@ -75,6 +71,7 @@ local function createBtn(name, text, pos, size, color)
     btn.Font = Enum.Font.GothamSemibold
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.BorderSizePixel = 0
+    btn.TextSize = 12
     local c = Instance.new("UICorner", btn)
     c.CornerRadius = UDim.new(0, 4)
     return btn
@@ -100,13 +97,13 @@ flySpeedDisplay.Font = Enum.Font.Gotham
 flySpeedDisplay.TextSize = 12
 
 -------------------------------------------------------------------
--- 2. МОДУЛЬ ТЕЛЕПОРТАЦИИ (POS)
+-- 2. МОДУЛЬ ТЕЛЕПОРТАЦИИ (ВПЕРЕД)
 -------------------------------------------------------------------
-copyPosBtn = createBtn("CopyBtn", "СОХРАНИТЬ ПОЗ", UDim2.new(0.05, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(100, 100, 110))
-tpPosBtn = createBtn("TpBtn", "ТП К ТОЧКЕ", UDim2.new(0.52, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(0, 120, 180))
+tpForwardShort = createBtn("TpShort", "ВПЕРЕД (5)", UDim2.new(0.05, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(100, 100, 110))
+tpForwardLong = createBtn("TpLong", "ВПЕРЕД (15)", UDim2.new(0.52, 0, 0.38, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(0, 120, 180))
 
 posDisplay.Parent = Frame
-posDisplay.Text = "КООРДИНАТЫ: НЕ СОХРАНЕНЫ"
+posDisplay.Text = "ДИСТАНЦИЯ РЫВКА"
 posDisplay.Position = UDim2.new(0.05, 0, 0.46, 0)
 posDisplay.Size = UDim2.new(0.9, 0, 0, 25)
 posDisplay.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
@@ -115,7 +112,7 @@ posDisplay.Font = Enum.Font.Code
 posDisplay.TextSize = 11
 
 -------------------------------------------------------------------
--- 3. МОДУЛЬ ХАРАКТЕРИСТИК (TEXTBOX)
+-- 3. МОДУЛЬ ХАРАКТЕРИСТИК
 -------------------------------------------------------------------
 speedTitle.Parent = Frame
 speedTitle.Text = "СКОРОСТЬ БЕГА:"
@@ -126,13 +123,11 @@ speedTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 speedTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 speedInput.Parent = Frame
-speedInput.Name = "SpeedInput"
 speedInput.Position = UDim2.new(0.55, 0, 0.54, 0)
 speedInput.Size = UDim2.new(0, 95, 0, 25)
 speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 speedInput.Text = "16"
 speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-speedInput.PlaceholderText = "Введите число..."
 
 jumpTitle.Parent = Frame
 jumpTitle.Text = "ВЫСОТА ПРЫЖКА:"
@@ -143,16 +138,14 @@ jumpTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 jumpTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 jumpInput.Parent = Frame
-jumpInput.Name = "JumpInput"
 jumpInput.Position = UDim2.new(0.55, 0, 0.62, 0)
 jumpInput.Size = UDim2.new(0, 95, 0, 25)
 jumpInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 jumpInput.Text = "50"
 jumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-jumpInput.PlaceholderText = "Введите число..."
 
 -------------------------------------------------------------------
--- 4. МОДУЛЬ СКАНЕРА (DEEP SCAN)
+-- 4. МОДУЛЬ СКАНЕРА
 -------------------------------------------------------------------
 scannerTitle.Parent = Frame
 scannerTitle.Text = "МОНИТОРИНГ СКРИПТОВ:"
@@ -160,30 +153,42 @@ scannerTitle.Position = UDim2.new(0.05, 0, 0.72, 0)
 scannerTitle.Size = UDim2.new(0.9, 0, 0, 20)
 scannerTitle.BackgroundTransparency = 1
 scannerTitle.TextColor3 = Color3.fromRGB(0, 255, 127)
-scannerTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 scannerLabel.Parent = Frame
-scannerLabel.Name = "ScannerLog"
-scannerLabel.Text = "Инициализация системы защиты..."
+scannerLabel.Text = "Сканер запущен..."
 scannerLabel.Position = UDim2.new(0.05, 0, 0.78, 0)
-scannerLabel.Size = UDim2.new(0.9, 0, 0, 80) -- Большая высота для лога
+scannerLabel.Size = UDim2.new(0.9, 0, 0, 80)
 scannerLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 scannerLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
 scannerLabel.Font = Enum.Font.Code
-scannerLabel.TextSize = 11
+scannerLabel.TextSize = 10
 scannerLabel.TextWrapped = true
 scannerLabel.TextYAlignment = Enum.TextYAlignment.Top
-Instance.new("UICorner", scannerLabel).CornerRadius = UDim.new(0, 4)
+Instance.new("UICorner", scannerLabel)
 
--- Кнопки закрытия и сворачивания
+-- Системные кнопки
 closebutton = createBtn("Close", "X", UDim2.new(0.85, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(200, 0, 0))
 mini = createBtn("Mini", "-", UDim2.new(0.7, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(100, 100, 100))
 mini2 = createBtn("Mini2", "+", UDim2.new(0.7, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(100, 100, 100))
 mini2.Visible = false
 
 -------------------------------------------------------------------
--- ЛОГИКА ФУНКЦИЙ
+-- ЛОГИКА
 -------------------------------------------------------------------
+
+-- Функция телепортации ВПЕРЕД
+local function tpForward(dist)
+    local char = speaker.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        -- Используем LookVector для перемещения в направлении взгляда
+        root.CFrame = root.CFrame + (root.CFrame.LookVector * dist)
+        posDisplay.Text = "Рывок на " .. dist .. " студов"
+    end
+end
+
+tpForwardShort.MouseButton1Click:Connect(function() tpForward(5) end)
+tpForwardLong.MouseButton1Click:Connect(function() tpForward(15) end)
 
 -- Полет
 onof.MouseButton1Down:connect(function()
@@ -191,9 +196,7 @@ onof.MouseButton1Down:connect(function()
         nowe = false
         onof.Text = "ВКЛЮЧИТЬ ПОЛЕТ"
         onof.BackgroundColor3 = Color3.fromRGB(200, 160, 0)
-        if speaker.Character then
-            speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-        end
+        if speaker.Character then speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics) end
     else
         nowe = true
         onof.Text = "ПОЛЕТ АКТИВЕН"
@@ -215,88 +218,65 @@ end)
 plus.MouseButton1Down:connect(function() speeds += 1 flySpeedDisplay.Text = "СКОРОСТЬ: "..speeds end)
 mine.MouseButton1Down:connect(function() if speeds > 1 then speeds -= 1 flySpeedDisplay.Text = "СКОРОСТЬ: "..speeds end end)
 
--- Движение Вверх/Вниз
-local movingUp, movingDown = false, false
-up.MouseButton1Down:Connect(function() movingUp = true while movingUp do wait() if speaker.Character then speaker.Character.HumanoidRootPart.CFrame *= CFrame.new(0,1,0) end end end)
-up.MouseButton1Up:Connect(function() movingUp = false end)
-down.MouseButton1Down:Connect(function() movingDown = true while movingDown do wait() if speaker.Character then speaker.Character.HumanoidRootPart.CFrame *= CFrame.new(0,-1,0) end end end)
-down.MouseButton1Up:Connect(function() movingDown = false end)
+-- Вверх/Вниз
+local mUp, mDown = false, false
+up.MouseButton1Down:Connect(function() mUp = true while mUp do task.wait() if speaker.Character then speaker.Character.HumanoidRootPart.CFrame *= CFrame.new(0,1,0) end end end)
+up.MouseButton1Up:Connect(function() mUp = false end)
+down.MouseButton1Down:Connect(function() mDown = true while mDown do task.wait() if speaker.Character then speaker.Character.HumanoidRootPart.CFrame *= CFrame.new(0,-1,0) end end end)
+down.MouseButton1Up:Connect(function() mDown = false end)
 
--- Копирование и ТП
-copyPosBtn.MouseButton1Click:Connect(function()
-    local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
-    if root then
-        pos1 = root.CFrame
-        posDisplay.Text = string.format("X: %.1f Y: %.1f Z: %.1f", root.Position.X, root.Position.Y, root.Position.Z)
-    end
-end)
-
-tpPosBtn.MouseButton1Click:Connect(function()
-    if pos1 and speaker.Character then
-        speaker.Character.HumanoidRootPart.CFrame = pos1
-    end
-end)
-
--- TextBox логика (Скорость и Прыжок)
-speedInput.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
+-- Скорость и Прыжок
+speedInput.FocusLost:Connect(function(enter)
+    if enter then
         local val = tonumber(speedInput.Text)
-        local hum = speaker.Character and speaker.Character:FindFirstChildOfClass("Humanoid")
-        if hum and val then hum.WalkSpeed = val end
+        if speaker.Character and val then speaker.Character.Humanoid.WalkSpeed = val end
     end
 end)
 
-jumpInput.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
+jumpInput.FocusLost:Connect(function(enter)
+    if enter then
         local val = tonumber(jumpInput.Text)
-        local hum = speaker.Character and speaker.Character:FindFirstChildOfClass("Humanoid")
-        if hum and val then
-            if hum.UseJumpPower then hum.JumpPower = val else hum.JumpHeight = val end
+        local hum = speaker.Character and speaker.Character.Humanoid
+        if hum and val then 
+            if hum.UseJumpPower then hum.JumpPower = val else hum.JumpHeight = val end 
         end
     end
 end)
 
--- ГЛУБОКИЙ СКАНЕР (АВТО-УДАЛЕНИЕ)
+-- Сканер (с защитой от ошибок доступа)
 spawn(function()
-    while wait(2) do
+    while task.wait(3) do
         local found = {}
-        -- game:GetDescendants() ищет ВЕЗДЕ: в папках, моделях, секретных сервисах
         for _, obj in pairs(game:GetDescendants()) do
-            if obj:IsA("LuaSourceContainer") then -- Поиск Script, LocalScript, ModuleScript
-                local name = obj.Name:lower()
-                if name:find("cheat") or name:find("anti") then
-                    table.insert(found, obj.Name)
-                    obj:Destroy()
+            pcall(function() -- Используем pcall чтобы скрипт не падал при сканировании защищенных папок
+                if obj:IsA("LuaSourceContainer") then
+                    local n = obj.Name:lower()
+                    if n:find("cheat") or n:find("anti") then
+                        table.insert(found, obj.Name)
+                        obj:Destroy()
+                    end
                 end
-            end
+            end)
         end
-        
         if #found > 0 then
             scannerLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-            scannerLabel.Text = "УДАЛЕНО ("..#found.."): " .. table.concat(found, ", ")
+            scannerLabel.Text = "УДАЛЕНО: " .. table.concat(found, ", ")
         else
             scannerLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            scannerLabel.Text = "Система чиста. Угрозы не обнаружены."
+            scannerLabel.Text = "Угроз не обнаружено."
         end
     end
 end)
 
--- Управление окном
+-- Окно
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
-
 mini.MouseButton1Click:Connect(function()
     for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = false end end
     title.Visible = true; mini2.Visible = true; Frame.BackgroundTransparency = 1; Frame.Size = UDim2.new(0, 240, 0, 35)
 end)
-
 mini2.MouseButton1Click:Connect(function()
     for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = true end end
     mini2.Visible = false; Frame.BackgroundTransparency = 0; Frame.Size = UDim2.new(0, 240, 0, 420)
 end)
 
--- Уведомление о запуске
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Система Активна",
-    Text = "Deep Scan & Fly Control загружены",
-    Duration = 5
-})
+game:GetService("StarterGui"):SetCore("SendNotification", {Title = "EliteX Premium", Text = "Скрипт успешно загружен", Duration = 5})
