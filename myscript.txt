@@ -17,7 +17,7 @@ local flySpeedDisplay = Instance.new("TextLabel")
 -- Компоненты Позиции (Рывок вперед)
 local tpShort = Instance.new("TextButton")
 local tpLong = Instance.new("TextButton")
-local posDisplay = Instance.new("TextLabel")
+local noclipBtn = Instance.new("TextButton") -- Кнопка NoClip
 
 -- Компоненты Характеристик
 local speedInput = Instance.new("TextBox")
@@ -30,6 +30,7 @@ local speaker = game:GetService("Players").LocalPlayer
 local speeds = 1
 local nowe = false
 local tpwalking = false
+local noclipActive = false -- Переменная состояния NoClip
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
 main.Name = "EliteX_Lite_GUI"
@@ -41,7 +42,7 @@ Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 Frame.BorderSizePixel = 0
 Frame.Position = UDim2.new(0.1, 0, 0.2, 0)
-Frame.Size = UDim2.new(0, 240, 0, 310) -- Высота уменьшена, так как сканера больше нет
+Frame.Size = UDim2.new(0, 240, 0, 360) -- Увеличил высоту для новой кнопки
 Frame.Active = true
 Frame.Draggable = true
 
@@ -50,7 +51,7 @@ corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = Frame
 
 title.Parent = Frame
-title.Text = "ELITEX CONTROL LITE"
+title.Text = "ELITEX CONTROL V5"
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
@@ -67,7 +68,7 @@ local function createBtn(name, text, pos, size, color)
     btn.Font = Enum.Font.GothamSemibold
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.BorderSizePixel = 0
-    btn.TextSize = 12
+    btn.TextSize = 11
     local c = Instance.new("UICorner", btn)
     c.CornerRadius = UDim.new(0, 4)
     return btn
@@ -76,17 +77,17 @@ end
 -------------------------------------------------------------------
 -- 1. МОДУЛЬ ПОЛЕТА (FLY)
 -------------------------------------------------------------------
-onof = createBtn("FlyToggle", "ВКЛЮЧИТЬ ПОЛЕТ", UDim2.new(0.05, 0, 0.13, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(200, 160, 0))
-up = createBtn("UpBtn", "ВВЕРХ", UDim2.new(0.05, 0, 0.26, 0), UDim2.new(0, 70, 0, 30), Color3.fromRGB(60, 150, 60))
-down = createBtn("DownBtn", "ВНИЗ", UDim2.new(0.05, 0, 0.37, 0), UDim2.new(0, 70, 0, 30), Color3.fromRGB(150, 60, 60))
+onof = createBtn("FlyToggle", "ВКЛЮЧИТЬ ПОЛЕТ", UDim2.new(0.05, 0, 0.12, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(200, 160, 0))
+up = createBtn("UpBtn", "ВВЕРХ", UDim2.new(0.05, 0, 0.22, 0), UDim2.new(0, 70, 0, 30), Color3.fromRGB(60, 150, 60))
+down = createBtn("DownBtn", "ВНИЗ", UDim2.new(0.05, 0, 0.31, 0), UDim2.new(0, 70, 0, 30), Color3.fromRGB(150, 60, 60))
 
-plus = createBtn("SpeedPlus", "+", UDim2.new(0.4, 0, 0.26, 0), UDim2.new(0, 40, 0, 30), Color3.fromRGB(70, 70, 100))
-mine = createBtn("SpeedMinus", "-", UDim2.new(0.4, 0, 0.37, 0), UDim2.new(0, 40, 0, 30), Color3.fromRGB(70, 70, 100))
+plus = createBtn("SpeedPlus", "+", UDim2.new(0.4, 0, 0.22, 0), UDim2.new(0, 40, 0, 30), Color3.fromRGB(70, 70, 100))
+mine = createBtn("SpeedMinus", "-", UDim2.new(0.4, 0, 0.31, 0), UDim2.new(0, 40, 0, 30), Color3.fromRGB(70, 70, 100))
 
 flySpeedDisplay.Parent = Frame
 flySpeedDisplay.Text = "СКОРОСТЬ: 1"
-flySpeedDisplay.Position = UDim2.new(0.6, 0, 0.26, 0)
-flySpeedDisplay.Size = UDim2.new(0.35, 0, 0, 65)
+flySpeedDisplay.Position = UDim2.new(0.6, 0, 0.22, 0)
+flySpeedDisplay.Size = UDim2.new(0.35, 0, 0, 62)
 flySpeedDisplay.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 flySpeedDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
 flySpeedDisplay.Font = Enum.Font.Gotham
@@ -94,33 +95,26 @@ flySpeedDisplay.TextSize = 12
 Instance.new("UICorner", flySpeedDisplay)
 
 -------------------------------------------------------------------
--- 2. МОДУЛЬ РЫВКА (DASH)
+-- 2. МОДУЛЬ РЫВКА И NOCLIP
 -------------------------------------------------------------------
-tpShort = createBtn("TpShort", "РЫВОК (2)", UDim2.new(0.05, 0, 0.51, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(100, 100, 110))
-tpLong = createBtn("TpLong", "РЫВОК (4)", UDim2.new(0.52, 0, 0.51, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(0, 120, 180))
+tpShort = createBtn("TpShort", "РЫВОК (2)", UDim2.new(0.05, 0, 0.43, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(100, 100, 110))
+tpLong = createBtn("TpLong", "РЫВОК (4)", UDim2.new(0.52, 0, 0.43, 0), UDim2.new(0, 110, 0, 30), Color3.fromRGB(100, 100, 110))
 
-posDisplay.Parent = Frame
-posDisplay.Text = "ГОТОВ К ПРЫЖКУ"
-posDisplay.Position = UDim2.new(0.05, 0, 0.62, 0)
-posDisplay.Size = UDim2.new(0.9, 0, 0, 20)
-posDisplay.BackgroundTransparency = 1
-posDisplay.TextColor3 = Color3.fromRGB(200, 200, 0)
-posDisplay.Font = Enum.Font.Code
-posDisplay.TextSize = 10
+noclipBtn = createBtn("NoclipBtn", "NOCLIP: ВЫКЛ", UDim2.new(0.05, 0, 0.53, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(80, 80, 80))
 
 -------------------------------------------------------------------
 -- 3. МОДУЛЬ ХАРАКТЕРИСТИК
 -------------------------------------------------------------------
 speedTitle.Parent = Frame
 speedTitle.Text = "СКОРОСТЬ:"
-speedTitle.Position = UDim2.new(0.05, 0, 0.73, 0)
+speedTitle.Position = UDim2.new(0.05, 0, 0.68, 0)
 speedTitle.Size = UDim2.new(0, 80, 0, 25)
 speedTitle.BackgroundTransparency = 1
 speedTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 speedTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 speedInput.Parent = Frame
-speedInput.Position = UDim2.new(0.55, 0, 0.73, 0)
+speedInput.Position = UDim2.new(0.55, 0, 0.68, 0)
 speedInput.Size = UDim2.new(0, 95, 0, 25)
 speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 speedInput.Text = "16"
@@ -129,21 +123,21 @@ Instance.new("UICorner", speedInput)
 
 jumpTitle.Parent = Frame
 jumpTitle.Text = "ПРЫЖОК:"
-jumpTitle.Position = UDim2.new(0.05, 0, 0.84, 0)
+jumpTitle.Position = UDim2.new(0.05, 0, 0.80, 0)
 jumpTitle.Size = UDim2.new(0, 80, 0, 25)
 jumpTitle.BackgroundTransparency = 1
 jumpTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 jumpTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 jumpInput.Parent = Frame
-jumpInput.Position = UDim2.new(0.55, 0, 0.84, 0)
+jumpInput.Position = UDim2.new(0.55, 0, 0.80, 0)
 jumpInput.Size = UDim2.new(0, 95, 0, 25)
 jumpInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 jumpInput.Text = "50"
 jumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", jumpInput)
 
--- Кнопки управления окном
+-- Управление окном
 closebutton = createBtn("Close", "X", UDim2.new(0.85, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(200, 0, 0))
 mini = createBtn("Mini", "-", UDim2.new(0.7, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(100, 100, 100))
 mini2 = createBtn("Mini2", "+", UDim2.new(0.7, 0, 0, 0), UDim2.new(0, 35, 0, 35), Color3.fromRGB(100, 100, 100))
@@ -153,18 +147,46 @@ mini2.Visible = false
 -- ЛОГИКА
 -------------------------------------------------------------------
 
+-- ЛОГИКА NOCLIP
+-- Вместо изменения всей карты, мы отключаем коллизию самого игрока. 
+-- Это безопаснее и работает во всех играх.
+noclipBtn.MouseButton1Click:Connect(function()
+    noclipActive = not noclipActive
+    if noclipActive then
+        noclipBtn.Text = "NOCLIP: ВКЛ"
+        noclipBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+    else
+        noclipBtn.Text = "NOCLIP: ВЫКЛ"
+        noclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    end
+end)
+
+-- Цикл NoClip
+game:GetService("RunService").Stepped:Connect(function()
+    if noclipActive then
+        if speaker.Character then
+            for _, v in pairs(speaker.Character:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- Рывок
 local function dash(dist)
     local char = speaker.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then
         root.CFrame = root.CFrame + (root.CFrame.LookVector * dist)
-        posDisplay.Text = "Рывок: " .. dist .. " ед."
     end
 end
 
 tpShort.MouseButton1Click:Connect(function() dash(2) end)
 tpLong.MouseButton1Click:Connect(function() dash(4) end)
 
+-- Полет
 onof.MouseButton1Down:connect(function()
     if nowe == true then
         nowe = false
@@ -192,12 +214,14 @@ end)
 plus.MouseButton1Down:connect(function() speeds += 1 flySpeedDisplay.Text = "СКОРОСТЬ: "..speeds end)
 mine.MouseButton1Down:connect(function() if speeds > 1 then speeds -= 1 flySpeedDisplay.Text = "СКОРОСТЬ: "..speeds end end)
 
+-- Вверх/Вниз
 local mUp, mDown = false, false
 up.MouseButton1Down:Connect(function() mUp = true while mUp do task.wait() if speaker.Character then speaker.Character.HumanoidRootPart.CFrame *= CFrame.new(0,1,0) end end end)
 up.MouseButton1Up:Connect(function() mUp = false end)
 down.MouseButton1Down:Connect(function() mDown = true while mDown do task.wait() if speaker.Character then speaker.Character.HumanoidRootPart.CFrame *= CFrame.new(0,-1,0) end end end)
 down.MouseButton1Up:Connect(function() mDown = false end)
 
+-- Ввод характеристик
 speedInput.FocusLost:Connect(function(enter)
     if enter then
         local val = tonumber(speedInput.Text)
@@ -215,6 +239,7 @@ jumpInput.FocusLost:Connect(function(enter)
     end
 end)
 
+-- Сворачивание и Закрытие
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
 mini.MouseButton1Click:Connect(function()
     for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = false end end
@@ -222,7 +247,7 @@ mini.MouseButton1Click:Connect(function()
 end)
 mini2.MouseButton1Click:Connect(function()
     for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = true end end
-    mini2.Visible = false; Frame.BackgroundTransparency = 0; Frame.Size = UDim2.new(0, 240, 0, 310)
+    mini2.Visible = false; Frame.BackgroundTransparency = 0; Frame.Size = UDim2.new(0, 240, 0, 360)
 end)
 
-game:GetService("StarterGui"):SetCore("SendNotification", {Title = "EliteX", Text = "Скрипт готов к работе", Duration = 3})
+game:GetService("StarterGui"):SetCore("SendNotification", {Title = "EliteX", Text = "Noclip & Dash загружены", Duration = 3})
