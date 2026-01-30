@@ -30,7 +30,7 @@ Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
 
 title.Parent = Frame 
-title.Text = "ELITEX V23 (DEBRIS SCAN)" 
+title.Text = "ELITEX V23 (DEBRIS P. HIGHLIGHT)" 
 title.Size = UDim2.new(1, 0, 0, 35) 
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50) 
 title.TextColor3 = Color3.fromRGB(0, 255, 127) 
@@ -45,7 +45,7 @@ topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 topBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
 topBox.TextSize = 11 
 topBox.Font = Enum.Font.Code 
-topBox.Text = "Searching for Debris..." 
+topBox.Text = "Searching for Debris Parent..." 
 topBox.TextWrapped = true
 Instance.new("UICorner", topBox) 
 
@@ -61,15 +61,16 @@ local function createBtn(name, text, pos, size, color)
 end
 
 -------------------------------------------------------------------
--- ЛОГИКА ПОИСКА "DEBRIS" И СОРТИРОВКИ
+-- ЛОГИКА ПОИСКА И ВИЗУАЛИЗАЦИИ
 -------------------------------------------------------------------
 
--- Поиск родителя с именем "Debris" вверх по иерархии
-local function findDebrisParent(obj)
+-- Поиск родителя объекта Debris
+local function findDebrisGrandparent(obj)
     local current = obj.Parent
     while current and current ~= workspace do
         if current.Name == "Debris" then
-            return current
+            -- Возвращаем родителя объекта Debris
+            return current.Parent
         end
         current = current.Parent
     end
@@ -99,7 +100,7 @@ end
 task.spawn(function()
     while true do
         local found = {} 
-        -- Очистка старой подсветки
+        -- Удаление старых подсветок
         for _, v in pairs(workspace:GetDescendants()) do
             if v.Name == "GenHighlight" then v:Destroy() end
         end
@@ -117,21 +118,22 @@ task.spawn(function()
         end
         table.sort(found, function(a, b) return a.value > b.value end) 
 
-        local resultText = "TOP 3 (DEBRIS TARGETS):\n"
+        local resultText = "TOP 3 (DEBRIS PARENT):\n"
         for i = 1, 3 do
             if found[i] then
                 resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
                 
-                -- Подсветка родителя с именем "Debris"
-                local debrisTarget = findDebrisParent(found[i].instance)
-                if debrisTarget then
+                -- Подсвечиваем родителя того объекта, который называется "Debris"
+                local target = findDebrisGrandparent(found[i].instance)
+                if target then
                     local hl = Instance.new("Highlight")
                     hl.Name = "GenHighlight"
-                    hl.FillColor = Color3.fromRGB(0, 255, 255) 
-                    hl.OutlineColor = Color3.new(1, 1, 1)
+                    hl.FillColor = Color3.fromRGB(0, 255, 255) -- Голубой
+                    hl.OutlineColor = Color3.new(1, 1, 1) -- Белый контур
                     hl.FillTransparency = 0.4
-                    hl.Adornee = debrisTarget
-                    hl.Parent = debrisTarget
+                    hl.OutlineTransparency = 0
+                    hl.Adornee = target
+                    hl.Parent = target
                 end
             else 
                 resultText = resultText .. i .. ". ---\n" 
@@ -143,7 +145,7 @@ task.spawn(function()
 end)
 
 -------------------------------------------------------------------
--- КНОПКИ УПРАВЛЕНИЯ
+-- ФУНКЦИОНАЛЬНЫЕ КНОПКИ
 -------------------------------------------------------------------
 local espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.1, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(80, 80, 80))
 
