@@ -37,19 +37,16 @@ title.TextColor3 = Color3.fromRGB(0, 255, 127)
 title.Font = Enum.Font.GothamBold 
 title.TextSize = 14 
 
--- Блок для вывода результатов поиска (теперь TextBox)
-local topBox = Instance.new("TextBox", Frame) 
+-- Блок для вывода ТОП-3 Generation (Логика из Скрипта 1)
+local topBox = Instance.new("TextLabel", Frame) 
 topBox.Size = UDim2.new(0.9, 0, 0, 100) 
 topBox.Position = UDim2.new(0.05, 0, 0.75, 0) 
 topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
 topBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
 topBox.TextSize = 12 
 topBox.Font = Enum.Font.Code 
-topBox.Text = "Searching for Saturno..." 
+topBox.Text = "Searching for Gen..." 
 topBox.TextWrapped = true
-topBox.MultiLine = true
-topBox.ClearTextOnFocus = false
-topBox.Active = false  -- Чтобы не было редактирования
 Instance.new("UICorner", topBox) 
 
 local function createBtn(name, text, pos, size, color)
@@ -64,53 +61,50 @@ local function createBtn(name, text, pos, size, color)
 end
 
 -------------------------------------------------------------------
--- ЛОГИКА ПАРСИНГА И СОРТИРОВКИ (МОДИФИЦИРОВАНО ДЛЯ ПОИСКА "SATURNO")
+-- ЛОГИКА ПАРСИНГА И СОРТИРОВКИ (ИЗ СКРИПТА 1)
 -------------------------------------------------------------------
-local function getParentPath(obj)
-    local path = obj.Name
-    local current = obj.Parent
-    while current and current ~= workspace and current ~= game do
-        path = current.Name .. "." .. path
-        current = current.Parent
-    end
-    return path ~= "" and path or "Workspace"
+local function getNumericValue(text)
+	local valStr, suffix = text:match("([%d%.]+)([MB])") 
+	if valStr and suffix then 
+		local num = tonumber(valStr) 
+		if suffix == "M" then return num * 1e6 end 
+		if suffix == "B" then return num * 1e9 end 
+	end 
+	return 0 
 end
 
--- Функция для получения строкового представления потомков с иерархией через "."
-local function getDescendantsPath(obj, prefix)
-    local descStr = ""
-    for _, child in ipairs(obj:GetChildren()) do
-        local childPath = prefix .. (prefix == "" and "" or ".") .. child.Name
-        descStr = descStr .. childPath .. "\n"
-        descStr = descStr .. getDescendantsPath(child, childPath)
-    end
-    return descStr
+local function getParentPath(obj)
+	local path = ""
+	local current = obj.Parent
+	while current and current ~= workspace and current ~= game do
+		path = (path == "" and current.Name or current.Name .. "." .. path)
+		current = current.Parent
+	end
+	return path ~= "" and path or "Workspace"
 end
 
 task.spawn(function()
 	while true do
 		local found = {} 
 		for _, v in pairs(workspace:GetDescendants()) do 
-			local success, text = pcall(function() return v.Text end) 
-			if success and text and string.find(text:lower(), "saturno", 1, true) then 
-				table.insert(found, {original = text, path = getParentPath(v), obj = v}) 
+			if v.Name == "Generation" then 
+				local success, text = pcall(function() return v.Text end) 
+				if success and text then 
+					local numeric = getNumericValue(text) 
+					if numeric >= 10000000 then 
+						table.insert(found, {original = text, value = numeric, path = getParentPath(v)}) 
+					end
+				end
 			end
 		end
-		table.sort(found, function(a, b) return a.path < b.path end) 
+		table.sort(found, function(a, b) return a.value > b.value end) 
 
-		local resultText = "FOUND SATURNO:\n"
-		if #found == 0 then
-			resultText = "None found"
-		else
-			for i = 1, #found do
+		local resultText = "TOP 3 GENERATION:\n"
+		for i = 1, 3 do
+			if found[i] then
 				resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
-				-- Добавляем потомков
-				local descStr = getDescendantsPath(found[i].obj, found[i].path)
-				if descStr ~= "" then
-					resultText = resultText .. "Descendants:\n" .. descStr .. "\n"
-				else
-					resultText = resultText .. "No descendants\n\n"
-				end
+			else 
+				resultText = resultText .. i .. ". ---\n" 
 			end
 		end
 		topBox.Text = resultText 
