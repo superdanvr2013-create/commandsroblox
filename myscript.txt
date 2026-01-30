@@ -1,202 +1,161 @@
+-- Инициализация сервисов
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-local speaker = Players.LocalPlayer
 local main = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
-local topLabel = Instance.new("TextLabel")
+local title = Instance.new("TextLabel")
+local closebutton = Instance.new("TextButton")
 
--- Состояния
+-- Кнопки
+local espBtn = Instance.new("TextButton") -- НОВАЯ КНОПКА
+local jumpBtn = Instance.new("TextButton")
+local speedLockBtn = Instance.new("TextButton")
+local onof = Instance.new("TextButton")
+
+-- Настройки
+local speaker = Players.LocalPlayer
+local speeds = 1
 local speedLockActive = false
 local espActive = false
+local nowe = false
 local targetSpeed = 50
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Scanner_V19"
+main.Name = "EliteX_Final_V16"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
 Frame.Name = "MainFrame"
 Frame.Parent = main
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.Size = UDim2.new(0, 280, 0, 420)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+Frame.Position = UDim2.new(0.05, 0, 0.05, 0)
+Frame.Size = UDim2.new(0, 260, 0, 480) -- Увеличил высоту для ESP
 Frame.Active = true
 Frame.Draggable = true
-Instance.new("UICorner", Frame)
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
 
-local title = Instance.new("TextLabel", Frame)
-title.Text = "ELITEX PRECISE SCANNER"
-title.Size = UDim2.new(1, 0, 0, 35)
-title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Parent = Frame
+title.Text = "ELITEX V16 (ESP UPDATE)"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+title.TextColor3 = Color3.fromRGB(0, 255, 127)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
-Instance.new("UICorner", title)
 
-topLabel.Parent = Frame
-topLabel.Size = UDim2.new(0.9, 0, 0, 100)
-topLabel.Position = UDim2.new(0.05, 0, 0.72, 0)
-topLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-topLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-topLabel.TextSize = 13
-topLabel.Font = Enum.Font.Code
-topLabel.Text = "Waiting for data..."
-topLabel.TextXAlignment = Enum.TextXAlignment.Left
-Instance.new("UICorner", topLabel)
-
--------------------------------------------------------------------
--- ЛОГИКА РЕГУЛЯРНЫХ ВЫРАЖЕНИЙ И ПАРСИНГА
--------------------------------------------------------------------
-
-local function cleanAndParse(text)
-    -- Убираем RichText теги (типа <font color=...>), если они есть
-    local cleanText = text:gsub("<[^>]+>", "")
-    
-    -- Регулярное выражение для поиска: $числоM/s или $числоB/s
-    -- %$ (знак доллара)
-    -- ([%d%.]+) (группа цифр и точек)
-    -- ([MB]) (буква M или B)
-    -- /s (хвост /s)
-    local val, suffix = cleanText:match("%$([%d%.]+)([MB])/s")
-    
-    if val and suffix then
-        local num = tonumber(val)
-        if suffix == "M" then
-            return num * 1e6, cleanText
-        elseif suffix == "B" then
-            return num * 1e9, cleanText
-        end
-    end
-    return nil, nil
-end
-
-task.spawn(function()
-    while true do
-        local matches = {}
-        
-        -- Поиск по BillboardGui
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("BillboardGui") then
-                -- Проверка на GUID имя родителя (обычно это длинные строки с тире)
-                local isGuid = v.Parent.Name:match("%-%-") or #v.Parent.Name > 20
-                
-                local label = v:FindFirstChildWhichIsA("TextLabel")
-                if label then
-                    local numericValue, originalText = cleanAndParse(label.Text)
-                    
-                    -- Фильтр: больше 10M
-                    if numericValue and numericValue >= 10000000 then
-                        table.insert(matches, {val = numericValue, txt = originalText})
-                    end
-                end
-            end
-        end
-        
-        -- Сортировка
-        table.sort(matches, function(a, b) return a.val > b.val end)
-        
-        -- Вывод ТОП-3
-        local str = " TOP 3 VALUES (>10M/s):\n"
-        for i = 1, 3 do
-            if matches[i] then
-                str = str .. string.format(" %d. %s\n", i, matches[i].txt)
-            else
-                str = str .. string.format(" %d. ---\n", i)
-            end
-        end
-        topLabel.Text = str
-        
-        task.wait(3)
-    end
-end)
-
--------------------------------------------------------------------
--- ФУНКЦИИ УПРАВЛЕНИЯ
--------------------------------------------------------------------
-
-local function createBtn(text, pos, color, func)
+local function createBtn(name, text, pos, size, color)
     local btn = Instance.new("TextButton", Frame)
-    btn.Text = text
-    btn.Position = pos
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
-    btn.BackgroundColor3 = color
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Font = Enum.Font.GothamSemibold
-    Instance.new("UICorner", btn)
-    btn.MouseButton1Click:Connect(func)
+    btn.Name = name; btn.Text = text; btn.Position = pos; btn.Size = size
+    btn.BackgroundColor3 = color; btn.Font = Enum.Font.GothamSemibold
+    btn.TextColor3 = Color3.new(1,1,1); btn.TextSize = 10
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     return btn
 end
 
--- Кнопка ESP
-local espBtn = createBtn("ESP: OFF", UDim2.new(0.05, 0, 0.12, 0), Color3.fromRGB(60, 60, 70), function()
-    espActive = not espActive
-end)
+-------------------------------------------------------------------
+-- ЛОГИКА ESP (ПОДСВЕТКА ИГРОКОВ)
+-------------------------------------------------------------------
+espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.1, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(80, 80, 80))
 
--- Кнопка Speed Lock
-local speedBtn = createBtn("SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.22, 0), Color3.fromRGB(100, 40, 150), function()
-    speedLockActive = not speedLockActive
-end)
-
--- Кнопка Air Jump (Клик)
-createBtn("AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.32, 0), Color3.fromRGB(0, 120, 200), function()
-    local char = speaker.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local p = Instance.new("Part", workspace)
-        p.Size = Vector3.new(8, 1, 8); p.Anchored = true; p.Transparency = 0.5
-        p.Material = Enum.Material.ForceField; p.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
-        game:GetService("Debris"):AddItem(p, 1)
-    end
-end)
-
--- Обработка CTRL для Air Jump
-UserInputService.InputBegan:Connect(function(i, p)
-    if not p and i.KeyCode == Enum.KeyCode.LeftControl then
-        local char = speaker.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local part = Instance.new("Part", workspace)
-            part.Size = Vector3.new(8, 1, 8); part.Anchored = true; part.Material = Enum.Material.ForceField
-            part.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
-            game:GetService("Debris"):AddItem(part, 1)
-        end
-    end
-end)
-
--- Постоянные циклы обновления
-RunService.Heartbeat:Connect(function()
-    -- Speed Lock
-    if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
-        speaker.Character.Humanoid.WalkSpeed = targetSpeed
-    end
-    
-    -- Кнопки UI
-    espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
-    espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(60, 60, 70)
-    speedBtn.Text = speedLockActive and "SPEED LOCK: ON" or "SPEED LOCK: OFF"
-    speedBtn.BackgroundColor3 = speedLockActive and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(100, 40, 150)
-    
-    -- ESP Logic
-    if espActive then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= speaker and p.Character then
-                if not p.Character:FindFirstChild("EliteHighlight") then
-                    local h = Instance.new("Highlight", p.Character)
-                    h.Name = "EliteHighlight"
+local function updateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= speaker and player.Character then
+            local char = player.Character
+            local oldHighlight = char:FindFirstChild("EliteX_ESP")
+            
+            if espActive then
+                if not oldHighlight then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "EliteX_ESP"
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Красный цвет внутри
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- Белый контур
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.Adornee = char
+                    highlight.Parent = char
                 end
-            end
-        end
-    else
-        for _, p in pairs(Players:GetPlayers()) do
-            if p.Character and p.Character:FindFirstChild("EliteHighlight") then
-                p.Character.EliteHighlight:Destroy()
+            else
+                if oldHighlight then oldHighlight:Destroy() end
             end
         end
     end
+end
+
+espBtn.MouseButton1Click:Connect(function()
+    espActive = not espActive
+    espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
+    espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
+    updateESP()
 end)
 
--- Кнопка закрытия
-local close = Instance.new("TextButton", Frame)
-close.Text = "X"; close.Position = UDim2.new(0.9, 0, 0, 0); close.Size = UDim2.new(0, 25, 0, 25)
-close.BackgroundColor3 = Color3.new(0.7, 0, 0); close.TextColor3 = Color3.new(1,1,1)
-close.MouseButton1Click:Connect(function() main:Destroy() end)
+-- Следим за новыми игроками, если ESP включен
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(1)
+        if espActive then updateESP() end
+    end)
+end)
+
+-------------------------------------------------------------------
+-- ЛОГИКА AIR JUMP (L-CTRL)
+-------------------------------------------------------------------
+local function doAirJump()
+    local char = speaker.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        local part = Instance.new("Part", workspace)
+        part.Size = Vector3.new(7, 1, 7)
+        part.CFrame = root.CFrame * CFrame.new(0, -3.5, 0)
+        part.Anchored = true; part.Material = Enum.Material.ForceField
+        part.Color = Color3.fromRGB(0, 255, 255); part.Transparency = 0.5
+        task.spawn(function()
+            for i = 1, 30 do
+                part.Position = part.Position + Vector3.new(0, 0.6, 0)
+                task.wait()
+            end
+            part:Destroy()
+        end)
+    end
+end
+
+jumpBtn = createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.2, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 150, 255))
+jumpBtn.MouseButton1Click:Connect(doAirJump)
+UserInputService.InputBegan:Connect(function(i, p) if not p and i.KeyCode == Enum.KeyCode.LeftControl then doAirJump() end end)
+
+-------------------------------------------------------------------
+-- ЛОГИКА СКОРОСТИ (SPEED LOCK: 50)
+-------------------------------------------------------------------
+speedLockBtn = createBtn("SpeedBtn", "SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.3, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(120, 40, 200))
+
+task.spawn(function()
+    while true do
+        task.wait()
+        if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
+            speaker.Character.Humanoid.WalkSpeed = targetSpeed
+        end
+        -- Обновляем ESP для персонажей, которые могли обновиться
+        if espActive then updateESP() end
+    end
+end)
+
+speedLockBtn.MouseButton1Click:Connect(function()
+    speedLockActive = not speedLockActive
+    speedLockBtn.Text = speedLockActive and "SPEED LOCK (50): ON" or "SPEED LOCK (50): OFF"
+    speedLockBtn.BackgroundColor3 = speedLockActive and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(120, 40, 200)
+end)
+
+-------------------------------------------------------------------
+-- ПОЛЕТ И ЗАКРЫТИЕ
+-------------------------------------------------------------------
+onof = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.4, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0))
+onof.MouseButton1Click:Connect(function() nowe = not nowe end)
+
+RunService.Heartbeat:Connect(function()
+    if nowe and speaker.Character then 
+        speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds) 
+    end
+end)
+
+closebutton.Parent = Frame; closebutton.Text = "X"; closebutton.Position = UDim2.new(0.9, 0, 0, 0); closebutton.Size = UDim2.new(0, 25, 0, 25); closebutton.BackgroundColor3 = Color3.new(0.8,0,0); closebutton.TextColor3 = Color3.new(1,1,1)
+closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
