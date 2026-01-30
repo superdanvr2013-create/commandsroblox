@@ -30,7 +30,7 @@ Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
 
 title.Parent = Frame 
-title.Text = "ELITEX V23 (DEBRIS P. HIGHLIGHT)" 
+title.Text = "ELITEX V23 (DEBRIS SCAN)" 
 title.Size = UDim2.new(1, 0, 0, 35) 
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50) 
 title.TextColor3 = Color3.fromRGB(0, 255, 127) 
@@ -45,157 +45,156 @@ topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 topBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
 topBox.TextSize = 11 
 topBox.Font = Enum.Font.Code 
-topBox.Text = "Searching for Debris Parent..." 
+topBox.Text = "Searching for Debris..." 
 topBox.TextWrapped = true
 Instance.new("UICorner", topBox) 
 
 local function createBtn(name, text, pos, size, color)
-    local btn = Instance.new("TextButton", Frame)
-    btn.Name = name; 
-    btn.Text = text; btn.Position = pos; btn.Size = size 
-    btn.BackgroundColor3 = color; 
-    btn.Font = Enum.Font.GothamSemibold 
-    btn.TextColor3 = Color3.new(1,1,1); btn.TextSize = 10 
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4) 
-    return btn
+	local btn = Instance.new("TextButton", Frame)
+	btn.Name = name; 
+	btn.Text = text; btn.Position = pos; btn.Size = size 
+	btn.BackgroundColor3 = color; 
+	btn.Font = Enum.Font.GothamSemibold 
+	btn.TextColor3 = Color3.new(1,1,1); btn.TextSize = 10 
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4) 
+	return btn
 end
 
 -------------------------------------------------------------------
--- ЛОГИКА ПОИСКА И ВИЗУАЛИЗАЦИИ
+-- ЛОГИКА ПОИСКА "DEBRIS" И СОРТИРОВКИ
 -------------------------------------------------------------------
 
--- Поиск родителя объекта Debris
-local function findDebrisGrandparent(obj)
-    local current = obj.Parent
-    while current and current ~= workspace do
-        if current.Name == "Debris" then
-            -- Возвращаем родителя объекта Debris
-            return current.Parent
-        end
-        current = current.Parent
-    end
-    return nil
+-- Поиск родителя с именем "Debris" вверх по иерархии
+local function findDebrisParent(obj)
+	local current = obj.Parent
+	while current and current ~= workspace do
+		if current.Name == "Debris" then
+			current.Transparency = 0
+			return current
+		end
+		current = current.Parent
+	end
+	return nil
 end
 
 local function getNumericValue(text)
-    local valStr, suffix = text:match("([%d%.]+)([MB])") 
-    if valStr and suffix then 
-        local num = tonumber(valStr) 
-        if suffix == "M" then return num * 1e6 end 
-        if suffix == "B" then return num * 1e9 end 
-    end 
-    return 0 
+	local valStr, suffix = text:match("([%d%.]+)([MB])") 
+	if valStr and suffix then 
+		local num = tonumber(valStr) 
+		if suffix == "M" then return num * 1e6 end 
+		if suffix == "B" then return num * 1e9 end 
+	end 
+	return 0 
 end
 
 local function getParentPath(obj)
-    local path = ""
-    local current = obj.Parent
-    while current and current ~= workspace and current ~= game do
-        path = (path == "" and current.Name or current.Name .. "." .. path)
-        current = current.Parent
-    end
-    return path ~= "" and path or "Workspace"
+	local path = ""
+	local current = obj.Parent
+	while current and current ~= workspace and current ~= game do
+		path = (path == "" and current.Name or current.Name .. "." .. path)
+		current = current.Parent
+	end
+	return path ~= "" and path or "Workspace"
 end
 
 task.spawn(function()
-    while true do
-        local found = {} 
-        -- Удаление старых подсветок
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v.Name == "GenHighlight" then v:Destroy() end
-        end
+	while true do
+		local found = {} 
+		-- Очистка старой подсветки
+		for _, v in pairs(workspace:GetDescendants()) do
+			if v.Name == "GenHighlight" then v:Destroy() end
+		end
 
-        for _, v in pairs(workspace:GetDescendants()) do 
-            if v.Name == "Generation" then 
-                local success, text = pcall(function() return v.Text end) 
-                if success and text then 
-                    local numeric = getNumericValue(text) 
-                    if numeric >= 10000000 then 
-                        table.insert(found, {instance = v, original = text, value = numeric, path = getParentPath(v)}) 
-                    end
-                end
-            end
-        end
-        table.sort(found, function(a, b) return a.value > b.value end) 
+		for _, v in pairs(workspace:GetDescendants()) do 
+			if v.Name == "Generation" then 
+				local success, text = pcall(function() return v.Text end) 
+				if success and text then 
+					local numeric = getNumericValue(text) 
+					if numeric >= 10000000 then 
+						table.insert(found, {instance = v, original = text, value = numeric, path = getParentPath(v)}) 
+					end
+				end
+			end
+		end
+		table.sort(found, function(a, b) return a.value > b.value end) 
 
-        local resultText = "TOP 3 (DEBRIS PARENT):\n"
-        for i = 1, 3 do
-            if found[i] then
-                resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
-                
-                -- Подсвечиваем родителя того объекта, который называется "Debris"
-                local target = findDebrisGrandparent(found[i].instance)
-                if target then
-                    local hl = Instance.new("Highlight")
-                    hl.Name = "GenHighlight"
-                    hl.FillColor = Color3.fromRGB(0, 255, 255) -- Голубой
-                    hl.OutlineColor = Color3.new(1, 1, 1) -- Белый контур
-                    hl.FillTransparency = 0.4
-                    hl.OutlineTransparency = 0
-                    hl.Adornee = target
-                    hl.Parent = target
-                end
-            else 
-                resultText = resultText .. i .. ". ---\n" 
-            end
-        end
-        topBox.Text = resultText 
-        task.wait(3) 
-    end
+		local resultText = "TOP 3 (DEBRIS TARGETS):\n"
+		for i = 1, 3 do
+			if found[i] then
+				resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
+
+				-- Подсветка родителя с именем "Debris"
+				local debrisTarget = findDebrisParent(found[i].instance)
+				if debrisTarget then
+					local hl = Instance.new("Highlight")
+					hl.Name = "GenHighlight"
+					hl.FillColor = Color3.fromRGB(0, 255, 255) 
+					hl.OutlineColor = Color3.new(1, 1, 1)
+					hl.FillTransparency = 0.4
+					hl.Adornee = debrisTarget
+					hl.Parent = debrisTarget
+				end
+			else 
+				resultText = resultText .. i .. ". ---\n" 
+			end
+		end
+		topBox.Text = resultText 
+		task.wait(3) 
+	end
 end)
 
 -------------------------------------------------------------------
--- ФУНКЦИОНАЛЬНЫЕ КНОПКИ
+-- КНОПКИ УПРАВЛЕНИЯ
 -------------------------------------------------------------------
 local espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.1, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(80, 80, 80))
 
 local function updateESP()
-    for _, player in pairs(Players:GetPlayers()) do 
-        if player ~= speaker and player.Character then 
-            local char = player.Character 
-            local oldHighlight = char:FindFirstChild("EliteX_ESP") 
-            if espActive then
-                if not oldHighlight then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Name = "EliteX_ESP"
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.FillTransparency = 0.5
-                    highlight.Adornee = char 
-                    highlight.Parent = char 
-                end
-            else
-                if oldHighlight then oldHighlight:Destroy() end
-            end
-        end 
-    end 
+	for _, player in pairs(Players:GetPlayers()) do 
+		if player ~= speaker and player.Character then 
+			local char = player.Character 
+			local oldHighlight = char:FindFirstChild("EliteX_ESP") 
+			if espActive then
+				if not oldHighlight then
+					local highlight = Instance.new("Highlight")
+					highlight.Name = "EliteX_ESP"
+					highlight.FillColor = Color3.fromRGB(255, 0, 0)
+					highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+					highlight.FillTransparency = 0.5
+					highlight.Adornee = char 
+					highlight.Parent = char 
+				end
+			else
+				if oldHighlight then oldHighlight:Destroy() end
+			end
+		end 
+	end 
 end
 
 espBtn.MouseButton1Click:Connect(function()
-    espActive = not espActive
-    espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
-    espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
-    updateESP()
+	espActive = not espActive
+	espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
+	espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
+	updateESP()
 end)
 
 local function doAirJump()
-    local char = speaker.Character 
-    local root = char and char:FindFirstChild("HumanoidRootPart") 
-    if root then 
-        local part = Instance.new("Part", workspace) 
-        part.Size = Vector3.new(8, 1, 8); part.Anchored = true; 
-        part.Material = Enum.Material.ForceField; 
-        part.Color = Color3.fromRGB(0, 255, 255); 
-        part.Transparency = 0.5 
-        part.CFrame = root.CFrame * CFrame.new(0, -3.5, 0) 
-        task.spawn(function()
-            for i = 1, 30 do
-                part.Position = part.Position + Vector3.new(0, 0.6, 0)
-                task.wait()
-            end
-            part:Destroy()
-        end)
-    end
+	local char = speaker.Character 
+	local root = char and char:FindFirstChild("HumanoidRootPart") 
+	if root then 
+		local part = Instance.new("Part", workspace) 
+		part.Size = Vector3.new(8, 1, 8); part.Anchored = true; 
+		part.Material = Enum.Material.ForceField; 
+		part.Color = Color3.fromRGB(0, 255, 255); 
+		part.Transparency = 0.5 
+		part.CFrame = root.CFrame * CFrame.new(0, -3.5, 0) 
+		task.spawn(function()
+			for i = 1, 30 do
+				part.Position = part.Position + Vector3.new(0, 0.6, 0)
+				task.wait()
+			end
+			part:Destroy()
+		end)
+	end
 end
 
 createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.2, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 150, 255)).MouseButton1Click:Connect(doAirJump)
@@ -203,21 +202,21 @@ UserInputService.InputBegan:Connect(function(i, p) if not p and i.KeyCode == Enu
 
 local speedLockBtn = createBtn("SpeedBtn", "SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.3, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(120, 40, 200))
 speedLockBtn.MouseButton1Click:Connect(function()
-    speedLockActive = not speedLockActive
-    speedLockBtn.Text = speedLockActive and "SPEED LOCK (50): ON" or "SPEED LOCK (50): OFF"
-    speedLockBtn.BackgroundColor3 = speedLockActive and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(120, 40, 200)
+	speedLockActive = not speedLockActive
+	speedLockBtn.Text = speedLockActive and "SPEED LOCK (50): ON" or "SPEED LOCK (50): OFF"
+	speedLockBtn.BackgroundColor3 = speedLockActive and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(120, 40, 200)
 end)
 
 createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.4, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0)).MouseButton1Click:Connect(function() nowe = not nowe end)
 
 RunService.Heartbeat:Connect(function()
-    if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
-        speaker.Character.Humanoid.WalkSpeed = targetSpeed
-    end
-    if espActive then updateESP() end
-    if nowe and speaker.Character then 
-        speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
-    end
+	if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
+		speaker.Character.Humanoid.WalkSpeed = targetSpeed
+	end
+	if espActive then updateESP() end
+	if nowe and speaker.Character then 
+		speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
+	end
 end)
 
 local closebutton = Instance.new("TextButton", Frame)
