@@ -30,7 +30,7 @@ Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
 
 title.Parent = Frame 
-title.Text = "ELITEX V23 (GEN HIGHLIGHT)" 
+title.Text = "ELITEX V23 (DEBRIS SCAN)" 
 title.Size = UDim2.new(1, 0, 0, 35) 
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50) 
 title.TextColor3 = Color3.fromRGB(0, 255, 127) 
@@ -43,9 +43,9 @@ topBox.Size = UDim2.new(0.9, 0, 0, 100)
 topBox.Position = UDim2.new(0.05, 0, 0.75, 0) 
 topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
 topBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
-topBox.TextSize = 12 
+topBox.TextSize = 11 
 topBox.Font = Enum.Font.Code 
-topBox.Text = "Searching for Gen..." 
+topBox.Text = "Searching for Debris..." 
 topBox.TextWrapped = true
 Instance.new("UICorner", topBox) 
 
@@ -61,8 +61,21 @@ local function createBtn(name, text, pos, size, color)
 end
 
 -------------------------------------------------------------------
--- ЛОГИКА ПОДСВЕТКИ И СОРТИРОВКИ
+-- ЛОГИКА ПОИСКА "DEBRIS" И СОРТИРОВКИ
 -------------------------------------------------------------------
+
+-- Поиск родителя с именем "Debris" вверх по иерархии
+local function findDebrisParent(obj)
+    local current = obj.Parent
+    while current and current ~= workspace do
+        if current.Name == "Debris" then
+            return current
+        end
+        current = current.Parent
+    end
+    return nil
+end
+
 local function getNumericValue(text)
     local valStr, suffix = text:match("([%d%.]+)([MB])") 
     if valStr and suffix then 
@@ -83,11 +96,10 @@ local function getParentPath(obj)
     return path ~= "" and path or "Workspace"
 end
 
--- Основной цикл сканирования и подсветки [cite: 1, 3, 4, 5, 6, 8]
 task.spawn(function()
     while true do
         local found = {} 
-        -- Сначала очищаем старую подсветку перед новым поиском
+        -- Очистка старой подсветки
         for _, v in pairs(workspace:GetDescendants()) do
             if v.Name == "GenHighlight" then v:Destroy() end
         end
@@ -105,21 +117,21 @@ task.spawn(function()
         end
         table.sort(found, function(a, b) return a.value > b.value end) 
 
-        local resultText = "TOP 3 GENERATION:\n"
+        local resultText = "TOP 3 (DEBRIS TARGETS):\n"
         for i = 1, 3 do
             if found[i] then
                 resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
                 
-                -- Добавляем голубую подсветку родителю [cite: 19, 20]
-                local parent = found[i].instance.Parent
-                if parent and parent:IsA("Model") or parent:IsA("BasePart") then
+                -- Подсветка родителя с именем "Debris"
+                local debrisTarget = findDebrisParent(found[i].instance)
+                if debrisTarget then
                     local hl = Instance.new("Highlight")
                     hl.Name = "GenHighlight"
-                    hl.FillColor = Color3.fromRGB(0, 255, 255) -- Голубой
+                    hl.FillColor = Color3.fromRGB(0, 255, 255) 
                     hl.OutlineColor = Color3.new(1, 1, 1)
                     hl.FillTransparency = 0.4
-                    hl.Adornee = parent
-                    hl.Parent = parent
+                    hl.Adornee = debrisTarget
+                    hl.Parent = debrisTarget
                 end
             else 
                 resultText = resultText .. i .. ". ---\n" 
