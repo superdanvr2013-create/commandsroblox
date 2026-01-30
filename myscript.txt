@@ -37,17 +37,17 @@ local moveObjBtn = Instance.new("TextButton")
 local playerScaleTitle = Instance.new("TextLabel")
 local playerScaleInput = Instance.new("TextBox")
 local setPlayerScaleBtn = Instance.new("TextButton")
-local enableInvBtn = Instance.new("TextButton") -- НОВАЯ КНОПКА
+local enableInvBtn = Instance.new("TextButton")
 
 -- Настройки
 local speaker = game:GetService("Players").LocalPlayer
-local starterGui = game:GetService("StarterGui") -- Сервис для инвентаря
+local starterGui = game:GetService("StarterGui")
 local speeds = 1
 local nowe = false
 local noclipActive = false
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Final_V10"
+main.Name = "EliteX_Final_V11"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -56,7 +56,7 @@ Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.BorderSizePixel = 0
 Frame.Position = UDim2.new(0.05, 0, 0.05, 0)
-Frame.Size = UDim2.new(0, 260, 0, 710) -- Еще немного увеличил высоту
+Frame.Size = UDim2.new(0, 260, 0, 710)
 Frame.Active = true
 Frame.Draggable = true
 
@@ -65,7 +65,7 @@ corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = Frame
 
 title.Parent = Frame
-title.Text = "ELITEX ULTIMATE V10"
+title.Text = "ELITEX ULTIMATE V11"
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
@@ -73,23 +73,23 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 
 local function createBtn(name, text, pos, size, color)
-    local btn = Instance.new("TextButton", Frame)
-    btn.Name = name
-    btn.Text = text
-    btn.Position = pos
-    btn.Size = size
-    btn.BackgroundColor3 = color
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.BorderSizePixel = 0
-    btn.TextSize = 10
-    local c = Instance.new("UICorner", btn)
-    c.CornerRadius = UDim.new(0, 4)
-    return btn
+	local btn = Instance.new("TextButton", Frame)
+	btn.Name = name
+	btn.Text = text
+	btn.Position = pos
+	btn.Size = size
+	btn.BackgroundColor3 = color
+	btn.Font = Enum.Font.GothamSemibold
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.BorderSizePixel = 0
+	btn.TextSize = 10
+	local c = Instance.new("UICorner", btn)
+	c.CornerRadius = UDim.new(0, 4)
+	return btn
 end
 
 -------------------------------------------------------------------
--- 1. МОДУЛИ ПЕРЕМЕЩЕНИЯ
+-- КНОПКИ (Те же, что в v10)
 -------------------------------------------------------------------
 onof = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.06, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(200, 160, 0))
 up = createBtn("UpBtn", "UP", UDim2.new(0.05, 0, 0.11, 0), UDim2.new(0, 60, 0, 25), Color3.fromRGB(60, 150, 60))
@@ -111,42 +111,14 @@ tpShort = createBtn("TpShort", "DASH (2)", UDim2.new(0.05, 0, 0.22, 0), UDim2.ne
 tpLong = createBtn("TpLong", "DASH (4)", UDim2.new(0.52, 0, 0.22, 0), UDim2.new(0, 110, 0, 25), Color3.fromRGB(100, 100, 110))
 noclipBtn = createBtn("NoclipBtn", "NOCLIP: OFF", UDim2.new(0.05, 0, 0.27, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(80, 80, 80))
 
--------------------------------------------------------------------
--- 2. СКАНЕР ОБЪЕКТОВ
--------------------------------------------------------------------
-infoTitle.Parent = Frame
-infoTitle.Text = "INFO (Лучом):"
-infoTitle.Position = UDim2.new(0.05, 0, 0.32, 0)
-infoTitle.Size = UDim2.new(0.9, 0, 0, 15)
-infoTitle.BackgroundTransparency = 1
-infoTitle.TextColor3 = Color3.fromRGB(0, 255, 127)
-infoTitle.TextSize = 10
-infoTitle.TextXAlignment = Enum.TextXAlignment.Left
-
 infoBox.Parent = Frame
 infoBox.Position = UDim2.new(0.05, 0, 0.35, 0)
 infoBox.Size = UDim2.new(0.9, 0, 0, 50)
 infoBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-infoBox.Text = "..."
 infoBox.TextColor3 = Color3.fromRGB(255, 255, 0)
-infoBox.Font = Enum.Font.Code
 infoBox.TextSize = 10
-infoBox.TextWrapped = true
-infoBox.MultiLine = true
-infoBox.TextYAlignment = Enum.TextYAlignment.Top
+infoBox.Text = "EliteX Loaded..."
 Instance.new("UICorner", infoBox)
-
--------------------------------------------------------------------
--- 3. УПРАВЛЕНИЕ ЧУЖИМИ ОБЪЕКТАМИ
--------------------------------------------------------------------
-local sectionObj = Instance.new("TextLabel", Frame)
-sectionObj.Text = "OBJ MANAGER"
-sectionObj.Position = UDim2.new(0, 0, 0.44, 0)
-sectionObj.Size = UDim2.new(1, 0, 0, 20)
-sectionObj.BackgroundTransparency = 1
-sectionObj.TextColor3 = Color3.fromRGB(200, 200, 200)
-sectionObj.Font = Enum.Font.GothamBold
-sectionObj.TextSize = 11
 
 targetNameInput.Parent = Frame
 targetNameInput.PlaceholderText = "Имя объекта..."
@@ -154,169 +126,105 @@ targetNameInput.Position = UDim2.new(0.05, 0, 0.47, 0)
 targetNameInput.Size = UDim2.new(0.9, 0, 0, 25)
 targetNameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 targetNameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-targetNameInput.Text = ""
 Instance.new("UICorner", targetNameInput)
 
 destroyTargetBtn = createBtn("DestroyTarget", "УДАЛИТЬ ПО ИМЕНИ", UDim2.new(0.05, 0, 0.52, 0), UDim2.new(0.9, 0, 0, 25), Color3.fromRGB(220, 20, 60))
 
--- Resize Object
-sizeInput.Parent = Frame
-sizeInput.Position = UDim2.new(0.05, 0, 0.57, 0)
-sizeInput.Size = UDim2.new(0.3, 0, 0, 25)
-sizeInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-sizeInput.Text = "50"
-sizeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", sizeInput)
-
+sizeInput.Parent = Frame; sizeInput.Position = UDim2.new(0.05, 0, 0.57, 0); sizeInput.Size = UDim2.new(0.3, 0, 0, 25); sizeInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60); sizeInput.Text = "50"; sizeInput.TextColor3 = Color3.new(1,1,1)
 resizeBtn = createBtn("ResizeBtn", "РАЗМЕР OBJ", UDim2.new(0.4, 0, 0.57, 0), UDim2.new(0.55, 0, 0, 25), Color3.fromRGB(0, 120, 180))
 
--- Move Object
-inputX.Parent = Frame; inputX.PlaceholderText="X"; inputX.Text=""; inputX.Position=UDim2.new(0.05,0,0.62,0); inputX.Size=UDim2.new(0.2,0,0,25); inputX.BackgroundColor3=Color3.fromRGB(50,50,60); inputX.TextColor3=Color3.new(1,1,1)
-inputY.Parent = Frame; inputY.PlaceholderText="Y"; inputY.Text=""; inputY.Position=UDim2.new(0.28,0,0.62,0); inputY.Size=UDim2.new(0.2,0,0,25); inputY.BackgroundColor3=Color3.fromRGB(50,50,60); inputY.TextColor3=Color3.new(1,1,1)
-inputZ.Parent = Frame; inputZ.PlaceholderText="Z"; inputZ.Text=""; inputZ.Position=UDim2.new(0.51,0,0.62,0); inputZ.Size=UDim2.new(0.2,0,0,25); inputZ.BackgroundColor3=Color3.fromRGB(50,50,60); inputZ.TextColor3=Color3.new(1,1,1)
-Instance.new("UICorner", inputX); Instance.new("UICorner", inputY); Instance.new("UICorner", inputZ)
-
+inputX.Parent = Frame; inputX.PlaceholderText="X"; inputX.Position=UDim2.new(0.05,0,0.62,0); inputX.Size=UDim2.new(0.2,0,0,25); inputX.BackgroundColor3=Color3.fromRGB(50,50,60); inputX.TextColor3=Color3.new(1,1,1)
+inputY.Parent = Frame; inputY.PlaceholderText="Y"; inputY.Position=UDim2.new(0.28,0,0.62,0); inputY.Size=UDim2.new(0.2,0,0,25); inputY.BackgroundColor3=Color3.fromRGB(50,50,60); inputY.TextColor3=Color3.new(1,1,1)
+inputZ.Parent = Frame; inputZ.PlaceholderText="Z"; inputZ.Position=UDim2.new(0.51,0,0.62,0); inputZ.Size=UDim2.new(0.2,0,0,25); inputZ.BackgroundColor3=Color3.fromRGB(50,50,60); inputZ.TextColor3=Color3.new(1,1,1)
 moveObjBtn = createBtn("MoveObjBtn", "TP OBJ", UDim2.new(0.74, 0, 0.62, 0), UDim2.new(0.21, 0, 0, 25), Color3.fromRGB(100, 50, 150))
 
--------------------------------------------------------------------
--- 4. ХАРАКТЕРИСТИКИ ИГРОКА
--------------------------------------------------------------------
-playerScaleTitle.Parent = Frame
-playerScaleTitle.Text = "ИГРОК: РАЗМЕР И ИНВЕНТАРЬ"
-playerScaleTitle.Position = UDim2.new(0.05, 0, 0.67, 0)
-playerScaleTitle.Size = UDim2.new(0.9, 0, 0, 20)
-playerScaleTitle.BackgroundTransparency = 1
-playerScaleTitle.TextColor3 = Color3.fromRGB(255, 215, 0) 
-playerScaleTitle.Font = Enum.Font.GothamBold
-playerScaleTitle.TextSize = 11
-
-playerScaleInput.Parent = Frame
-playerScaleInput.Position = UDim2.new(0.05, 0, 0.71, 0)
-playerScaleInput.Size = UDim2.new(0.4, 0, 0, 30)
-playerScaleInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-playerScaleInput.Text = "100" 
-playerScaleInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", playerScaleInput)
-
+playerScaleInput.Parent = Frame; playerScaleInput.Position = UDim2.new(0.05, 0, 0.71, 0); playerScaleInput.Size = UDim2.new(0.4, 0, 0, 30); playerScaleInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60); playerScaleInput.Text = "100"; playerScaleInput.TextColor3 = Color3.new(1,1,1)
 setPlayerScaleBtn = createBtn("SetScaleBtn", "СМЕНИТЬ РАЗМЕР", UDim2.new(0.5, 0, 0.71, 0), UDim2.new(0.45, 0, 0, 30), Color3.fromRGB(255, 140, 0))
-
--- >>> НОВАЯ КНОПКА <<<
 enableInvBtn = createBtn("InvBtn", "ВКЛЮЧИТЬ ИНВЕНТАРЬ", UDim2.new(0.05, 0, 0.77, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(50, 150, 255))
 
 -------------------------------------------------------------------
--- ЛОГИКА
+-- НОВАЯ ЛОГИКА: АВТО-ЭКИПИРОВКА
 -------------------------------------------------------------------
 
--- ЛОГИКА ВКЛЮЧЕНИЯ ИНВЕНТАРЯ
+-- Функция принудительной экипировки
+local function handleAutoEquip(character)
+	character.ChildAdded:Connect(function(child)
+		if child:IsA("Tool") then
+			local humanoid = character:WaitForChild("Humanoid")
+			child.Parent = humanoid
+			-- Команда Humanoid:EquipTool заставляет персонажа взять инструмент в руки
+			-- Но так как он уже ВНУТРИ персонажа, мы просто убеждаемся, что он активен
+			--task.wait(0.1) -- Короткая задержка для корректной инициализации
+		--	humanoid:EquipTool(child)
+		end
+	end)
+end
+
+-- Запуск для текущего и будущих спавнов
+if speaker.Character then handleAutoEquip(speaker.Character) end
+speaker.CharacterAdded:Connect(handleAutoEquip)
+
+-------------------------------------------------------------------
+-- ОСТАЛЬНАЯ ЛОГИКА (Fly, Noclip, Objects)
+-------------------------------------------------------------------
+
 enableInvBtn.MouseButton1Click:Connect(function()
-    pcall(function()
-        starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "EliteX System",
-            Text = "Инвентарь активирован",
-            Duration = 3
-        })
-    end)
+	pcall(function() starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true) end)
 end)
 
--- ЛОГИКА РАЗМЕРА ИГРОКА
 setPlayerScaleBtn.MouseButton1Click:Connect(function()
-    local percentage = tonumber(playerScaleInput.Text)
-    if not percentage then return end
-    local scaleFactor = percentage / 100 
-    local char = speaker.Character
-    local hum = char and char:FindFirstChild("Humanoid")
-    if hum then
-        local scales = {"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}
-        local found = false
-        for _, scaleName in pairs(scales) do
-            local val = hum:FindFirstChild(scaleName)
-            if val then val.Value = scaleFactor; found = true end
-        end
-    end
+	local scaleFactor = tonumber(playerScaleInput.Text) / 100 
+	local hum = speaker.Character:FindFirstChild("Humanoid")
+	if hum then
+		for _, name in pairs({"BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale"}) do
+			local v = hum:FindFirstChild(name) if v then v.Value = scaleFactor end
+		end
+	end
 end)
 
--- ЛОГИКА ОБЪЕКТОВ
+-- Рэйкаст для инфо
 game:GetService("RunService").Heartbeat:Connect(function()
-    local char = speaker.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then
-        local params = RaycastParams.new()
-        params.FilterDescendantsInstances = {char}
-        params.FilterType = Enum.RaycastFilterType.Blacklist
-        local result = workspace:Raycast(root.Position, root.CFrame.LookVector * 5, params)
-        if result and result.Instance then
-            local obj = result.Instance
-            infoBox.Text = "OBJ: " .. obj.Name .. "\nPARENT: " .. (obj.Parent and obj.Parent.Name or "None")
-        end
-    end
+	local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+	if root then
+		local result = workspace:Raycast(root.Position, root.CFrame.LookVector * 5)
+		if result and result.Instance then
+			infoBox.Text = "OBJ: " .. result.Instance.Name .. "\nPARENT: " .. result.Instance.Parent.Name
+		end
+	end
 end)
 
-local function modifyObject(action)
-    local targetName = targetNameInput.Text
-    if targetName == "" then return end
-    local count = 0
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name == targetName and v:IsA("BasePart") then
-            if action == "destroy" then
-                v:Destroy(); count = count + 1
-            elseif action == "resize" then
-                local s = tonumber(sizeInput.Text)
-                if s then v.Size = Vector3.new(s, s, s); v.CanCollide = false; count = count + 1 end
-            elseif action == "move" then
-                local x, y, z = tonumber(inputX.Text), tonumber(inputY.Text), tonumber(inputZ.Text)
-                if x and y and z then v.Position = Vector3.new(x, y, z); v.Anchored = true; count = count + 1 end
-            end
-        end
-    end
+-- Функции кнопок (упрощено)
+local function modify(a)
+	local target = targetNameInput.Text
+	for _, v in pairs(workspace:GetDescendants()) do
+		if v.Name == target and v:IsA("BasePart") then
+			if a == "d" then v:Destroy()
+			elseif a == "r" then v.Size = Vector3.new(tonumber(sizeInput.Text), tonumber(sizeInput.Text), tonumber(sizeInput.Text))
+			elseif a == "m" then v.Position = Vector3.new(tonumber(inputX.Text), tonumber(inputY.Text), tonumber(inputZ.Text))
+			end
+		end
+	end
 end
 
-destroyTargetBtn.MouseButton1Click:Connect(function() modifyObject("destroy") end)
-resizeBtn.MouseButton1Click:Connect(function() modifyObject("resize") end)
-moveObjBtn.MouseButton1Click:Connect(function() modifyObject("move") end)
+destroyTargetBtn.MouseButton1Click:Connect(function() modify("d") end)
+resizeBtn.MouseButton1Click:Connect(function() modify("r") end)
+moveObjBtn.MouseButton1Click:Connect(function() modify("m") end)
 
--- FLY, DASH, NOCLIP
-local function dash(dist)
-    if speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart") then
-        speaker.Character.HumanoidRootPart.CFrame += speaker.Character.HumanoidRootPart.CFrame.LookVector * dist
-    end
-end
-tpShort.MouseButton1Click:Connect(function() dash(2) end)
-tpLong.MouseButton1Click:Connect(function() dash(4) end)
-
-noclipBtn.MouseButton1Click:Connect(function()
-    noclipActive = not noclipActive
-    noclipBtn.Text = noclipActive and "NOCLIP: ON" or "NOCLIP: OFF"
-    noclipBtn.BackgroundColor3 = noclipActive and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(80, 80, 80)
-end)
+-- Стандартное управление
+noclipBtn.MouseButton1Click:Connect(function() noclipActive = not noclipActive end)
 game:GetService("RunService").Stepped:Connect(function()
-    if noclipActive and speaker.Character then
-        for _, v in pairs(speaker.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-    end
+	if noclipActive and speaker.Character then
+		for _, v in pairs(speaker.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+	end
 end)
-onof.MouseButton1Click:Connect(function()
-    nowe = not nowe
-    onof.Text = nowe and "FLY: ON" or "FLY: OFF"
-    onof.BackgroundColor3 = nowe and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(200, 160, 0)
-    if not nowe and speaker.Character then speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics) end
-end)
+onof.MouseButton1Click:Connect(function() nowe = not nowe end)
 task.spawn(function()
-    while true do
-        game:GetService("RunService").Heartbeat:Wait()
-        if nowe and speaker.Character and speaker.Character.Humanoid.MoveDirection.Magnitude > 0 then
-            speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
-        end
-    end
+	while true do
+		game:GetService("RunService").Heartbeat:Wait()
+		if nowe and speaker.Character then speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds) end
+	end
 end)
 plus.MouseButton1Click:Connect(function() speeds += 1 flySpeedDisplay.Text = "SPD: "..speeds end)
-mine.MouseButton1Click:Connect(function() if speeds > 1 then speeds -= 1 flySpeedDisplay.Text = "SPD: "..speeds end end)
+mine.MouseButton1Click:Connect(function() speeds -= 1 flySpeedDisplay.Text = "SPD: "..speeds end)
 
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
-mini.MouseButton1Click:Connect(function()
-    for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = false end end
-    title.Visible = true; mini2.Visible = true; Frame.BackgroundTransparency = 1; Frame.Size = UDim2.new(0, 260, 0, 30)
-end)
-mini2.MouseButton1Click:Connect(function()
-    for _, v in pairs(Frame:GetChildren()) do if v:IsA("GuiObject") then v.Visible = true end end
-    mini2.Visible = false; Frame.BackgroundTransparency = 0; Frame.Size = UDim2.new(0, 260, 0, 710)
-end)
