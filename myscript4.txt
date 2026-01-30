@@ -1,0 +1,210 @@
+-- Сервисы
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+local speaker = Players.LocalPlayer
+
+-- Защита от повторного запуска (удаляем старый GUI если есть)
+if game.CoreGui:FindFirstChild("EliteX_Prompt_Interceptor") then
+    game.CoreGui.EliteX_Prompt_Interceptor:Destroy()
+end
+
+-- Создание GUI
+local main = Instance.new("ScreenGui")
+main.Name = "EliteX_Prompt_Interceptor"
+-- Пытаемся поместить в CoreGui для скрытности, иначе в PlayerGui
+pcall(function() main.Parent = CoreGui end)
+if not main.Parent then main.Parent = speaker:WaitForChild("PlayerGui") end
+
+local Frame = Instance.new("Frame")
+Frame.Name = "MainFrame"
+Frame.Parent = main
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+Frame.Position = UDim2.new(0.5, -160, 0.5, -150) -- Центр
+Frame.Size = UDim2.new(0, 320, 0, 350)
+Frame.Active = true
+Frame.Draggable = true
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+
+-- Заголовок
+local title = Instance.new("TextLabel")
+title.Parent = Frame
+title.Text = "PROXIMITY INTERCEPTOR"
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+title.TextColor3 = Color3.fromRGB(255, 100, 100)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+Instance.new("UICorner", title)
+
+-- Поле ввода пути
+local pathLabel = Instance.new("TextLabel", Frame)
+pathLabel.Text = "TARGET PATH (Object or Prompt):"
+pathLabel.Position = UDim2.new(0.05, 0, 0.12, 0)
+pathLabel.Size = UDim2.new(0.9, 0, 0, 20)
+pathLabel.BackgroundTransparency = 1
+pathLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+pathLabel.Font = Enum.Font.Code
+pathLabel.TextSize = 11
+pathLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local pathBox = Instance.new("TextBox", Frame)
+pathBox.PlaceholderText = "Workspace.Folder.Part..."
+pathBox.Text = ""
+pathBox.Position = UDim2.new(0.05, 0, 0.18, 0)
+pathBox.Size = UDim2.new(0.9, 0, 0, 35)
+pathBox.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+pathBox.TextColor3 = Color3.fromRGB(255, 255, 0)
+pathBox.Font = Enum.Font.Code
+pathBox.TextSize = 11
+pathBox.ClearTextOnFocus = false
+pathBox.TextWrapped = true
+Instance.new("UICorner", pathBox)
+
+-- Кнопка активации (GUI)
+local fireBtn = Instance.new("TextButton", Frame)
+fireBtn.Text = "FIRE PROMPT (Press E)"
+fireBtn.Position = UDim2.new(0.05, 0, 0.32, 0)
+fireBtn.Size = UDim2.new(0.9, 0, 0, 35)
+fireBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+fireBtn.TextColor3 = Color3.new(1, 1, 1)
+fireBtn.Font = Enum.Font.GothamBold
+fireBtn.TextSize = 12
+Instance.new("UICorner", fireBtn)
+
+-- Окно логов (вывод того, что "отправлено")
+local logLabel = Instance.new("TextLabel", Frame)
+logLabel.Text = "OUTGOING SIGNAL LOGS:"
+logLabel.Position = UDim2.new(0.05, 0, 0.45, 0)
+logLabel.Size = UDim2.new(0.9, 0, 0, 20)
+logLabel.BackgroundTransparency = 1
+logLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+logLabel.Font = Enum.Font.Code
+logLabel.TextSize = 11
+logLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local logScroll = Instance.new("ScrollingFrame", Frame)
+logScroll.Position = UDim2.new(0.05, 0, 0.52, 0)
+logScroll.Size = UDim2.new(0.9, 0, 0.45, 0)
+logScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+logScroll.ScrollBarThickness = 4
+Instance.new("UICorner", logScroll)
+
+local logBox = Instance.new("TextBox", logScroll)
+logBox.Size = UDim2.new(1, 0, 1, 0)
+logBox.BackgroundTransparency = 1
+logBox.TextColor3 = Color3.fromRGB(0, 255, 120)
+logBox.TextSize = 10
+logBox.Font = Enum.Font.Code
+logBox.TextXAlignment = Enum.TextXAlignment.Left
+logBox.TextYAlignment = Enum.TextYAlignment.Top
+logBox.MultiLine = true
+logBox.TextEditable = false
+logBox.ClearTextOnFocus = false
+logBox.Text = "Waiting for input..."
+logBox.TextWrapped = true
+
+-- Кнопка закрытия
+local closeBtn = Instance.new("TextButton", Frame)
+closeBtn.Text = "X"
+closeBtn.Position = UDim2.new(0.92, 0, 0, 0)
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.MouseButton1Click:Connect(function() main:Destroy() end)
+
+-------------------------------------------------------------------
+-- ЛОГИКА
+-------------------------------------------------------------------
+
+local function log(text)
+    local timeStr = os.date("%H:%M:%S")
+    logBox.Text = "[" .. timeStr .. "] " .. text .. "\n----------------\n" .. logBox.Text
+end
+
+-- Функция парсинга пути из строки
+local function getObjectFromPath(pathStr)
+    if pathStr == "" then return nil, "Empty Path" end
+    
+    -- Чистим пробелы
+    pathStr = pathStr:match("^%s*(.-)%s*$")
+    
+    local segments = {}
+    for s in pathStr:gmatch("[^%.%>%/]+") do -- Разделители: . > /
+        table.insert(segments, s:match("^%s*(.-)%s*$"))
+    end
+    
+    local current = game
+    for i, name in ipairs(segments) do
+        if i == 1 and (name:lower() == "game" or name:lower() == "workspace") then
+            if name:lower() == "workspace" then current = workspace end
+        else
+            if not current then return nil, "Broken path at step " .. i end
+            local nextObj = current:FindFirstChild(name)
+            if not nextObj then return nil, "Child not found: " .. name end
+            current = nextObj
+        end
+    end
+    return current, "Found"
+end
+
+local function activatePrompt()
+    local pathText = pathBox.Text
+    local target, status = getObjectFromPath(pathText)
+    
+    if not target then
+        log("Error: " .. status)
+        return
+    end
+
+    -- Проверяем, это сам Prompt или объект, содержащий Prompt
+    local promptToFire = nil
+    
+    if target:IsA("ProximityPrompt") then
+        promptToFire = target
+    else
+        -- Ищем внутри объекта
+        promptToFire = target:FindFirstChildWhichIsA("ProximityPrompt")
+    end
+    
+    if promptToFire then
+        -- Проверяем наличие функции эксплойта
+        if fireproximityprompt then
+            fireproximityprompt(promptToFire)
+            
+            -- Эмуляция лога отправки данных
+            local info = string.format(
+                "SIGNAL SENT >> SERVER\nObject: %s\nPrompt: %s\nActionText: %s\nInputEnum: %s",
+                target.Name,
+                promptToFire.Name,
+                promptToFire.ActionText,
+                tostring(promptToFire.KeyboardKeyCode)
+            )
+            log(info)
+        else
+            -- Фоллбэк для обычных скриптов (не будет работать дистанционно)
+            log("WARNING: 'fireproximityprompt' not supported on this executor/studio. Teleporting to interact manually...")
+            if speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart") and target:IsA("BasePart") then
+                 speaker.Character.HumanoidRootPart.CFrame = target.CFrame
+            end
+        end
+    else
+        log("Error: No ProximityPrompt found in " .. target.Name)
+    end
+end
+
+-- Обработка нажатия кнопки в GUI
+fireBtn.MouseButton1Click:Connect(activatePrompt)
+
+-- Обработка нажатия клавиши E
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end -- Игнорируем если пишем в чат
+    
+    if input.KeyCode == Enum.KeyCode.E then
+        -- Проверяем, есть ли что-то в поле ввода
+        if pathBox.Text ~= "" then
+            activatePrompt()
+        end
+    end
+end)
