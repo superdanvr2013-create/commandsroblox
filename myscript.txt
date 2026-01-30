@@ -1,4 +1,4 @@
--- Инициализация сервисов
+-- Сервисы
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -14,73 +14,85 @@ local espActive = false
 local targetSpeed = 50
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
-main.Name = "EliteX_Scanner_V21"
+main.Name = "EliteX_Final_V22"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
 Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-Frame.Position = UDim2.new(0.05, 0, 0.1, 0)
-Frame.Size = UDim2.new(0, 280, 0, 500)
+Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+Frame.Size = UDim2.new(0, 260, 0, 380)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame)
 
 title.Parent = Frame
-title.Text = "ELITEX MINI-TEXT SCANNER"
+title.Text = "TOP 3 GENERATION"
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.TextColor3 = Color3.fromRGB(255, 215, 0)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 Instance.new("UICorner", title)
 
--- ОКНО ВЫВОДА
-local scroll = Instance.new("ScrollingFrame", Frame)
-scroll.Size = UDim2.new(0.94, 0, 0, 280)
-scroll.Position = UDim2.new(0.03, 0, 0.4, 0)
-scroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-scroll.ScrollBarThickness = 4
-scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-
-local logBox = Instance.new("TextBox", scroll)
-logBox.Size = UDim2.new(1, 0, 1, 0)
-logBox.BackgroundTransparency = 1
-logBox.TextColor3 = Color3.new(1, 1, 1)
-logBox.TextSize = 12
-logBox.Font = Enum.Font.Code
-logBox.TextXAlignment = Enum.TextXAlignment.Left
-logBox.TextYAlignment = Enum.TextYAlignment.Top
-logBox.MultiLine = true
-logBox.TextEditable = false
-logBox.Text = "Scanning for short texts..."
+local topBox = Instance.new("TextLabel", Frame)
+topBox.Size = UDim2.new(0.9, 0, 0, 100)
+topBox.Position = UDim2.new(0.05, 0, 0.7, 0)
+topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+topBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+topBox.TextSize = 14
+topBox.Font = Enum.Font.Code
+topBox.Text = "Searching..."
+Instance.new("UICorner", topBox)
 
 -------------------------------------------------------------------
--- ЛОГИКА ФИЛЬТРАЦИИ ТЕКСТА
+-- ЛОГИКА ПАРСИНГА И СОРТИРОВКИ
 -------------------------------------------------------------------
 
-local function hasTextProperty(obj)
-    local success, _ = pcall(function() return obj.Text end)
-    return success
+local function getNumericValue(text)
+    -- Извлекаем число и суффикс (M или B)
+    local valStr, suffix = text:match("([%d%.]+)([MB])")
+    if valStr and suffix then
+        local num = tonumber(valStr)
+        if suffix == "M" then return num * 1e6 end
+        if suffix == "B" then return num * 1e9 end
+    end
+    return 0
 end
 
 task.spawn(function()
     while true do
-        local logs = {}
-        -- Сканируем workspace
+        local found = {}
+        
         for _, v in pairs(workspace:GetDescendants()) do
-            if hasTextProperty(v) then
-                local content = v.Text
-                -- УСЛОВИЕ: Длина текста не более 10 символов и текст не пустой
-                if #content > 0 and #content <= 10 then
-                    table.insert(logs, v.Name .. " : " .. content)
+            -- Условие: Имя "Generation" и наличие свойства Text
+            if v.Name == "Generation" then
+                local success, text = pcall(function() return v.Text end)
+                if success and text then
+                    local numeric = getNumericValue(text)
+                    -- Фильтр: 10M и выше
+                    if numeric >= 10000000 then
+                        table.insert(found, {original = text, value = numeric})
+                    end
                 end
             end
         end
         
-        logBox.Text = table.concat(logs, "\n")
-        scroll.CanvasSize = UDim2.new(0, 0, 0, logBox.TextBounds.Y + 10)
+        -- Сортировка по убыванию
+        table.sort(found, function(a, b) return a.value > b.value end)
+        
+        -- Вывод только ТОП-3
+        local resultText = ""
+        for i = 1, 3 do
+            if found[i] then
+                resultText = resultText .. i .. ". " .. found[i].original .. "\n"
+            else
+                resultText = resultText .. i .. ". ---\n"
+            end
+        end
+        
+        topBox.Text = resultText
         task.wait(3)
     end
 end)
@@ -91,58 +103,44 @@ end)
 
 local function createBtn(text, pos, color, func)
     local btn = Instance.new("TextButton", Frame)
-    btn.Text = text
-    btn.Position = pos
-    btn.Size = UDim2.new(0.9, 0, 0, 30)
-    btn.BackgroundColor3 = color
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = text; btn.Position = pos
+    btn.Size = UDim2.new(0.9, 0, 0, 35); btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.GothamSemibold
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(func)
     return btn
 end
 
-createBtn("ESP: PLAYERS", UDim2.new(0.05, 0, 0.08, 0), Color3.fromRGB(60, 60, 70), function()
+createBtn("ESP: PLAYERS", UDim2.new(0.05, 0, 0.12, 0), Color3.fromRGB(60, 60, 70), function()
     espActive = not espActive
 end)
 
-createBtn("SPEED LOCK (50)", UDim2.new(0.05, 0, 0.15, 0), Color3.fromRGB(100, 40, 150), function()
+createBtn("SPEED LOCK (50)", UDim2.new(0.05, 0, 0.23, 0), Color3.fromRGB(100, 40, 150), function()
     speedLockActive = not speedLockActive
 end)
 
-createBtn("AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.22, 0), Color3.fromRGB(0, 120, 200), function()
-    local char = speaker.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local p = Instance.new("Part", workspace)
-        p.Size = Vector3.new(8, 1, 8); p.Anchored = true; p.Transparency = 0.5; p.Material = Enum.Material.ForceField
-        p.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
-        game:GetService("Debris"):AddItem(p, 1)
+-- Air Jump (L-CTRL)
+UserInputService.InputBegan:Connect(function(i, p)
+    if not p and i.KeyCode == Enum.KeyCode.LeftControl then
+        local char = speaker.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local part = Instance.new("Part", workspace)
+            part.Size = Vector3.new(8, 1, 8); part.Anchored = true; part.Material = Enum.Material.ForceField
+            part.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
+            game:GetService("Debris"):AddItem(part, 1)
+        end
     end
 end)
 
--- Системные циклы
 RunService.Heartbeat:Connect(function()
     if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
         speaker.Character.Humanoid.WalkSpeed = targetSpeed
     end
-    
     if espActive then
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= speaker and p.Character and not p.Character:FindFirstChild("EliteHighlight") then
                 Instance.new("Highlight", p.Character).Name = "EliteHighlight"
             end
-        end
-    end
-end)
-
-UserInputService.InputBegan:Connect(function(i, p)
-    if not p and i.KeyCode == Enum.KeyCode.LeftControl then
-        local char = speaker.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local p = Instance.new("Part", workspace)
-            p.Size = Vector3.new(8, 1, 8); p.Anchored = true; p.Transparency = 0.5; p.Material = Enum.Material.ForceField
-            p.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3.5, 0)
-            game:GetService("Debris"):AddItem(p, 1)
         end
     end
 end)
