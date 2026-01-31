@@ -15,6 +15,7 @@ local isAnchored = false
 local targetSpeed = 50 
 local speeds = 1 
 local nowe = false 
+local backpackVisible = true -- По умолчанию инвентарь включен
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
 main.Name = "EliteX_Final_V23" 
@@ -52,6 +53,9 @@ local function createBtn(name, text, pos, size, color)
     return btn
 end
 
+-- 6. Toggle Backpack (Y: 0.50)
+local backpackBtn = createBtn("BackpackBtn", "BACKPACK: ON", UDim2.new(0.05, 0, 0.48, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 120, 100))
+
 -------------------------------------------------------------------
 -- КНОПКИ УПРАВЛЕНИЯ (С четким распределением позиций)
 -------------------------------------------------------------------
@@ -70,39 +74,21 @@ local flyBtn = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.32, 0), U
 -- 5. ANCHORED (Y: 0.42) - ТЕПЕРЬ ОНА ТОЧНО ВИДИМА
 local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", UDim2.new(0.05, 0, 0.40, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(40, 40, 45))
 
--- 6. Get Tools (Y: 0.50)
-local getToolsBtn = createBtn("GetToolsBtn", "RESTORE TOOLS", UDim2.new(0.05, 0, 0.48, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 120, 100))
-
 -------------------------------------------------------------------
--- ЛОГИКА ПОЛУЧЕНИЯ ИНСТРУМЕНТОВ
+-- ЛОГИКА ВКЛЮЧЕНИЯ/ВЫКЛЮЧЕНИЯ ИНВЕНТАРЯ
 -------------------------------------------------------------------
-getToolsBtn.MouseButton1Click:Connect(function()
-    local backpack = speaker:FindFirstChild("Backpack")
-    
-    -- Функция для безопасного копирования
-    local function giveTools(parent)
-        for _, item in pairs(parent:GetDescendants()) do
-            if item:IsA("Tool") then
-                local copy = item:Clone()
-                copy.Parent = backpack
-            end
-        end
-    end
+local StarterGui = game:GetService("StarterGui")
 
-    -- Поиск инструментов в стандартных местах
-    if game:GetService("StarterPack") then
-        giveTools(game:GetService("StarterPack"))
-    end
+backpackBtn.MouseButton1Click:Connect(function()
+    -- Переключаем состояние 
+    backpackVisible = not backpackVisible
     
-    -- Попытка найти инструменты в ReplicatedStorage (часто используются в симуляторах)
-    if game:GetService("ReplicatedStorage") then
-        giveTools(game:GetService("ReplicatedStorage"))
-    end
+    -- Устанавливаем видимость CoreGui
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, backpackVisible)
     
-    -- Визуальный отклик кнопки
-    getToolsBtn.Text = "TOOLS RESTORED!"
-    task.wait(1)
-    getToolsBtn.Text = "RESTORE TOOLS"
+    -- Обновляем текст и цвет кнопки для наглядности 
+    backpackBtn.Text = backpackVisible and "BACKPACK: ON" or "BACKPACK: OFF"
+    backpackBtn.BackgroundColor3 = backpackVisible and Color3.fromRGB(0, 120, 100) or Color3.fromRGB(40, 40, 45)
 end)
 
 -------------------------------------------------------------------
