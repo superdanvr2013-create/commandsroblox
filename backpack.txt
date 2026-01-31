@@ -55,7 +55,8 @@ end
 
 -- 6. Toggle Backpack (Y: 0.50)
 local backpackBtn = createBtn("BackpackBtn", "BACKPACK: ON", UDim2.new(0.05, 0, 0.48, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 120, 100))
-
+-- 7. Swap Tool (Y: 0.58)
+local swapBtn = createBtn("SwapBtn", "SWAP: BAT -> CARPET", UDim2.new(0.05, 0, 0.56, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(180, 70, 0))
 -------------------------------------------------------------------
 -- КНОПКИ УПРАВЛЕНИЯ (С четким распределением позиций)
 -------------------------------------------------------------------
@@ -73,6 +74,53 @@ local flyBtn = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.32, 0), U
 
 -- 5. ANCHORED (Y: 0.42) - ТЕПЕРЬ ОНА ТОЧНО ВИДИМА
 local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", UDim2.new(0.05, 0, 0.40, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(40, 40, 45))
+
+-------------------------------------------------------------------
+-- ЛОГИКА ЗАМЕНЫ ИНСТРУМЕНТА (SWAP)
+-------------------------------------------------------------------
+swapBtn.MouseButton1Click:Connect(function()
+    local char = speaker.Character
+    local bp = speaker:WaitForChild("Backpack")
+    
+    -- 1. Удаление Bat (из рук или рюкзака)
+    local oldTool = bp:FindFirstChild("Bat") or (char and char:FindFirstChild("Bat"))
+    if oldTool then
+        oldTool:Destroy()
+        print("[ELITEX]: Bat removed.") [cite: 12]
+    end
+
+    -- 2. Поиск Flying Carpet (если его нет в инвентаре)
+    local carpet = bp:FindFirstChild("Flying Carpet") or (char and char:FindFirstChild("Flying Carpet"))
+    
+    if not carpet then
+        -- Ищем в ReplicatedStorage, StarterPack или Lighting (частое место для хранения)
+        local searchContainers = {game:GetService("ReplicatedStorage"), game:GetService("StarterPack"), game:GetService("Lighting")}
+        
+        for _, container in pairs(searchContainers) do
+            local found = container:FindFirstChild("Flying Carpet", true) -- true для рекурсивного поиска
+            if found and found:IsA("Tool") then
+                carpet = found:Clone()
+                carpet.Parent = bp
+                break
+            end
+        end
+    end
+
+    -- 3. Вывод результата
+    if carpet then
+        local path = carpet:GetFullName() [cite: 7]
+        local info = "Swapped to: " .. carpet.Name .. " | Path: " .. path
+        
+        print("[ELITEX]: " .. info) [cite: 12]
+        topBox.Text = info [cite: 5, 12]
+        swapBtn.Text = "SWAP SUCCESS"
+        task.wait(1)
+        swapBtn.Text = "SWAP: BAT -> CARPET"
+    else
+        topBox.Text = "ERROR: Flying Carpet not found in game storage!" [cite: 12]
+        warn("[ELITEX]: Could not find Flying Carpet in any accessible service.")
+    end
+end)
 
 -------------------------------------------------------------------
 -- ЛОГИКА ИНВЕНТАРЯ: ПЕРЕКЛЮЧЕНИЕ И ЛИСТИНГ
