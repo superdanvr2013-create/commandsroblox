@@ -1,0 +1,150 @@
+-- Modern Simple Remote Spy for Xeno
+-- Features: Toggle Button, TextBox Log, Console Print
+-- Logs: Path, Name, Arguments
+
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- 1. Create the UI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "XenoSpy_Adapted"
+if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end -- Safety for Synapse/compatible
+ScreenGui.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 400, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Text = "Xeno Remote Spy"
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+Title.Parent = MainFrame
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "ToggleSpy"
+ToggleBtn.Size = UDim2.new(0, 100, 0, 25)
+ToggleBtn.Position = UDim2.new(0, 5, 0, 35)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Green for ON
+ToggleBtn.Text = "SPY: ON"
+ToggleBtn.TextColor3 = Color3.white
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.TextSize = 14
+ToggleBtn.Parent = MainFrame
+
+local ClearBtn = Instance.new("TextButton")
+ClearBtn.Size = UDim2.new(0, 100, 0, 25)
+ClearBtn.Position = UDim2.new(0, 110, 0, 35)
+ClearBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+ClearBtn.Text = "Clear Logs"
+ClearBtn.TextColor3 = Color3.white
+ClearBtn.Font = Enum.Font.SourceSansBold
+ClearBtn.TextSize = 14
+ClearBtn.Parent = MainFrame
+
+local LogBox = Instance.new("TextBox")
+LogBox.Name = "LogOutput"
+LogBox.Size = UDim2.new(1, -10, 1, -70)
+LogBox.Position = UDim2.new(0, 5, 0, 65)
+LogBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+LogBox.TextColor3 = Color3.fromRGB(0, 255, 0)
+LogBox.TextXAlignment = Enum.TextXAlignment.Left
+LogBox.TextYAlignment = Enum.TextYAlignment.Top
+LogBox.Text = "-- Remote Logs will appear here --\n"
+LogBox.ClearTextOnFocus = false
+LogBox.MultiLine = true
+LogBox.Font = Enum.Font.Code
+LogBox.TextSize = 12
+LogBox.Parent = MainFrame
+
+-- 2. Logic Variables
+local SpyEnabled = true
+local OriginalNamecall
+
+-- 3. Utility Function to format arguments
+local function FormatArgs(args)
+    local result = {}
+    for _, v in pairs(args) do
+        if type(v) == "string" then
+            table.insert(result, '"' .. v .. '"')
+        elseif type(v) == "table" then
+            table.insert(result, "Check Console (Table)") -- Simplified for TextBox
+        elseif type(v) == "Instance" then
+            table.insert(result, v.Name)
+        else
+            table.insert(result, tostring(v))
+        end
+    end
+    return table.concat(result, ", ")
+end
+
+local function LogRemote(remote, method, args)
+    if not SpyEnabled then return end
+    
+    -- Filter out common spam (optional)
+    if remote.Name == "CharacterSoundEvent" then return end
+
+    local timestamp = os.date("%X")
+    local argsString = FormatArgs(args)
+    local fullPath = remote:GetFullName()
+    
+    -- GUI Output
+    local logEntry = string.format("[%s] %s\nPath: %s\nArgs: %s\n----------------\n", timestamp, method, fullPath, argsString)
+    LogBox.Text = logEntry .. LogBox.Text
+    
+    -- Console Output (More detailed)
+    print("--- Remote Fired ---")
+    print("Name:", remote.Name)
+    print("Path:", fullPath)
+    print("Method:", method)
+    print("Arguments:", args) -- Prints actual table structure to console
+    print("--------------------")
+end
+
+-- 4. Button Connections
+ToggleBtn.MouseButton1Click:Connect(function()
+    SpyEnabled = not SpyEnabled
+    if SpyEnabled then
+        ToggleBtn.Text = "SPY: ON"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    else
+        ToggleBtn.Text = "SPY: OFF"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+    end
+end)
+
+ClearBtn.MouseButton1Click:Connect(function()
+    LogBox.Text = ""
+end)
+
+-- 5. The Hook (Modern Method)
+local metatable = getrawmetatable(game)
+setreadonly(metatable, false)
+
+local oldNamecall = metatable.__namecall
+
+metatable.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if SpyEnabled and (method == "FireServer" or method == "InvokeServer") then
+        -- We wrap in pcall so the game doesn't crash if logging fails
+        pcall(function()
+            LogRemote(self, method, args)
+        end)
+    end
+    
+    return oldNamecall(self, ...)
+end)
+
+setreadonly(metatable, true)
