@@ -1,48 +1,13 @@
--- Убираем все зависимости от GUI. Только чистые данные в консоль.
-print("!!! DEBUG: СКРИПТ ЗАПУЩЕН !!!")
+local sg = Instance.new("ScreenGui")
+sg.Parent = game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 
--- Функция для получения пути объекта
-local function getPath(obj)
-    local success, result = pcall(function()
-        return obj:GetFullName()
-    end)
-    return success and result or "UnknownPath"
-end
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 200)
+frame.Position = UDim2.new(0.5, -100, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+frame.Parent = sg
 
--- Функция для превращения таблицы аргументов в текст
-local function serialize(t)
-    local str = "{"
-    for i, v in pairs(t) do
-        str = str .. tostring(i) .. "=" .. tostring(v) .. "; "
-    end
-    return str .. "}"
-end
-
--- Основной обработчик
-local function logRemote(self, method, ...)
-    local args = {...}
-    local path = getPath(self)
-    -- Печать в консоль (F9 -> Log -> Client)
-    warn(string.format("[SPY] %s | %s | Args: %s", method, path, serialize(args)))
-end
-
--- Хук метаметода __namecall (самый важный)
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    
-    if method == "FireServer" or method == "InvokeServer" then
-        logRemote(self, method, ...)
-    end
-    
-    return oldNamecall(self, ...)
-end)
-
--- Хук функций напрямую (запасной вариант)
-local oldFire
-oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
-    logRemote(self, "FireServer", ...)
-    return oldFire(self, ...)
-end)
-
-print("!!! ШПИОН АКТИВИРОВАН. СМОТРИТЕ F9 !!!")
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1, 0, 1, 0)
+label.Text = "XENO РАБОТАЕТ"
+label.Parent = frame
