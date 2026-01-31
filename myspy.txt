@@ -1,13 +1,225 @@
-local sg = Instance.new("ScreenGui")
-sg.Parent = game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+-- EliteX V23 + REMOTE SPY INTEGRATED
+-- Сервисы
+local Players = game:GetService("Players") 
+local UserInputService = game:GetService("UserInputService") 
+local RunService = game:GetService("RunService") 
+local TextService = game:GetService("TextService")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 200)
-frame.Position = UDim2.new(0.5, -100, 0.5, -100)
-frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-frame.Parent = sg
+local speaker = Players.LocalPlayer 
+local main = Instance.new("ScreenGui") 
+local Frame = Instance.new("Frame") 
+local title = Instance.new("TextLabel") 
 
-local label = Instance.new("TextLabel")
-label.Size = UDim2.new(1, 0, 1, 0)
-label.Text = "XENO РАБОТАЕТ"
-label.Parent = frame
+-- Настройки
+local speedLockActive = false 
+local espActive = false 
+local targetSpeed = 50 
+local speeds = 1 
+local nowe = false 
+
+-- ГЛАВНЫЙ ИНТЕРФЕЙС
+main.Name = "EliteX_Spy_Edition" 
+main.Parent = speaker:WaitForChild("PlayerGui")
+main.ResetOnSpawn = false
+
+Frame.Name = "MainFrame" 
+Frame.Parent = main 
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30) 
+Frame.Position = UDim2.new(0.05, 0, 0.05, 0) 
+Frame.Size = UDim2.new(0, 300, 0, 580) 
+Frame.Active = true 
+Frame.Draggable = true 
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
+
+title.Parent = Frame 
+title.Text = "ELITEX V23 (REMOTE SPY)" 
+title.Size = UDim2.new(1, 0, 0, 35) 
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 50) 
+title.TextColor3 = Color3.fromRGB(0, 255, 127) 
+title.Font = Enum.Font.GothamBold 
+title.TextSize = 14 
+
+-------------------------------------------------------------------
+-- БЛОК ВЫВОДА SPY (Центральный)
+-------------------------------------------------------------------
+local spyBox = Instance.new("ScrollingFrame", Frame)
+spyBox.Size = UDim2.new(0.9, 0, 0, 180)
+spyBox.Position = UDim2.new(0.05, 0, 0.42, 0)
+spyBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+spyBox.BorderSizePixel = 0
+spyBox.CanvasSize = UDim2.new(0, 0, 10, 0) -- Большой размер для длинных логов
+spyBox.ScrollBarThickness = 4
+Instance.new("UICorner", spyBox)
+
+local spyList = Instance.new("UIListLayout", spyBox)
+spyList.SortOrder = Enum.SortOrder.LayoutOrder
+spyList.Padding = UDim.new(0, 2)
+
+local function addSpyLog(text, isError)
+    local l = Instance.new("TextLabel", spyBox)
+    l.Size = UDim2.new(1, -10, 0, 20)
+    l.BackgroundTransparency = 1
+    l.TextColor3 = isError and Color3.new(1, 0.3, 0.3) or Color3.new(0.8, 0.8, 0.8)
+    l.TextSize = 10
+    l.Font = Enum.Font.Code
+    l.Text = "[" .. os.date("%X") .. "] " .. text
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- Скролл вниз при новом сообщении
+    spyBox.CanvasPosition = Vector2.new(0, spyBox.CanvasPosition.Y + 22)
+end
+
+-------------------------------------------------------------------
+-- ЛОГИКА ПЕРЕХВАТА (HOOKS)
+-------------------------------------------------------------------
+local function getPath(obj)
+    local success, result = pcall(function() return obj:GetFullName() end)
+    return success and result or "Unknown"
+end
+
+local function trackRemote(remote, method, ...)
+    local path = getPath(remote)
+    local args = {...}
+    
+    -- Вывод в GUI
+    addSpyLog(method .. ": " .. remote.Name)
+    
+    -- Детальный вывод в F9 (Console)
+    print("--------------------------------")
+    warn("[REMOTE DETECTED]")
+    print("Method: " .. method)
+    print("Path: " .. path)
+    print("Args: ", args)
+end
+
+local function applyHooks()
+    -- Перехват __namecall
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if method == "FireServer" or method == "InvokeServer" then
+            trackRemote(self, method, ...)
+        end
+        return oldNamecall(self, ...)
+    end)
+
+    -- Перехват прямой функции FireServer
+    local oldFire
+    oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
+        trackRemote(self, "FireServer (Direct)", ...)
+        return oldFire(self, ...)
+    end)
+
+    addSpyLog("SYSTEM: Hooks Active", false)
+end
+
+-- Безопасный запуск хуков
+local h_success, h_err = pcall(applyHooks)
+if not h_success then
+    addSpyLog("SYSTEM: Hook Error (Xeno Issue)", true)
+    warn("Hook Error: " .. tostring(h_err))
+end
+
+-------------------------------------------------------------------
+-- КНОПКИ И ФУНКЦИИ (ВАШ ОРИГИНАЛЬНЫЙ КОД)
+-------------------------------------------------------------------
+local function createBtn(name, text, pos, size, color)
+    local btn = Instance.new("TextButton", Frame)
+    btn.Name = name; btn.Text = text; btn.Position = pos; btn.Size = size 
+    btn.BackgroundColor3 = color; btn.Font = Enum.Font.GothamSemibold 
+    btn.TextColor3 = Color3.new(1,1,1); btn.TextSize = 10 
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4) 
+    return btn
+end
+
+local espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.08, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(80, 80, 80))
+local jumpBtn = createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.15, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(0, 150, 255))
+local speedBtn = createBtn("SpeedBtn", "SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.22, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(120, 40, 200))
+local flyBtn = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.29, 0), UDim2.new(0.9, 0, 0, 30), Color3.fromRGB(200, 160, 0))
+
+-- Блок Generation
+local topBox = Instance.new("TextLabel", Frame) 
+topBox.Size = UDim2.new(0.9, 0, 0, 90) 
+topBox.Position = UDim2.new(0.05, 0, 0.78, 0) 
+topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
+topBox.TextColor3 = Color3.fromRGB(0, 255, 127) 
+topBox.TextSize = 10 
+topBox.Font = Enum.Font.Code 
+topBox.Text = "Searching for Gen..." 
+topBox.TextWrapped = true
+Instance.new("UICorner", topBox) 
+
+-- [ФУНКЦИОНАЛ ESP]
+local function updateESP()
+    for _, player in pairs(Players:GetPlayers()) do 
+        if player ~= speaker and player.Character then 
+            local char = player.Character 
+            local oldHighlight = char:FindFirstChild("EliteX_ESP") 
+            if espActive then
+                if not oldHighlight then
+                    local h = Instance.new("Highlight", char)
+                    h.Name = "EliteX_ESP"
+                    h.FillColor = Color3.fromRGB(255, 0, 0)
+                end
+            elseif oldHighlight then oldHighlight:Destroy() end
+        end 
+    end 
+end
+
+espBtn.MouseButton1Click:Connect(function()
+    espActive = not espActive
+    espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
+    espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
+end)
+
+-- [ФУНКЦИОНАЛ СКОРОСТИ И ПОЛЕТА]
+speedBtn.MouseButton1Click:Connect(function()
+    speedLockActive = not speedLockActive
+    speedBtn.Text = speedLockActive and "SPEED LOCK: ON" or "SPEED LOCK: OFF"
+end)
+
+flyBtn.MouseButton1Click:Connect(function() nowe = not nowe end)
+
+-- [ФУНКЦИОНАЛ JUMP]
+local function doAirJump()
+    if speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart") then
+        local p = Instance.new("Part", workspace)
+        p.Size = Vector3.new(8,1,8); p.Anchored = true; p.Transparency = 0.5; p.Color = Color3.new(0,1,1)
+        p.CFrame = speaker.Character.HumanoidRootPart.CFrame * CFrame.new(0,-3.5,0)
+        game:GetService("Debris"):AddItem(p, 2)
+    end
+end
+jumpBtn.MouseButton1Click:Connect(doAirJump)
+
+-- [ЦИКЛ GENERATION]
+task.spawn(function()
+    while true do
+        local txt = "TOP GENERATION:\n"
+        -- Тут ваша логика поиска Generation (упрощена для стабильности)
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v.Name == "Generation" and v:IsA("TextLabel") then
+                txt = txt .. v.Parent.Name .. ": " .. v.Text .. "\n"
+            end
+        end
+        topBox.Text = txt
+        task.wait(5)
+    end
+end)
+
+-- Обновление RunService
+RunService.Heartbeat:Connect(function()
+    if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
+        speaker.Character.Humanoid.WalkSpeed = targetSpeed
+    end
+    if nowe and speaker.Character then 
+        speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
+    end
+    if espActive then updateESP() end
+end)
+
+-- Закрытие
+local close = createBtn("X", "X", UDim2.new(0.88, 0, 0, 5), UDim2.new(0, 25, 0, 25), Color3.new(0.6, 0, 0))
+close.MouseButton1Click:Connect(function() main:Destroy() end)
+
+print("EliteX V23 Loaded!")
+addSpyLog("EliteX V23 Ready.", false)
