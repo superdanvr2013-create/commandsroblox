@@ -75,20 +75,52 @@ local flyBtn = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.32, 0), U
 local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", UDim2.new(0.05, 0, 0.40, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(40, 40, 45))
 
 -------------------------------------------------------------------
--- ЛОГИКА ВКЛЮЧЕНИЯ/ВЫКЛЮЧЕНИЯ ИНВЕНТАРЯ
+-- ЛОГИКА ИНВЕНТАРЯ: ПЕРЕКЛЮЧЕНИЕ И ЛИСТИНГ
 -------------------------------------------------------------------
 local StarterGui = game:GetService("StarterGui")
 
 backpackBtn.MouseButton1Click:Connect(function()
-    -- Переключаем состояние 
+    -- 1. Переключение видимости (как ты просил ранее)
     backpackVisible = not backpackVisible
-    
-    -- Устанавливаем видимость CoreGui
     StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, backpackVisible)
     
-    -- Обновляем текст и цвет кнопки для наглядности 
     backpackBtn.Text = backpackVisible and "BACKPACK: ON" or "BACKPACK: OFF"
     backpackBtn.BackgroundColor3 = backpackVisible and Color3.fromRGB(0, 120, 100) or Color3.fromRGB(40, 40, 45)
+
+    -- 2. Поиск инструментов и вывод данных
+    local backpack = speaker:FindFirstChild("Backpack")
+    local character = speaker.Character
+    local toolsFound = {}
+    local reportText = "MY TOOLS:\n"
+
+    -- Функция для сбора информации об инструментах
+    local function scanForTools(container)
+        for _, item in pairs(container:GetChildren()) do
+            if item:IsA("Tool") then
+                local toolInfo = "Name: " .. item.Name .. " | Path: " .. item:GetFullName()
+                table.insert(toolsFound, toolInfo)
+                -- Вывод в консоль 
+                print("[ELITEX LOG]: " .. toolInfo)
+            end
+        end
+    end
+
+    if backpack then scanForTools(backpack) end
+    if character then scanForTools(character) end
+
+    -- 3. Вывод в TextBox (используем существующий topBox )
+    if #toolsFound > 0 then
+        for i, info in ipairs(toolsFound) do
+            if i <= 5 then -- Ограничим вывод в GUI, чтобы текст влез
+                reportText = reportText .. i .. ". " .. info:sub(1, 50) .. "...\n"
+            end
+        end
+    else
+        reportText = "No tools found in inventory."
+        print("[ELITEX LOG]: Inventory is empty.")
+    end
+
+    topBox.Text = reportText -- Обновляем текст в нашем окне 
 end)
 
 -------------------------------------------------------------------
