@@ -93,31 +93,24 @@ local function trackRemote(remote, method, ...)
 end
 
 local function applyHooks()
-    -- Попытка использовать более простой hookfunction вместо metamethod
-    local success, err = pcall(function()
-        local oldFire
-        oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
-            trackRemote(self, "FireServer", ...)
-            return oldFire(self, ...)
-        end)
+    -- Перехват __namecall
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if method == "FireServer" or method == "InvokeServer" then
+            trackRemote(self, method, ...)
+        end
+        return oldNamecall(self, ...)
     end)
 
-    if not success then
-        addSpyLog("Xeno HookFunction also failed.", true)
-        -- Последняя попытка: просто поиск ремутов в памяти
-        task.spawn(function()
-            addSpyLog("Trying Passive Scan...", false)
-            for _, v in pairs(game:GetDescendants()) do
-                if v:IsA("RemoteEvent") then
-                    v.OnClientEvent:Connect(function(...)
-                        addSpyLog("RECV: " .. v.Name)
-                    end)
-                end
-            end
-        end)
-    else
-        addSpyLog("SYSTEM: Limited Hooks Active", false)
-    end
+    -- Перехват прямой функции FireServer
+    local oldFire
+    oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
+        trackRemote(self, "FireServer (Direct)", ...)
+        return oldFire(self, ...)
+    end)
+
+    addSpyLog("SYSTEM: Hooks Active", false)
 end
 
 -- Безопасный запуск хуков
