@@ -40,17 +40,17 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14 
 
 local function createBtn(name, text, pos, size, color)
-    local btn = Instance.new("TextButton", Frame)
-    btn.Name = name
-    btn.Text = text
-    btn.Position = pos
-    btn.Size = size 
-    btn.BackgroundColor3 = color 
-    btn.Font = Enum.Font.GothamSemibold 
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.TextSize = 10 
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4) 
-    return btn
+	local btn = Instance.new("TextButton", Frame)
+	btn.Name = name
+	btn.Text = text
+	btn.Position = pos
+	btn.Size = size 
+	btn.BackgroundColor3 = color 
+	btn.Font = Enum.Font.GothamSemibold 
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.TextSize = 10 
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4) 
+	return btn
 end
 
 -- 6. Toggle Backpack (Y: 0.50)
@@ -79,47 +79,47 @@ local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", UDim2.new(0.05, 0, 0.4
 -- ЛОГИКА ЗАМЕНЫ ИНСТРУМЕНТА (SWAP)
 -------------------------------------------------------------------
 swapBtn.MouseButton1Click:Connect(function()
-    local char = speaker.Character
-    local bp = speaker:WaitForChild("Backpack")
-    
-    -- 1. Удаление Bat (из рук или рюкзака)
-    local oldTool = bp:FindFirstChild("Bat") or (char and char:FindFirstChild("Bat"))
-    if oldTool then
-        oldTool:Destroy()
-        print("[ELITEX]: Bat removed.") [cite: 12]
-    end
+	local char = speaker.Character
+	local bp = speaker:WaitForChild("Backpack")
 
-    -- 2. Поиск Flying Carpet (если его нет в инвентаре)
-    local carpet = bp:FindFirstChild("Flying Carpet") or (char and char:FindFirstChild("Flying Carpet"))
-    
-    if not carpet then
-        -- Ищем в ReplicatedStorage, StarterPack или Lighting (частое место для хранения)
-        local searchContainers = {game:GetService("ReplicatedStorage"), game:GetService("StarterPack"), game:GetService("Lighting")}
-        
-        for _, container in pairs(searchContainers) do
-            local found = container:FindFirstChild("Flying Carpet", true) -- true для рекурсивного поиска
-            if found and found:IsA("Tool") then
-                carpet = found:Clone()
-                carpet.Parent = bp
-                break
-            end
-        end
-    end
+	-- 1. Удаление Bat (из рук или рюкзака)
+	local oldTool = bp:FindFirstChild("Bat") or (char and char:FindFirstChild("Bat"))
+	if oldTool then
+		oldTool:Destroy()
+		print("[ELITEX]: Bat removed.") 
+	end
 
-    -- 3. Вывод результата
-    if carpet then
-        local path = carpet:GetFullName() [cite: 7]
-        local info = "Swapped to: " .. carpet.Name .. " | Path: " .. path
-        
-        print("[ELITEX]: " .. info) [cite: 12]
-        topBox.Text = info [cite: 5, 12]
-        swapBtn.Text = "SWAP SUCCESS"
-        task.wait(1)
-        swapBtn.Text = "SWAP: BAT -> CARPET"
-    else
-        topBox.Text = "ERROR: Flying Carpet not found in game storage!" [cite: 12]
-        warn("[ELITEX]: Could not find Flying Carpet in any accessible service.")
-    end
+	-- 2. Поиск Flying Carpet (если его нет в инвентаре)
+	local carpet = bp:FindFirstChild("Flying Carpet") or (char and char:FindFirstChild("Flying Carpet"))
+
+	if not carpet then
+		-- Ищем в ReplicatedStorage, StarterPack или Lighting (частое место для хранения)
+		local searchContainers = {game:GetService("ReplicatedStorage"), game:GetService("StarterPack"), game:GetService("Lighting")}
+
+		for _, container in pairs(searchContainers) do
+			local found = container:FindFirstChild("Flying Carpet", true) -- true для рекурсивного поиска
+			if found and found:IsA("Tool") then
+				carpet = found:Clone()
+				carpet.Parent = bp
+				break
+			end
+		end
+	end
+
+	-- 3. Вывод результата
+	if carpet then
+		local path = carpet:GetFullName()
+		local info = "Swapped to: " .. carpet.Name .. " | Path: " .. path
+
+		print("[ELITEX]: " .. info)
+		topBox.Text = info
+		swapBtn.Text = "SWAP SUCCESS"
+		task.wait(1)
+		swapBtn.Text = "SWAP: BAT -> CARPET"
+	else
+		topBox.Text = "ERROR: Flying Carpet not found in game storage!"
+		warn("[ELITEX]: Could not find Flying Carpet in any accessible service.")
+	end
 end)
 
 -------------------------------------------------------------------
@@ -128,62 +128,62 @@ end)
 local StarterGui = game:GetService("StarterGui")
 
 backpackBtn.MouseButton1Click:Connect(function()
-    -- 1. Переключение видимости (как ты просил ранее)
-    backpackVisible = not backpackVisible
-    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, backpackVisible)
-    
-    backpackBtn.Text = backpackVisible and "BACKPACK: ON" or "BACKPACK: OFF"
-    backpackBtn.BackgroundColor3 = backpackVisible and Color3.fromRGB(0, 120, 100) or Color3.fromRGB(40, 40, 45)
+	-- 1. Переключение видимости (как ты просил ранее)
+	backpackVisible = not backpackVisible
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, backpackVisible)
 
-    -- 2. Поиск инструментов и вывод данных
-    local backpack = speaker:FindFirstChild("Backpack")
-    local character = speaker.Character
-    local toolsFound = {}
-    local reportText = "MY TOOLS:\n"
+	backpackBtn.Text = backpackVisible and "BACKPACK: ON" or "BACKPACK: OFF"
+	backpackBtn.BackgroundColor3 = backpackVisible and Color3.fromRGB(0, 120, 100) or Color3.fromRGB(40, 40, 45)
 
-    -- Функция для сбора информации об инструментах
-    local function scanForTools(container)
-        for _, item in pairs(container:GetChildren()) do
-            if item:IsA("Tool") then
-                local toolInfo = "Name: " .. item.Name .. " | Path: " .. item:GetFullName()
-                table.insert(toolsFound, toolInfo)
-                -- Вывод в консоль 
-                print("[ELITEX LOG]: " .. toolInfo)
-            end
-        end
-    end
+	-- 2. Поиск инструментов и вывод данных
+	local backpack = speaker:FindFirstChild("Backpack")
+	local character = speaker.Character
+	local toolsFound = {}
+	local reportText = "MY TOOLS:\n"
 
-    if backpack then scanForTools(backpack) end
-    if character then scanForTools(character) end
+	-- Функция для сбора информации об инструментах
+	local function scanForTools(container)
+		for _, item in pairs(container:GetChildren()) do
+			if item:IsA("Tool") then
+				local toolInfo = "Name: " .. item.Name .. " | Path: " .. item:GetFullName()
+				table.insert(toolsFound, toolInfo)
+				-- Вывод в консоль 
+				print("[ELITEX LOG]: " .. toolInfo)
+			end
+		end
+	end
 
-    -- 3. Вывод в TextBox (используем существующий topBox )
-    if #toolsFound > 0 then
-        for i, info in ipairs(toolsFound) do
-            if i <= 5 then -- Ограничим вывод в GUI, чтобы текст влез
-                reportText = reportText .. i .. ". " .. info:sub(1, 50) .. "...\n"
-            end
-        end
-    else
-        reportText = "No tools found in inventory."
-        print("[ELITEX LOG]: Inventory is empty.")
-    end
+	if backpack then scanForTools(backpack) end
+	if character then scanForTools(character) end
 
-    topBox.Text = reportText -- Обновляем текст в нашем окне 
+	-- 3. Вывод в TextBox (используем существующий topBox )
+	if #toolsFound > 0 then
+		for i, info in ipairs(toolsFound) do
+			if i <= 5 then -- Ограничим вывод в GUI, чтобы текст влез
+				reportText = reportText .. i .. ". " .. info:sub(1, 50) .. "...\n"
+			end
+		end
+	else
+		reportText = "No tools found in inventory."
+		print("[ELITEX LOG]: Inventory is empty.")
+	end
+
+	topBox.Text = reportText -- Обновляем текст в нашем окне 
 end)
 
 -------------------------------------------------------------------
 -- ЛОГИКА ANCHORED
 -------------------------------------------------------------------
 anchorBtn.MouseButton1Click:Connect(function()
-    isAnchored = not isAnchored
-    anchorBtn.Text = isAnchored and "ANCHORED: ON" or "ANCHORED: OFF"
-    anchorBtn.BackgroundColor3 = isAnchored and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(40, 40, 45)
-    
-    local char = speaker.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then
-        root.Anchored = isAnchored
-    end
+	isAnchored = not isAnchored
+	anchorBtn.Text = isAnchored and "ANCHORED: ON" or "ANCHORED: OFF"
+	anchorBtn.BackgroundColor3 = isAnchored and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(40, 40, 45)
+
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.Anchored = isAnchored
+	end
 end)
 
 -- Блок для вывода ТОП-3 Generation
@@ -202,133 +202,133 @@ Instance.new("UICorner", topBox)
 -- ЛОГИКА ПАРСИНГА И СОРТИРОВКИ
 -------------------------------------------------------------------
 local function getNumericValue(text)
-    local valStr, suffix = text:match("([%d%.]+)([MB])") 
-    if valStr and suffix then 
-        local num = tonumber(valStr) 
-        if suffix == "M" then return num * 1e6 end 
-        if suffix == "B" then return num * 1e9 end 
-    end 
-    return 0 
+	local valStr, suffix = text:match("([%d%.]+)([MB])") 
+	if valStr and suffix then 
+		local num = tonumber(valStr) 
+		if suffix == "M" then return num * 1e6 end 
+		if suffix == "B" then return num * 1e9 end 
+	end 
+	return 0 
 end
 
 local function getParentPath(obj)
-    local path = ""
-    local current = obj.Parent
-    while current and current ~= workspace and current ~= game do
-        path = (path == "" and current.Name or current.Name .. "." .. path)
-        current = current.Parent
-    end
-    return path ~= "" and path or "Workspace"
+	local path = ""
+	local current = obj.Parent
+	while current and current ~= workspace and current ~= game do
+		path = (path == "" and current.Name or current.Name .. "." .. path)
+		current = current.Parent
+	end
+	return path ~= "" and path or "Workspace"
 end
 
 task.spawn(function()
-    while true do
-        local found = {} 
-        for _, v in pairs(workspace:GetDescendants()) do 
-            if v.Name == "Generation" then 
-                local success, text = pcall(function() return v.Text end) 
-                if success and text then 
-                    local numeric = getNumericValue(text) 
-                    if numeric >= 10000000 then 
-                        table.insert(found, {original = text, value = numeric, path = getParentPath(v)}) 
-                    end
-                end
-            end
-        end
-        table.sort(found, function(a, b) return a.value > b.value end) 
+	while true do
+		local found = {} 
+		for _, v in pairs(workspace:GetDescendants()) do 
+			if v.Name == "Generation" then 
+				local success, text = pcall(function() return v.Text end) 
+				if success and text then 
+					local numeric = getNumericValue(text) 
+					if numeric >= 10000000 then 
+						table.insert(found, {original = text, value = numeric, path = getParentPath(v)}) 
+					end
+				end
+			end
+		end
+		table.sort(found, function(a, b) return a.value > b.value end) 
 
-        local resultText = "TOP 3 GENERATION:\n"
-        for i = 1, 3 do
-            if found[i] then
-                resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
-            else 
-                resultText = resultText .. i .. ". ---\n" 
-            end
-        end
-        topBox.Text = resultText 
-        task.wait(3) 
-    end
+		local resultText = "TOP 3 GENERATION:\n"
+		for i = 1, 3 do
+			if found[i] then
+				resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
+			else 
+				resultText = resultText .. i .. ". ---\n" 
+			end
+		end
+		topBox.Text = resultText 
+		task.wait(3) 
+	end
 end)
 
 -------------------------------------------------------------------
 -- ФУНКЦИОНАЛ (ESP, JUMP, SPEED)
 -------------------------------------------------------------------
 local function updateESP()
-    for _, player in pairs(Players:GetPlayers()) do 
-        if player ~= speaker and player.Character then 
-            local char = player.Character 
-            local oldHighlight = char:FindFirstChild("EliteX_ESP") 
-            if espActive then
-                if not oldHighlight then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Name = "EliteX_ESP"
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.FillTransparency = 0.5
-                    highlight.Adornee = char 
-                    highlight.Parent = char 
-                end
-            else
-                if oldHighlight then oldHighlight:Destroy() end
-            end
-        end 
-    end 
+	for _, player in pairs(Players:GetPlayers()) do 
+		if player ~= speaker and player.Character then 
+			local char = player.Character 
+			local oldHighlight = char:FindFirstChild("EliteX_ESP") 
+			if espActive then
+				if not oldHighlight then
+					local highlight = Instance.new("Highlight")
+					highlight.Name = "EliteX_ESP"
+					highlight.FillColor = Color3.fromRGB(255, 0, 0)
+					highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+					highlight.FillTransparency = 0.5
+					highlight.Adornee = char 
+					highlight.Parent = char 
+				end
+			else
+				if oldHighlight then oldHighlight:Destroy() end
+			end
+		end 
+	end 
 end
 
 espBtn.MouseButton1Click:Connect(function()
-    espActive = not espActive
-    espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
-    espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
-    updateESP()
+	espActive = not espActive
+	espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
+	espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
+	updateESP()
 end)
 
 local function doAirJump()
-    local char = speaker.Character 
-    local root = char and char:FindFirstChild("HumanoidRootPart") 
-    if root then 
-        local part = Instance.new("Part", workspace) 
-        part.Size = Vector3.new(8, 1, 8); part.Anchored = true; 
-        part.Material = Enum.Material.ForceField; 
-        part.Color = Color3.fromRGB(0, 255, 255); 
-        part.Transparency = 0.5 
-        part.CFrame = root.CFrame * CFrame.new(0, -3.5, 0) 
-        task.spawn(function()
-            for i = 1, 30 do
-                part.Position = part.Position + Vector3.new(0, 0.6, 0)
-                task.wait()
-            end
-            part:Destroy()
-        end)
-    end
+	local char = speaker.Character 
+	local root = char and char:FindFirstChild("HumanoidRootPart") 
+	if root then 
+		local part = Instance.new("Part", workspace) 
+		part.Size = Vector3.new(8, 1, 8); part.Anchored = true; 
+		part.Material = Enum.Material.ForceField; 
+		part.Color = Color3.fromRGB(0, 255, 255); 
+		part.Transparency = 0.5 
+		part.CFrame = root.CFrame * CFrame.new(0, -3.5, 0) 
+		task.spawn(function()
+			for i = 1, 30 do
+				part.Position = part.Position + Vector3.new(0, 0.6, 0)
+				task.wait()
+			end
+			part:Destroy()
+		end)
+	end
 end
 
 jumpBtn.MouseButton1Click:Connect(doAirJump)
 UserInputService.InputBegan:Connect(function(i, p) if not p and i.KeyCode == Enum.KeyCode.LeftControl then doAirJump() end end)
 
 speedLockBtn.MouseButton1Click:Connect(function()
-    speedLockActive = not speedLockActive
-    speedLockBtn.Text = speedLockActive and "SPEED LOCK (50): ON" or "SPEED LOCK (50): OFF"
-    speedLockBtn.BackgroundColor3 = speedLockActive and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(120, 40, 200)
+	speedLockActive = not speedLockActive
+	speedLockBtn.Text = speedLockActive and "SPEED LOCK (50): ON" or "SPEED LOCK (50): OFF"
+	speedLockBtn.BackgroundColor3 = speedLockActive and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(120, 40, 200)
 end)
 
 flyBtn.MouseButton1Click:Connect(function() nowe = not nowe end)
 
 -- Циклы обновления
 RunService.Heartbeat:Connect(function()
-    if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
-        speaker.Character.Humanoid.WalkSpeed = targetSpeed
-    end
-    if espActive then updateESP() end
-    if nowe and speaker.Character then 
-        speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
-    end
-    
-    -- Принудительное удержание Anchored, если включено
-    if isAnchored and speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart") then
-        if not speaker.Character.HumanoidRootPart.Anchored then
-            speaker.Character.HumanoidRootPart.Anchored = true
-        end
-    end
+	if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
+		speaker.Character.Humanoid.WalkSpeed = targetSpeed
+	end
+	if espActive then updateESP() end
+	if nowe and speaker.Character then 
+		speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
+	end
+
+	-- Принудительное удержание Anchored, если включено
+	if isAnchored and speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart") then
+		if not speaker.Character.HumanoidRootPart.Anchored then
+			speaker.Character.HumanoidRootPart.Anchored = true
+		end
+	end
 end)
 
 -- Закрытие
