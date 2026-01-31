@@ -79,49 +79,55 @@ local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", UDim2.new(0.05, 0, 0.4
 -- ЛОГИКА ЗАМЕНЫ ИНСТРУМЕНТА (SWAP)
 -------------------------------------------------------------------
 swapBtn.MouseButton1Click:Connect(function()
-	local char = speaker.Character
+	local char = speaker.Character or speaker.CharacterAdded:Wait()
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	local bp = speaker:WaitForChild("Backpack")
 
-	-- 1. Удаление Bat (из рук или рюкзака)
-	local oldTool = bp:FindFirstChild("Bat") or (char and char:FindFirstChild("Bat"))
-	if oldTool then
-		oldTool:Destroy()
-		print("[ELITEX]: Bat removed.") 
+	if not humanoid then return end
+
+	-- 1) Снять всё, чтобы Bat точно ушёл из рук
+	humanoid:UnequipTools() -- UnequipTools() без аргументов [web:6]
+	task.wait()
+
+	-- 2) Убрать Bat (лучше в Backpack или Destroy)
+	local bat = char:FindFirstChild("Bat") or bp:FindFirstChild("Bat")
+	if bat then
+		-- если хочешь полностью убрать Bat:
+		bat:Destroy()
+		-- или если хочешь просто снять в рюкзак:
+		-- bat.Parent = bp
 	end
 
-	-- 2. Поиск Flying Carpet (если его нет в инвентаре)
-	local carpet = bp:FindFirstChild("Flying Carpet") or (char and char:FindFirstChild("Flying Carpet"))
+	-- 3) Найти/создать Flying Carpet
+	local carpet = bp:FindFirstChild("Flying Carpet") or char:FindFirstChild("Flying Carpet")
 
 	if not carpet then
-		-- Ищем в ReplicatedStorage, StarterPack или Lighting (частое место для хранения)
-		local searchContainers = {game:GetService("ReplicatedStorage"), game:GetService("StarterPack"), game:GetService("Lighting")}
+		local searchContainers = {
+			game:GetService("ReplicatedStorage"),
+			game:GetService("StarterPack"),
+			game:GetService("Lighting"),
+			workspace,
+		}
 
-		for _, container in pairs(searchContainers) do
-			local found = container:FindFirstChild("Flying Carpet", true) -- true для рекурсивного поиска
+		for _, container in ipairs(searchContainers) do
+			local found = container:FindFirstChild("Flying Carpet", true)
 			if found and found:IsA("Tool") then
 				carpet = found:Clone()
-				carpet.Parent = bp
 				break
 			end
 		end
+
+		if carpet then
+			carpet.Parent = bp
+		end
 	end
 
-	-- 3. Вывод результата
-	if carpet then
-		local path = carpet:GetFullName()
-		local info = "Swapped to: " .. carpet.Name .. " | Path: " .. path
-
-		print("[ELITEX]: " .. info)
-		topBox.Text = info
-		swapBtn.Text = "SWAP SUCCESS"
-		task.wait(1)
-		swapBtn.Text = "SWAP: BAT -> CARPET"
-	else
-		topBox.Text = "ERROR: Flying Carpet not found in game storage!"
-		warn("[ELITEX]: Could not find Flying Carpet in any accessible service.")
+	-- 4) Экипировать ковер в руки
+	if carpet and carpet.Parent ~= char then
+		-- Важно: EquipTool стабильно работает, когда Tool уже у игрока (Backpack/Character) [web:2][web:5]
+		humanoid:EquipTool(carpet) -- [web:1][web:5]
 	end
 end)
-
 -------------------------------------------------------------------
 -- ЛОГИКА ИНВЕНТАРЯ: ПЕРЕКЛЮЧЕНИЕ И ЛИСТИНГ
 -------------------------------------------------------------------
@@ -168,7 +174,7 @@ backpackBtn.MouseButton1Click:Connect(function()
 		print("[ELITEX LOG]: Inventory is empty.")
 	end
 
-	topBox.Text = reportText -- Обновляем текст в нашем окне 
+	--topBox.Text = reportText -- Обновляем текст в нашем окне 
 end)
 
 -------------------------------------------------------------------
