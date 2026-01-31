@@ -1,0 +1,330 @@
+-- Сервисы
+local Players = game:GetService("Players")
+local speaker = Players.LocalPlayer
+
+-- Создание GUI
+local main = Instance.new("ScreenGui")
+main.Name = "EliteX_Scanner_Teleporter"
+main.Parent = speaker:WaitForChild("PlayerGui")
+main.ResetOnSpawn = false
+
+local Frame = Instance.new("Frame")
+Frame.Name = "MainFrame"
+Frame.Parent = main
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -300) -- Центр экрана
+Frame.Size = UDim2.new(0, 300, 0, 600) -- Увеличили высоту для новых полей
+Frame.Active = true
+Frame.Draggable = true
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+
+-- Заголовок
+local title = Instance.new("TextLabel")
+title.Parent = Frame
+title.Text = "ELITEX SCAN & TP"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+title.TextColor3 = Color3.fromRGB(0, 255, 127)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+Instance.new("UICorner", title)
+
+-------------------------------------------------------------------
+-- СЕКЦИЯ 1: СКАНЕР (SCANNER)
+-------------------------------------------------------------------
+local scanLabel = Instance.new("TextLabel", Frame)
+scanLabel.Text = "-- SCANNER --"
+scanLabel.Position = UDim2.new(0, 0, 0.06, 0)
+scanLabel.Size = UDim2.new(1, 0, 0, 20)
+scanLabel.BackgroundTransparency = 1
+scanLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+scanLabel.Font = Enum.Font.Code
+scanLabel.TextSize = 12
+
+-- Ввод радиуса
+local radiusLabel = Instance.new("TextLabel", Frame)
+radiusLabel.Text = "Radius:"
+radiusLabel.Position = UDim2.new(0.05, 0, 0.11, 0)
+radiusLabel.Size = UDim2.new(0.3, 0, 0, 25)
+radiusLabel.BackgroundTransparency = 1
+radiusLabel.TextColor3 = Color3.new(1, 1, 1)
+radiusLabel.Font = Enum.Font.GothamSemibold
+radiusLabel.TextSize = 12
+
+local radiusBox = Instance.new("TextBox", Frame)
+radiusBox.PlaceholderText = "10"
+radiusBox.Text = "10"
+radiusBox.Position = UDim2.new(0.35, 0, 0.11, 0)
+radiusBox.Size = UDim2.new(0.6, 0, 0, 25)
+radiusBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+radiusBox.TextColor3 = Color3.fromRGB(0, 200, 255)
+radiusBox.Font = Enum.Font.Code
+radiusBox.TextSize = 12
+Instance.new("UICorner", radiusBox)
+
+-- Кнопка сканирования
+local scanBtn = Instance.new("TextButton", Frame)
+scanBtn.Text = "SCAN AREA"
+scanBtn.Position = UDim2.new(0.05, 0, 0.17, 0)
+scanBtn.Size = UDim2.new(0.9, 0, 0, 30)
+scanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+scanBtn.TextColor3 = Color3.new(1, 1, 1)
+scanBtn.Font = Enum.Font.GothamBold
+scanBtn.TextSize = 12
+Instance.new("UICorner", scanBtn)
+
+-------------------------------------------------------------------
+-- СЕКЦИЯ 2: ТЕЛЕПОРТЕР (TELEPORTER)
+-------------------------------------------------------------------
+local tpLabel = Instance.new("TextLabel", Frame)
+tpLabel.Text = "-- TELEPORTER --"
+tpLabel.Position = UDim2.new(0, 0, 0.24, 0)
+tpLabel.Size = UDim2.new(1, 0, 0, 20)
+tpLabel.BackgroundTransparency = 1
+tpLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+tpLabel.Font = Enum.Font.Code
+tpLabel.TextSize = 12
+
+-- 1. Поле для пути объекта
+local pathLabel = Instance.new("TextLabel", Frame)
+pathLabel.Text = "Obj Path:"
+pathLabel.Position = UDim2.new(0.05, 0, 0.29, 0)
+pathLabel.Size = UDim2.new(1, 0, 0, 15)
+pathLabel.BackgroundTransparency = 1
+pathLabel.TextColor3 = Color3.new(1,1,1)
+pathLabel.TextXAlignment = Enum.TextXAlignment.Left
+pathLabel.Font = Enum.Font.GothamSemibold
+pathLabel.TextSize = 11
+
+local objectPathBox = Instance.new("TextBox", Frame)
+objectPathBox.PlaceholderText = "Paste path here (e.g. Plots > ...)"
+objectPathBox.Text = ""
+objectPathBox.Position = UDim2.new(0.05, 0, 0.32, 0)
+objectPathBox.Size = UDim2.new(0.9, 0, 0, 30)
+objectPathBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+objectPathBox.TextColor3 = Color3.fromRGB(255, 255, 0)
+objectPathBox.Font = Enum.Font.Code
+objectPathBox.TextSize = 10
+objectPathBox.ClearTextOnFocus = false
+Instance.new("UICorner", objectPathBox)
+
+-- 2. Поле для координат (Target Position)
+local posLabel = Instance.new("TextLabel", Frame)
+posLabel.Text = "Target Pos (X, Y, Z):"
+posLabel.Position = UDim2.new(0.05, 0, 0.39, 0)
+posLabel.Size = UDim2.new(1, 0, 0, 15)
+posLabel.BackgroundTransparency = 1
+posLabel.TextColor3 = Color3.new(1,1,1)
+posLabel.TextXAlignment = Enum.TextXAlignment.Left
+posLabel.Font = Enum.Font.GothamSemibold
+posLabel.TextSize = 11
+
+local targetPosBox = Instance.new("TextBox", Frame)
+targetPosBox.PlaceholderText = "0, 50, 0"
+targetPosBox.Text = ""
+targetPosBox.Position = UDim2.new(0.05, 0, 0.42, 0)
+targetPosBox.Size = UDim2.new(0.55, 0, 0, 30)
+targetPosBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+targetPosBox.TextColor3 = Color3.fromRGB(0, 255, 0)
+targetPosBox.Font = Enum.Font.Code
+targetPosBox.TextSize = 11
+targetPosBox.ClearTextOnFocus = false
+Instance.new("UICorner", targetPosBox)
+
+-- Кнопка "Get My Pos"
+local getPosBtn = Instance.new("TextButton", Frame)
+getPosBtn.Text = "GET MY POS"
+getPosBtn.Position = UDim2.new(0.65, 0, 0.42, 0)
+getPosBtn.Size = UDim2.new(0.3, 0, 0, 30)
+getPosBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+getPosBtn.TextColor3 = Color3.new(1, 1, 1)
+getPosBtn.Font = Enum.Font.GothamBold
+getPosBtn.TextSize = 9
+Instance.new("UICorner", getPosBtn)
+
+-- Кнопка "TELEPORT"
+local tpBtn = Instance.new("TextButton", Frame)
+tpBtn.Text = "TELEPORT OBJECT"
+tpBtn.Position = UDim2.new(0.05, 0, 0.49, 0)
+tpBtn.Size = UDim2.new(0.9, 0, 0, 35)
+tpBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+tpBtn.TextColor3 = Color3.new(1, 1, 1)
+tpBtn.Font = Enum.Font.GothamBold
+tpBtn.TextSize = 12
+Instance.new("UICorner", tpBtn)
+
+-------------------------------------------------------------------
+-- ОКНО ВЫВОДА (LOGS)
+-------------------------------------------------------------------
+local scroll = Instance.new("ScrollingFrame", Frame)
+scroll.Position = UDim2.new(0.05, 0, 0.57, 0)
+scroll.Size = UDim2.new(0.9, 0, 0.41, 0)
+scroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+scroll.ScrollBarThickness = 6
+Instance.new("UICorner", scroll)
+
+local outputBox = Instance.new("TextBox", scroll)
+outputBox.Size = UDim2.new(1, 0, 1, 0)
+outputBox.BackgroundTransparency = 1
+outputBox.TextColor3 = Color3.new(1, 1, 1)
+outputBox.TextSize = 10
+outputBox.Font = Enum.Font.Code
+outputBox.TextXAlignment = Enum.TextXAlignment.Left
+outputBox.TextYAlignment = Enum.TextYAlignment.Top
+outputBox.MultiLine = true
+outputBox.TextEditable = false
+outputBox.ClearTextOnFocus = false
+outputBox.Text = "System Ready..."
+outputBox.TextWrapped = false
+
+-- Кнопка закрытия
+local closeBtn = Instance.new("TextButton", Frame)
+closeBtn.Text = "X"
+closeBtn.Position = UDim2.new(0.9, 0, 0, 0)
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.MouseButton1Click:Connect(function() main:Destroy() end)
+
+-------------------------------------------------------------------
+-- ФУНКЦИИ И ЛОГИКА
+-------------------------------------------------------------------
+
+-- Функция логирования
+local function log(text)
+    outputBox.Text = text .. "\n----------------\n" .. outputBox.Text
+end
+
+-- Функция поиска объекта по строке пути "Plots > uuid > name"
+local function findObjectByPathString(pathStr)
+    -- Удаляем лишние пробелы по краям
+    pathStr = pathStr:match("^%s*(.-)%s*$")
+    
+    -- Разбиваем строку по символу ">"
+    local segments = {}
+    for segment in string.gmatch(pathStr, "[^>]+") do
+        -- Удаляем пробелы у каждого сегмента (trim)
+        table.insert(segments, segment:match("^%s*(.-)%s*$"))
+    end
+
+    if #segments == 0 then return nil, "Empty path" end
+
+    -- Начинаем поиск с Workspace
+    local currentObj = workspace
+    
+    -- Если пользователь не включил "Workspace" в путь, мы ищем внутри workspace
+    -- Если первое слово в пути уже совпадает с ребенком workspace, начинаем с него
+    for i, name in ipairs(segments) do
+        -- Пропускаем само слово "Workspace" если оно в начале пути
+        if i == 1 and name:lower() == "workspace" then
+            currentObj = workspace
+        else
+            local nextObj = currentObj:FindFirstChild(name)
+            if not nextObj then
+                return nil, "Stopped at: " .. name
+            end
+            currentObj = nextObj
+        end
+    end
+    
+    return currentObj, "Found"
+end
+
+-- 1. Логика SCANNER
+local function getPathToWorkspace(obj)
+    local path = obj.Name
+    local current = obj.Parent
+    while current and current ~= game and current ~= workspace do
+        path = current.Name .. " > " .. path
+        current = current.Parent
+    end
+    return path
+end
+
+scanBtn.MouseButton1Click:Connect(function()
+    local char = speaker.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if not root then log("Error: No Character!") return end
+
+    local radius = tonumber(radiusBox.Text) or 10
+    log("Scanning Radius: " .. radius)
+    
+    local foundObjects = {}
+    local origin = root.Position
+
+    for _, part in pairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part ~= root then
+            local distance = (part.Position - origin).Magnitude
+            if distance <= radius then
+                local distStr = string.format("[%.1f]", distance)
+                local fullPath = getPathToWorkspace(part)
+                table.insert(foundObjects, distStr .. " " .. fullPath)
+            end
+        end
+    end
+
+    if #foundObjects > 0 then
+        table.sort(foundObjects)
+        outputBox.Text = "Objects:\n" .. table.concat(foundObjects, "\n")
+        outputBox.Size = UDim2.new(1, 0, 0, #foundObjects * 15 + 50)
+        scroll.CanvasSize = UDim2.new(0, 0, 0, #foundObjects * 15 + 50)
+    else
+        log("No objects found.")
+    end
+end)
+
+-- 2. Логика GET POSITION
+getPosBtn.MouseButton1Click:Connect(function()
+    local char = speaker.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        local pos = root.Position
+        -- Форматируем строку: X, Y, Z (округление до 1 знака)
+        local posStr = string.format("%.1f, %.1f, %.1f", pos.X, pos.Y, pos.Z)
+        
+        -- Вставляем в поле ввода
+        targetPosBox.Text = posStr
+        log("My Pos Copied: " .. posStr)
+    else
+        log("Error: Character not found")
+    end
+end)
+
+-- 3. Логика TELEPORT OBJECT
+tpBtn.MouseButton1Click:Connect(function()
+    -- Парсим позицию
+    local posText = targetPosBox.Text
+    local x, y, z = posText:match("([%d%.%-]+)%s*,%s*([%d%.%-]+)%s*,%s*([%d%.%-]+)")
+    
+    if not x or not y or not z then
+        log("Error: Invalid Coordinate Format! Use: X, Y, Z")
+        return
+    end
+    
+    local targetVector = Vector3.new(tonumber(x), tonumber(y), tonumber(z))
+    local targetCFrame = CFrame.new(targetVector)
+
+    -- Ищем объект
+    local pathText = objectPathBox.Text
+    local obj, status = findObjectByPathString(pathText)
+
+    if obj then
+        log("Teleporting: " .. obj.Name)
+        
+        -- Пробуем переместить
+        if obj:IsA("Model") then
+            -- Для моделей используем PivotTo (современный метод)
+            obj:PivotTo(targetCFrame)
+            log("Success (Model moved)")
+        elseif obj:IsA("BasePart") then
+            -- Для деталей меняем CFrame
+            obj.CFrame = targetCFrame
+            log("Success (Part moved)")
+        else
+            log("Error: Object is not a Part or Model")
+        end
+    else
+        log("Object Not Found! " .. tostring(status))
+    end
+end)
