@@ -15,7 +15,7 @@ local isAnchored = false
 local targetSpeed = 50 
 local speeds = 1 
 local nowe = false 
-local backpackVisible = true -- По умолчанию инвентарь включен
+local backpackVisible = true
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
 main.Name = "EliteX_Final_V23" 
@@ -26,7 +26,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main 
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30) 
 Frame.Position = UDim2.new(0.05, 0, 0.05, 0) 
-Frame.Size = UDim2.new(0, 280, 0, 580) -- Увеличена высота
+Frame.Size = UDim2.new(0, 280, 0, 580)
 Frame.Active = true 
 Frame.Draggable = true 
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
@@ -53,54 +53,74 @@ local function createBtn(name, text, pos, size, color)
 	return btn
 end
 
--- 6. Toggle Backpack (Y: 0.50)
-local backpackBtn = createBtn("BackpackBtn", "BACKPACK: ON", UDim2.new(0.05, 0, 0.48, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 120, 100))
--- 7. Swap Tool (Y: 0.58)
-local swapBtn = createBtn("SwapBtn", "SWAP: BAT -> CARPET", UDim2.new(0.05, 0, 0.56, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(180, 70, 0))
--------------------------------------------------------------------
--- КНОПКИ УПРАВЛЕНИЯ (С четким распределением позиций)
--------------------------------------------------------------------
--- 1. ESP (Y: 0.1)
+-- КНОПКИ (в правильном порядке)
 local espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.08, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(80, 80, 80))
-
--- 2. Air Jump (Y: 0.18)
 local jumpBtn = createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.16, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 150, 255))
-
--- 3. Speed Lock (Y: 0.26)
 local speedLockBtn = createBtn("SpeedBtn", "SPEED LOCK (50): OFF", UDim2.new(0.05, 0, 0.24, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(120, 40, 200))
-
--- 4. Fly Mode (Y: 0.34)
 local flyBtn = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.32, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(200, 160, 0))
-
--- 5. ANCHORED (Y: 0.42) - ТЕПЕРЬ ОНА ТОЧНО ВИДИМА
 local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", UDim2.new(0.05, 0, 0.40, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(40, 40, 45))
+local backpackBtn = createBtn("BackpackBtn", "BACKPACK: ON", UDim2.new(0.05, 0, 0.48, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 120, 100))
+local swapBtn = createBtn("SwapBtn", "SWAP: BAT -> CARPET", UDim2.new(0.05, 0, 0.56, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(180, 70, 0))
 
 -------------------------------------------------------------------
--- ЛОГИКА ЗАМЕНЫ ИНСТРУМЕНТА (SWAP)
+-- ✅ ИСПРАВЛЕННАЯ ЛОГИКА ЗАМЕНЫ ИНСТРУМЕНТА (SWAP) С АКТИВАЦИЕЙ СКРИПТОВ
 -------------------------------------------------------------------
+local StarterGui = game:GetService("StarterGui")
+
+local function activateFlyingCarpetScripts(tool)
+	if not tool or not tool.Parent then return end
+	
+	print("[ELITEX LOG]: Активация скриптов Flying Carpet...")
+	
+	-- 1. Ждем полного перемещения инструмента в Character
+	task.wait(0.1)
+	
+	-- 2. Активируем ВСЕ скрипты внутри инструмента
+	for _, script in pairs(tool:GetDescendants()) do
+		if script:IsA("LocalScript") or script:IsA("Script") then
+			-- Проверяем, не запущен ли уже скрипт
+			if not script:IsRunning and script.Disabled ~= false then
+				script.Disabled = false
+				print("[ELITEX LOG]: Активирован скрипт: " .. script.Name .. " в " .. script:GetFullName())
+			end
+		end
+	end
+	
+	-- 3. Дополнительная активация Handle (если есть)
+	local handle = tool:FindFirstChild("Handle")
+	if handle then
+		handle.CanCollide = false -- Для корректной работы ковра
+	end
+	
+	print("[ELITEX LOG]: Все скрипты Flying Carpet активированы!")
+end
+
 swapBtn.MouseButton1Click:Connect(function()
 	local char = speaker.Character or speaker.CharacterAdded:Wait()
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	local bp = speaker:WaitForChild("Backpack")
 
-	if not humanoid then return end
-
-	-- 1) Снять всё, чтобы Bat точно ушёл из рук
-	humanoid:UnequipTools() -- UnequipTools() без аргументов [web:6]
-	task.wait()
-
-	-- 2) Убрать Bat (лучше в Backpack или Destroy)
-	local bat = char:FindFirstChild("Bat") or bp:FindFirstChild("Bat")
-	if bat then
-		-- если хочешь полностью убрать Bat:
-		bat:Destroy()
-		-- или если хочешь просто снять в рюкзак:
-		-- bat.Parent = bp
+	if not humanoid then 
+		print("[ELITEX ERROR]: Нет Humanoid!")
+		return 
 	end
 
-	-- 3) Найти/создать Flying Carpet
-	local carpet = bp:FindFirstChild("Flying Carpet") or char:FindFirstChild("Flying Carpet")
+	print("[ELITEX SWAP]: Начинаем замену Bat -> Flying Carpet...")
 
+	-- 1) Снять ВСЕ инструменты
+	humanoid:UnequipTools()
+	task.wait(0.2)
+
+	-- 2) Удалить Bat полностью
+	local bat = char:FindFirstChild("Bat") or bp:FindFirstChild("Bat")
+	if bat then
+		bat:Destroy()
+		print("[ELITEX SWAP]: Bat удален")
+	end
+
+	-- 3) Найти/клонировать Flying Carpet
+	local carpet = bp:FindFirstChild("Flying Carpet") or char:FindFirstChild("Flying Carpet")
+	
 	if not carpet then
 		local searchContainers = {
 			game:GetService("ReplicatedStorage"),
@@ -113,47 +133,53 @@ swapBtn.MouseButton1Click:Connect(function()
 			local found = container:FindFirstChild("Flying Carpet", true)
 			if found and found:IsA("Tool") then
 				carpet = found:Clone()
+				print("[ELITEX SWAP]: Flying Carpet найден в " .. container:GetFullName())
 				break
 			end
 		end
 
 		if carpet then
 			carpet.Parent = bp
+			print("[ELITEX SWAP]: Flying Carpet добавлен в Backpack")
 		end
 	end
 
-	-- 4) Экипировать ковер в руки
-	if carpet and carpet.Parent ~= char then
-		-- Важно: EquipTool стабильно работает, когда Tool уже у игрока (Backpack/Character) [web:2][web:5]
-		humanoid:EquipTool(carpet) -- [web:1][web:5]
+	-- 4) Экипировать и активировать скрипты
+	if carpet then
+		humanoid:EquipTool(carpet)
+		print("[ELITEX SWAP]: Flying Carpet экипирован")
+		
+		-- ✅ КЛЮЧЕВОЙ МОМЕНТ: Активация скриптов после экипировки
+		task.spawn(function()
+			activateFlyingCarpetScripts(carpet)
+		end)
+	else
+		print("[ELITEX ERROR]: Flying Carpet не найден!")
 	end
 end)
--------------------------------------------------------------------
--- ЛОГИКА ИНВЕНТАРЯ: ПЕРЕКЛЮЧЕНИЕ И ЛИСТИНГ
--------------------------------------------------------------------
-local StarterGui = game:GetService("StarterGui")
 
+-------------------------------------------------------------------
+-- ЛОГИКА ИНВЕНТАРЯ
+-------------------------------------------------------------------
 backpackBtn.MouseButton1Click:Connect(function()
-	-- 1. Переключение видимости (как ты просил ранее)
 	backpackVisible = not backpackVisible
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, backpackVisible)
 
 	backpackBtn.Text = backpackVisible and "BACKPACK: ON" or "BACKPACK: OFF"
 	backpackBtn.BackgroundColor3 = backpackVisible and Color3.fromRGB(0, 120, 100) or Color3.fromRGB(40, 40, 45)
 
-	-- 2. Поиск инструментов и вывод данных
+	-- Сканирование инструментов
 	local backpack = speaker:FindFirstChild("Backpack")
 	local character = speaker.Character
 	local toolsFound = {}
 	local reportText = "MY TOOLS:\n"
 
-	-- Функция для сбора информации об инструментах
 	local function scanForTools(container)
+		if not container then return end
 		for _, item in pairs(container:GetChildren()) do
 			if item:IsA("Tool") then
 				local toolInfo = "Name: " .. item.Name .. " | Path: " .. item:GetFullName()
 				table.insert(toolsFound, toolInfo)
-				-- Вывод в консоль 
 				print("[ELITEX LOG]: " .. toolInfo)
 			end
 		end
@@ -162,23 +188,19 @@ backpackBtn.MouseButton1Click:Connect(function()
 	if backpack then scanForTools(backpack) end
 	if character then scanForTools(character) end
 
-	-- 3. Вывод в TextBox (используем существующий topBox )
 	if #toolsFound > 0 then
 		for i, info in ipairs(toolsFound) do
-			if i <= 5 then -- Ограничим вывод в GUI, чтобы текст влез
-				reportText = reportText .. i .. ". " .. info:sub(1, 50) .. "...\n"
-			end
+			reportText = reportText .. i .. ". " .. info:sub(1, 50) .. "\n"
 		end
 	else
-		reportText = "No tools found in inventory."
-		print("[ELITEX LOG]: Inventory is empty.")
+		reportText = "No tools found."
 	end
 
-	--topBox.Text = reportText -- Обновляем текст в нашем окне 
+	print(reportText)
 end)
 
 -------------------------------------------------------------------
--- ЛОГИКА ANCHORED
+-- ОСТАЛЬНОЙ ФУНКЦИОНАЛ (без изменений)
 -------------------------------------------------------------------
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -187,12 +209,10 @@ anchorBtn.MouseButton1Click:Connect(function()
 
 	local char = speaker.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if root then
-		root.Anchored = isAnchored
-	end
+	if root then root.Anchored = isAnchored end
 end)
 
--- Блок для вывода ТОП-3 Generation
+-- Генератор ТОП-3
 local topBox = Instance.new("TextLabel", Frame) 
 topBox.Size = UDim2.new(0.9, 0, 0, 100) 
 topBox.Position = UDim2.new(0.05, 0, 0.8, 0) 
@@ -204,9 +224,6 @@ topBox.Text = "Searching for Gen..."
 topBox.TextWrapped = true
 Instance.new("UICorner", topBox) 
 
--------------------------------------------------------------------
--- ЛОГИКА ПАРСИНГА И СОРТИРОВКИ
--------------------------------------------------------------------
 local function getNumericValue(text)
 	local valStr, suffix = text:match("([%d%.]+)([MB])") 
 	if valStr and suffix then 
@@ -256,9 +273,7 @@ task.spawn(function()
 	end
 end)
 
--------------------------------------------------------------------
--- ФУНКЦИОНАЛ (ESP, JUMP, SPEED)
--------------------------------------------------------------------
+-- ESP, Jump, Speed, Fly (без изменений)
 local function updateESP()
 	for _, player in pairs(Players:GetPlayers()) do 
 		if player ~= speaker and player.Character then 
@@ -319,7 +334,6 @@ end)
 
 flyBtn.MouseButton1Click:Connect(function() nowe = not nowe end)
 
--- Циклы обновления
 RunService.Heartbeat:Connect(function()
 	if speedLockActive and speaker.Character and speaker.Character:FindFirstChild("Humanoid") then
 		speaker.Character.Humanoid.WalkSpeed = targetSpeed
@@ -328,20 +342,19 @@ RunService.Heartbeat:Connect(function()
 	if nowe and speaker.Character then 
 		speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
 	end
-
-	-- Принудительное удержание Anchored, если включено
 	if isAnchored and speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart") then
-		if not speaker.Character.HumanoidRootPart.Anchored then
-			speaker.Character.HumanoidRootPart.Anchored = true
-		end
+		speaker.Character.HumanoidRootPart.Anchored = true
 	end
 end)
 
--- Закрытие
+-- Кнопка закрытия
 local closebutton = Instance.new("TextButton", Frame)
 closebutton.Text = "X"
 closebutton.Position = UDim2.new(0.9, 0, 0, 0)
 closebutton.Size = UDim2.new(0, 25, 0, 25)
 closebutton.BackgroundColor3 = Color3.new(0.8,0,0)
 closebutton.TextColor3 = Color3.new(1,1,1) 
+closebutton.Font = Enum.Font.GothamBold
+closebutton.TextSize = 14
+Instance.new("UICorner", closebutton).CornerRadius = UDim.new(0, 4)
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
