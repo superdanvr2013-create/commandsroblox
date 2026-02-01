@@ -13,6 +13,8 @@ local speedLockActive = false
 local espActive = false 
 local isAnchored = false 
 local targetSpeed = 16 
+local targetJump = 7.2
+
 local speeds = 1 
 local nowe = false 
 
@@ -95,6 +97,22 @@ speedTextBox.TextSize = 12
 speedTextBox.TextXAlignment = Enum.TextXAlignment.Center
 Instance.new("UICorner", speedTextBox).CornerRadius = UDim.new(0, 4)
 
+local JumpTextBox = Instance.new("TextBox", speedContainer)
+JumpTextBox.Name = "JumpTextBox"
+JumpTextBox.Position = UDim2.new(0.2, 0, 0, 0)
+JumpTextBox.Size = UDim2.new(0.3, -10, 1, 0)
+JumpTextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+JumpTextBox.Text = tostring(targetJump)
+JumpTextBox.TextColor3 = Color3.new(1,1,1)
+JumpTextBox.PlaceholderText = "0-100"
+JumpTextBox.Font = Enum.Font.Gotham
+JumpTextBox.TextSize = 12
+JumpTextBox.TextXAlignment = Enum.TextXAlignment.Center
+Instance.new("UICorner", JumpTextBox).CornerRadius = UDim.new(0, 4)
+
+
+
+
 -- 5. Fly Mode (Y: 0.42)
 local flyBtn = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.40, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(200, 160, 0))
 
@@ -116,6 +134,18 @@ speedTextBox.FocusLost:Connect(function(enterPressed)
 		speedTextBox.Text = tostring(targetSpeed)
 	else
 		speedTextBox.Text = tostring(targetSpeed)
+	end
+end)
+
+
+JumpTextBox.FocusLost:Connect(function(enterPressed)
+	local input = tonumber(JumpTextBox.Text)
+	if input and input >= 0 and input <= 100 then
+		targetJump = input
+		--speedInputBtn.Text = "SPEED: " .. targetSpeed
+		JumpTextBox.Text = tostring(targetJump)
+	else
+		JumpTextBox.Text = tostring(targetJump)
 	end
 end)
 
@@ -270,7 +300,8 @@ RunService.RenderStepped:Connect(function()
 			local plr = Players:GetPlayerFromCharacter(v:FindFirstAncestorOfClass("Model"))
 			if plr == nil then continue end
 			if plr ~= speaker then continue end
-			v.WalkSpeed = targetSpeed  -- Используем targetSpeed из TextBox (0-100)
+		v.WalkSpeed = targetSpeed  -- Используем targetSpeed из TextBox (0-100)
+		v.JumpHeight = targetJump
 		end
 	--end
 
