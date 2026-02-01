@@ -12,8 +12,8 @@ local title = Instance.new("TextLabel")
 local speedLockActive = false 
 local espActive = false 
 local isAnchored = false 
-local targetSpeed = 16 
-local targetJump = 7.2
+local targetSpeed = 30 
+local targetJump = 15
 
 local speeds = 1 
 local nowe = false 
