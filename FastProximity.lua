@@ -174,106 +174,106 @@ closeBtn.MouseButton1Click:Connect(function() main:Destroy() end)
 -------------------------------------------------------------------
 
 local function log(text)
-    outputBox.Text = text .. "\n" .. outputBox.Text
+	outputBox.Text = text .. "\n" .. outputBox.Text
 end
 
 -- Улучшенная логика Fast Proximity
 local fastProxActive = false
 
 fastProxBtn.MouseButton1Click:Connect(function()
-    fastProxActive = not fastProxActive
-    
-    if fastProxActive then
-        fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Зеленый (Включено)
-        log("FastProx: ENABLED (Auto-scan)")
-    else
-        fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130) -- Фиолетовый (Выключено)
-        log("FastProx: DISABLED")
-        return
-    end
+	fastProxActive = not fastProxActive
 
-    -- Запускаем цикл в отдельном потоке, чтобы GUI не завис
-    task.spawn(function()
-        while fastProxActive do
-            local count = 0
-            -- Ищем во всем Workspace, так как пути в Plots могут меняться
-            for _, prompt in pairs(workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") then
-                    -- Проверяем, находится ли этот промпт в нужном нам месте (Base/Spawn)
-                    if prompt.Parent.Name == "Spawn" or prompt.Parent.Name == "Base" then
-                        if prompt.HoldDuration > 0 then
-                            prompt.HoldDuration = 0
-                            -- Дополнительно убираем задержку отклика
-                            prompt.ClickableDuringHold = true 
-                            count = count + 1
-                        end
-                    end
-                end
-            end
-            
-            if count > 0 then
-                log("Optimized " .. count .. " new prompts")
-            end
-            
-            task.wait(2) -- Проверяем каждые 2 секунды новые объекты
-        end
-    end)
+	if fastProxActive then
+		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Зеленый (Включено)
+		log("FastProx: ENABLED (Auto-scan)")
+	else
+		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130) -- Фиолетовый (Выключено)
+		log("FastProx: DISABLED")
+		return
+	end
+
+	-- Запускаем цикл в отдельном потоке, чтобы GUI не завис
+	task.spawn(function()
+		while fastProxActive do
+			local count = 0
+			-- Ищем во всем Workspace, так как пути в Plots могут меняться
+			for _, prompt in pairs(workspace:GetDescendants()) do
+				if prompt:IsA("ProximityPrompt") then
+					-- Проверяем, находится ли этот промпт в нужном нам месте (Base/Spawn)
+					if prompt.Parent.Name == "Spawn" or prompt.Parent.Name == "Base" then
+						if prompt.HoldDuration > 0 then
+							prompt.HoldDuration = 0
+						--	-- Дополнительно убираем задержку отклика
+						--	prompt.ClickableDuringHold = true 
+							count = count + 1
+						end
+					end
+				end
+			end
+
+			if count > 0 then
+				log("Optimized " .. count .. " new prompts")
+			end
+
+			task.wait(2) -- Проверяем каждые 2 секунды новые объекты
+		end
+	end)
 end)
 
 -- Остальная логика (Scan/TP) остается как была
 local function getPathToWorkspace(obj)
-    local path = obj.Name
-    local current = obj.Parent
-    while current and current ~= game and current ~= workspace do
-        path = current.Name .. " > " .. path
-        current = current.Parent
-    end
-    return path
+	local path = obj.Name
+	local current = obj.Parent
+	while current and current ~= game and current ~= workspace do
+		path = current.Name .. " > " .. path
+		current = current.Parent
+	end
+	return path
 end
 
 scanBtn.MouseButton1Click:Connect(function()
-    local char = speaker.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    local radius = tonumber(radiusBox.Text) or 10
-    local found = {}
-    for _, part in pairs(workspace:GetDescendants()) do
-        if part:IsA("BasePart") and part ~= root then
-            local dist = (part.Position - root.Position).Magnitude
-            if dist <= radius then
-                table.insert(found, string.format("[%.1f] %s", dist, getPathToWorkspace(part)))
-            end
-        end
-    end
-    outputBox.Text = #found > 0 and table.concat(found, "\n") or "Nothing found."
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local radius = tonumber(radiusBox.Text) or 10
+	local found = {}
+	for _, part in pairs(workspace:GetDescendants()) do
+		if part:IsA("BasePart") and part ~= root then
+			local dist = (part.Position - root.Position).Magnitude
+			if dist <= radius then
+				table.insert(found, string.format("[%.1f] %s", dist, getPathToWorkspace(part)))
+			end
+		end
+	end
+	outputBox.Text = #found > 0 and table.concat(found, "\n") or "Nothing found."
 end)
 
 getPosBtn.MouseButton1Click:Connect(function()
-    local char = speaker.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then
-        targetPosBox.Text = string.format("%.1f, %.1f, %.1f", root.Position.X, root.Position.Y, root.Position.Z)
-    end
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		targetPosBox.Text = string.format("%.1f, %.1f, %.1f", root.Position.X, root.Position.Y, root.Position.Z)
+	end
 end)
 
 tpBtn.MouseButton1Click:Connect(function()
-    local x, y, z = targetPosBox.Text:match("([%d%.%-]+)%s*,%s*([%d%.%-]+)%s*,%s*([%d%.%-]+)")
-    if not (x and y and z) then log("Error: Bad Pos") return end
-    
-    local path = objectPathBox.Text
-    local current = workspace
-    for seg in path:gmatch("[^>]+") do
-        local name = seg:match("^%s*(.-)%s*$")
-        if name:lower() ~= "workspace" then
-            current = current and current:FindFirstChild(name)
-        end
-    end
+	local x, y, z = targetPosBox.Text:match("([%d%.%-]+)%s*,%s*([%d%.%-]+)%s*,%s*([%d%.%-]+)")
+	if not (x and y and z) then log("Error: Bad Pos") return end
 
-    if current then
-        local cf = CFrame.new(tonumber(x), tonumber(y), tonumber(z))
-        if current:IsA("Model") then current:PivotTo(cf) else current.CFrame = cf end
-        log("Teleported: " .. current.Name)
-    else
-        log("Object not found!")
-    end
+	local path = objectPathBox.Text
+	local current = workspace
+	for seg in path:gmatch("[^>]+") do
+		local name = seg:match("^%s*(.-)%s*$")
+		if name:lower() ~= "workspace" then
+			current = current and current:FindFirstChild(name)
+		end
+	end
+
+	if current then
+		local cf = CFrame.new(tonumber(x), tonumber(y), tonumber(z))
+		if current:IsA("Model") then current:PivotTo(cf) else current.CFrame = cf end
+		log("Teleported: " .. current.Name)
+	else
+		log("Object not found!")
+	end
 end)
