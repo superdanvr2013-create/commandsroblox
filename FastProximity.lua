@@ -177,35 +177,47 @@ local function log(text)
     outputBox.Text = text .. "\n" .. outputBox.Text
 end
 
--- Логика Fast Proximity
+-- Улучшенная логика Fast Proximity
+local fastProxActive = false
+
 fastProxBtn.MouseButton1Click:Connect(function()
-    local plots = workspace:FindFirstChild("Plots")
-    if not plots then
-        log("Error: Folder 'Plots' not found in Workspace")
+    fastProxActive = not fastProxActive
+    
+    if fastProxActive then
+        fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Зеленый (Включено)
+        log("FastProx: ENABLED (Auto-scan)")
+    else
+        fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130) -- Фиолетовый (Выключено)
+        log("FastProx: DISABLED")
         return
     end
 
-    local count = 0
-    -- Перебор всех участков (uuid)
-    for _, plot in pairs(plots:GetChildren()) do
-        local podiums = plot:FindFirstChild("AnimalPodiums")
-        if podiums then
-            -- Перебор всех подиумов (1, 2, 3...)
-            for _, podium in pairs(podiums:GetChildren()) do
-                local spawnObj = podium:FindFirstChild("Base") and podium.Base:FindFirstChild("Spawn")
-                if spawnObj then
-                    -- Ищем все ProximityPrompt внутри Spawn
-                    for _, prompt in pairs(spawnObj:GetDescendants()) do
-                        if prompt:IsA("ProximityPrompt") then
+    -- Запускаем цикл в отдельном потоке, чтобы GUI не завис
+    task.spawn(function()
+        while fastProxActive do
+            local count = 0
+            -- Ищем во всем Workspace, так как пути в Plots могут меняться
+            for _, prompt in pairs(workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") then
+                    -- Проверяем, находится ли этот промпт в нужном нам месте (Base/Spawn)
+                    if prompt.Parent.Name == "Spawn" or prompt.Parent.Name == "Base" then
+                        if prompt.HoldDuration > 0 then
                             prompt.HoldDuration = 0
+                            -- Дополнительно убираем задержку отклика
+                            prompt.ClickableDuringHold = true 
                             count = count + 1
                         end
                     end
                 end
             end
+            
+            if count > 0 then
+                log("Optimized " .. count .. " new prompts")
+            end
+            
+            task.wait(2) -- Проверяем каждые 2 секунды новые объекты
         end
-    end
-    log("FastProx: Modified " .. count .. " prompts!")
+    end)
 end)
 
 -- Остальная логика (Scan/TP) остается как была
