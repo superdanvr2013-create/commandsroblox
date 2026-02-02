@@ -244,75 +244,84 @@ local function findSmartPath(pathStr)
 	return nil
 end
 
+local fastProxActive = false
+local targetPrompts = {}
+
+-- Функция обхода (пытается всеми способами активировать промпт)
+local function bypassActivate(prompt)
+	if not prompt or not prompt.Parent then return end
+
+	-- 1. Пытаемся обнулить (для визуального удобства)
+	prompt.HoldDuration = 0
+
+	-- 2. Эмулируем мгновенное завершение (для многих игр это обход)
+	-- Если твой чит поддерживает fireproximityprompt, это сработает на 100%
+	if fireproximityprompt then
+		fireproximityprompt(prompt)
+	else
+		-- Если функции нет, используем стандартные события
+		prompt:InputHoldBegin()
+		task.wait() -- микро-пауза
+		prompt:InputHoldEnd()
+	end
+end
+
 fastProxBtn.MouseButton1Click:Connect(function()
 	fastProxActive = not fastProxActive
 
 	if fastProxActive then
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-		log("FastProx: STARTING...")
+		log("BYPASS MODE: ENABLED")
 
 		targetPrompts = {}
-		local pathText = objectPathBox.Text
+		local pathText = objectPathBox.Text:gsub("%s+", "")
 
-		-- 1. Определяем цель
+		-- Сбор объектов (как в прошлом шаге)
 		if pathText ~= "" then
-			log("Resolving path: " .. pathText)
-			-- Пытаемся найти умным поиском
 			local target = findSmartPath(pathText)
-
 			if target then
-				log("FOUND: " .. target:GetFullName())
-				-- Собираем все промпты внутри найденного пути
-				if target:IsA("ProximityPrompt") then
-					table.insert(targetPrompts, target)
+				if target:IsA("ProximityPrompt") then table.insert(targetPrompts, target) end
+				for _, d in pairs(target:GetDescendants()) do
+					if d:IsA("ProximityPrompt") then table.insert(targetPrompts, d) end
 				end
-				for _, descendant in pairs(target:GetDescendants()) do
-					if descendant:IsA("ProximityPrompt") then
-						table.insert(targetPrompts, descendant)
-					end
-				end
-			else
-				log("ERROR: Could not resolve '" .. pathText .. "'")
-				fastProxActive = false
-				fastProxBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-				return
 			end
 		else
-			-- Если путь пустой, ищем стандартные Spawn/Base в Plots
-			log("Mode: Global Plots Scan")
 			for _, obj in pairs(workspace:GetDescendants()) do
-				if obj:IsA("ProximityPrompt") then
-					local p = obj.Parent
-					if p and (p.Name == "Spawn" or p.Name == "Base") then
-						table.insert(targetPrompts, obj)
-					end
+				if obj:IsA("ProximityPrompt") and (obj.Parent.Name == "Spawn" or obj.Parent.Name == "Base") then
+					table.insert(targetPrompts, obj)
 				end
 			end
 		end
 
-		log("Active Prompts: " .. #targetPrompts)
-
-		-- 2. Высокочастотный цикл (Turbo)
+		-- ТУРБО-ЦИКЛ С ОБХОДОМ
 		task.spawn(function()
 			while fastProxActive do
 				for i = #targetPrompts, 1, -1 do
 					local p = targetPrompts[i]
 					if p and p.Parent then
-						-- Жесткая фиксация значения
-						if p.HoldDuration ~= 0 then
-							p.HoldDuration = 0
+						-- Метод "Силового давления":
+						-- Каждые несколько кадров принудительно ставим 0
+						p.HoldDuration = 0
+
+						-- Если игрок стоит рядом, пробуем "прожать" кнопку за него
+						-- Это помогает обойти серверную проверку на некоторых защитах
+						if p.Enabled and (speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")) then
+							local dist = (p.Parent.Position - speaker.Character.HumanoidRootPart.Position).Magnitude
+							if dist <= p.MaxActivationDistance then
+								-- Раскомментируй строку ниже, если хочешь АВТО-НАЖАТИЕ без рук
+								-- bypassActivate(p) 
+							end
 						end
 					else
 						table.remove(targetPrompts, i)
 					end
 				end
-				-- Ждем один кадр рендеринга
 				game:GetService("RunService").Heartbeat:Wait()
 			end
 		end)
 	else
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
-		log("FastProx: DISABLED")
+		log("BYPASS MODE: OFF")
 		targetPrompts = {}
 	end
 end)
