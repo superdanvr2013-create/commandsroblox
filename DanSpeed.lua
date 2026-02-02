@@ -330,7 +330,7 @@ closebutton.TextColor3 = Color3.new(1,1,1)
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
 
 -- Настройки
-local TARGET_DURATION = 0.3
+local TARGET_DURATION = 1
 local PATCH_INTERVAL = 0.5   -- Частота применения (0.5 сек)
 local RESCAN_INTERVAL = 5.0  -- Частота обновления списка (5 сек)
 
