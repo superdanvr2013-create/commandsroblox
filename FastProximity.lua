@@ -244,36 +244,63 @@ local function findSmartPath(pathStr)
 	return nil
 end
 
-local fastProxActive = false
-local targetObjects = {} -- Теперь храним не только промпты, а все подозрительные объекты
+-- Добавляем элементы в GUI (размести их под кнопкой FastProximity)
+local durationInput = Instance.new("TextBox", Frame)
+durationInput.PlaceholderText = "Dur: 1"
+durationInput.Text = "1"
+durationInput.Position = UDim2.new(0.05, 0, 0.52, 0)
+durationInput.Size = UDim2.new(0.4, 0, 0, 25)
+durationInput.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+durationInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+durationInput.Font = Enum.Font.Code
+durationInput.TextSize = 12
+Instance.new("UICorner", durationInput)
 
--- Функция для "лечения" объекта (обнуление задержек)
-local function patchHoldProperties(obj)
+local loopToggle = Instance.new("TextButton", Frame)
+loopToggle.Text = "LOOP: OFF"
+loopToggle.Position = UDim2.new(0.55, 0, 0.52, 0)
+loopToggle.Size = UDim2.new(0.4, 0, 0, 25)
+loopToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+loopToggle.TextColor3 = Color3.new(1, 1, 1)
+loopToggle.Font = Enum.Font.GothamBold
+loopToggle.TextSize = 10
+Instance.new("UICorner", loopToggle)
+
+local isLooped = false
+loopToggle.MouseButton1Click:Connect(function()
+	isLooped = not isLooped
+	loopToggle.Text = isLooped and "LOOP: ON" or "LOOP: OFF"
+	loopToggle.BackgroundColor3 = isLooped and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(50, 50, 50)
+end)
+
+-------------------------------------------------------------------
+-- ОБНОВЛЕННАЯ ЛОГИКА FASTPROXIMITY
+-------------------------------------------------------------------
+local fastProxActive = false
+
+local function patchHoldProperties(obj, targetValue)
 	if not obj then return end
 
-	-- 1. Стандартные ProximityPrompt
+	-- Стандартные промпты
 	if obj:IsA("ProximityPrompt") then
-		obj.HoldDuration = 0.1 -- Ставим 0.1 вместо 0 для обхода базовых проверок
+		obj.HoldDuration = targetValue
 	end
 
-	-- 2. Проверка атрибутов (часто используется в кастомных системах)
-	local attributes = obj:GetAttributes()
-	for name, value in pairs(attributes) do
-		local lowerName = name:lower()
-		if lowerName:find("dur") or lowerName:find("hold") or lowerName:find("time") then
-			if type(value) == "number" and value > 0.1 then
-				obj:SetAttribute(name, 0.1)
+	-- Атрибуты (HoldTime, Duration и т.д.)
+	for name, value in pairs(obj:GetAttributes()) do
+		local ln = name:lower()
+		if ln:find("dur") or ln:find("hold") or ln:find("time") then
+			if type(value) == "number" then
+				obj:SetAttribute(name, targetValue)
 			end
 		end
 	end
 
-	-- 3. Проверка Value-объектов внутри (NumberValue, FloatValue и т.д.)
+	-- Value-объекты
 	if obj:IsA("NumberValue") or obj:IsA("IntValue") then
-		local lowerName = obj.Name:lower()
-		if lowerName:find("dur") or lowerName:find("hold") or lowerName:find("time") then
-			if obj.Value > 0.1 then
-				obj.Value = 0.1
-			end
+		local ln = obj.Name:lower()
+		if ln:find("dur") or ln:find("hold") or ln:find("time") then
+			obj.Value = targetValue
 		end
 	end
 end
@@ -281,54 +308,60 @@ end
 fastProxBtn.MouseButton1Click:Connect(function()
 	fastProxActive = not fastProxActive
 
+	-- Читаем значение из поля (от 0 до 3)
+	local targetValue = tonumber(durationInput.Text) or 1
+	targetValue = math.clamp(targetValue, 0, 3) 
+
 	if fastProxActive then
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-		log("UNIVERSAL MODE: ON (0.1s)")
+		log("FastProx START (Val: " .. targetValue .. ")")
 
-		targetObjects = {}
+		local targets = {}
 		local pathText = objectPathBox.Text:gsub("%s+", "")
 
 		-- Сбор целей
 		if pathText ~= "" then
-			local target = findSmartPath(pathText)
-			if target then
-				table.insert(targetObjects, target)
-				for _, d in pairs(target:GetDescendants()) do
-					table.insert(targetObjects, d)
-				end
+			local t = findSmartPath(pathText)
+			if t then
+				table.insert(targets, t)
+				for _, d in pairs(t:GetDescendants()) do table.insert(targets, d) end
 			end
 		else
-			-- Если путь пустой, берем все объекты в Plots (или Workspace, если Plots нет)
-			local root = workspace:FindFirstChild("Plots") or workspace
-			for _, obj in pairs(root:GetDescendants()) do
-				-- Добавляем только тех, кто похож на кнопки или имеет нужные свойства
-				local n = obj.Name:lower()
-				if obj:IsA("ProximityPrompt") or n:find("spawn") or n:find("base") or n:find("button") then
-					table.insert(targetObjects, obj)
+			-- Стандартный поиск по ключевым словам
+			for _, obj in pairs(workspace:GetDescendants()) do
+				if obj:IsA("ProximityPrompt") or obj.Name:lower():find("spawn") or obj.Name:lower():find("base") then
+					table.insert(targets, obj)
 				end
 			end
 		end
 
-		log("Monitoring " .. #targetObjects .. " potential objects")
-
-		-- Цикл "силовой" перезаписи
+		-- Выполнение
 		task.spawn(function()
-			while fastProxActive do
-				for i = #targetObjects, 1, -1 do
-					local obj = targetObjects[i]
-					if obj and obj.Parent then
-						patchHoldProperties(obj)
-					else
-						table.remove(targetObjects, i)
+			if isLooped then
+				-- Режим цикла
+				while fastProxActive do
+					for i = #targets, 1, -1 do
+						if targets[i] and targets[i].Parent then
+							patchHoldProperties(targets[i], targetValue)
+						else
+							table.remove(targets, i)
+						end
 					end
+					task.wait(0.3)
 				end
-				task.wait(0.2) -- Небольшая задержка, чтобы не вешать клиент при огромном списке
+			else
+				-- Одноразовый режим
+				for _, obj in pairs(targets) do
+					patchHoldProperties(obj, targetValue)
+				end
+				log("FastProx: One-time patch done.")
+				fastProxActive = false
+				fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
 			end
 		end)
 	else
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
-		log("UNIVERSAL MODE: OFF")
-		targetObjects = {}
+		log("FastProx: STOPPED")
 	end
 end)
 
