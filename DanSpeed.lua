@@ -1,3 +1,5 @@
+-- Настройки
+
 -- Сервисы
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
@@ -295,14 +297,14 @@ flyBtn.MouseButton1Click:Connect(function() nowe = not nowe end)
 -- НОВАЯ СИСТЕМА SPEED С ИСПОЛЬЗОВАНИЕМ RenderStepped
 RunService.RenderStepped:Connect(function()
 	--if speedLockActive then
-		for i, v in workspace:GetDescendants() do
-			if v.ClassName ~= "Humanoid" then continue end
-			local plr = Players:GetPlayerFromCharacter(v:FindFirstAncestorOfClass("Model"))
-			if plr == nil then continue end
-			if plr ~= speaker then continue end
+	for i, v in workspace:GetDescendants() do
+		if v.ClassName ~= "Humanoid" then continue end
+		local plr = Players:GetPlayerFromCharacter(v:FindFirstAncestorOfClass("Model"))
+		if plr == nil then continue end
+		if plr ~= speaker then continue end
 		v.WalkSpeed = targetSpeed  -- Используем targetSpeed из TextBox (0-100)
 		v.JumpHeight = targetJump
-		end
+	end
 	--end
 
 	if espActive then updateESP() end
@@ -327,3 +329,52 @@ closebutton.BackgroundColor3 = Color3.new(0.8,0,0)
 closebutton.TextColor3 = Color3.new(1,1,1) 
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
 
+local TARGET_DURATION = 0.3
+
+-- Функция для применения изменений к конкретному объекту
+local function patchObject(obj)
+	-- 1. Стандартные ProximityPrompt
+	if obj:IsA("ProximityPrompt") then
+		obj.HoldDuration = TARGET_DURATION
+	end
+
+	-- 2. Атрибуты (используются в кастомных системах взаимодействия)
+	for name, value in pairs(obj:GetAttributes()) do
+		local ln = name:lower()
+		if ln:find("dur") or ln:find("hold") or ln:find("time") then
+			if type(value) == "number" then
+				obj:SetAttribute(name, TARGET_DURATION)
+			end
+		end
+	end
+
+	-- 3. Value-объекты (NumberValue, IntValue)
+	if obj:IsA("NumberValue") or obj:IsA("IntValue") then
+		local ln = obj.Name:lower()
+		if ln:find("dur") or ln:find("hold") or ln:find("time") then
+			obj.Value = TARGET_DURATION
+		end
+	end
+end
+
+-- Основная логика (выполняется один раз при запуске)
+local function runFastProx()
+	local count = 0
+
+	-- Получаем все объекты в игре
+	local descendants = workspace:GetDescendants()
+
+	for _, obj in pairs(descendants) do
+		-- Проверяем, является ли объект промптом или содержит ключевые слова в названии
+		local ln = obj.Name:lower()
+		if obj:IsA("ProximityPrompt") or ln:find("spawn") or ln:find("base") or ln:find("hold") then
+			patchObject(obj)
+			count = count + 1
+		end
+	end
+
+	print("EliteX: Patch finished. Items modified: " .. tostring(count))
+end
+
+-- Запуск
+runFastProx()
