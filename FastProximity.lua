@@ -177,47 +177,63 @@ local function log(text)
 	outputBox.Text = text .. "\n" .. outputBox.Text
 end
 
--- Улучшенная логика Fast Proximity
 local fastProxActive = false
+local targetPrompts = {} -- Табличная переменная для хранения найденных объектов
 
 fastProxBtn.MouseButton1Click:Connect(function()
 	fastProxActive = not fastProxActive
 
 	if fastProxActive then
-		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Зеленый (Включено)
-		log("FastProx: ENABLED (Auto-scan)")
-	else
-		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130) -- Фиолетовый (Выключено)
-		log("FastProx: DISABLED")
-		return
-	end
+		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+		log("FastProx: ENABLED (Turbo Mode)")
 
-	-- Запускаем цикл в отдельном потоке, чтобы GUI не завис
-	task.spawn(function()
-		while fastProxActive do
-			local count = 0
-			-- Ищем во всем Workspace, так как пути в Plots могут меняться
-			for _, prompt in pairs(workspace:GetDescendants()) do
-				if prompt:IsA("ProximityPrompt") then
-					-- Проверяем, находится ли этот промпт в нужном нам месте (Base/Spawn)
-					if prompt.Parent.Name == "Spawn" or prompt.Parent.Name == "Base" then
-						if prompt.HoldDuration > 0 then
-							prompt.HoldDuration = 0
-						--	-- Дополнительно убираем задержку отклика
-						--	prompt.ClickableDuringHold = true 
-							count = count + 1
-						end
-					end
+		-- 1. Сбор объектов в таблицу
+		targetPrompts = {} -- Очищаем перед новым поиском
+		local foundCount = 0
+
+		for _, obj in pairs(workspace:GetDescendants()) do
+			-- Проверяем путь: ... > Base > Spawn > ProximityPrompt
+			if obj:IsA("ProximityPrompt") then
+				local parent = obj.Parent
+				if parent and (parent.Name == "Spawn" or parent.Name == "Base") then
+					table.insert(targetPrompts, obj)
+					foundCount = foundCount + 1
 				end
 			end
-
-			if count > 0 then
-				log("Optimized " .. count .. " new prompts")
-			end
-
-			task.wait(2) -- Проверяем каждые 2 секунды новые объекты
 		end
-	end)
+
+		log("Added to table: " .. foundCount .. " prompts")
+
+		-- 2. Асинхронный "Турбо-цикл" для борьбы с сервером
+		task.spawn(function()
+			while fastProxActive do
+				-- Используем pairs для перебора сохраненных в таблице объектов
+				for i = #targetPrompts, 1, -1 do
+					local prompt = targetPrompts[i]
+
+					-- Проверка, не удален ли объект из игры (чтобы не было ошибок)
+					if prompt and prompt.Parent then
+						-- Принудительно ставим 0, даже если сервер меняет обратно
+						if prompt.HoldDuration ~= 0 then
+							prompt.HoldDuration = 0
+						end
+					else
+						-- Удаляем из таблицы, если объект уничтожен
+						table.remove(targetPrompts, i)
+					end
+				end
+
+				-- Минимально возможная задержка в движке Roblox
+				-- task.wait() без аргументов ~0.03 сек, heartbeat еще быстрее
+				game:GetService("RunService").Heartbeat:Wait()
+			end
+		end)
+
+	else
+		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
+		log("FastProx: DISABLED")
+		targetPrompts = {} -- Очищаем таблицу при выключении
+	end
 end)
 
 -- Остальная логика (Scan/TP) остается как была
