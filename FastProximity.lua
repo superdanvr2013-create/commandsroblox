@@ -178,61 +178,142 @@ local function log(text)
 end
 
 local fastProxActive = false
-local targetPrompts = {} -- Табличная переменная для хранения найденных объектов
+local targetPrompts = {}
+
+-- Вспомогательная функция для поиска объекта по частичному пути (напр. "Base > Spawn")
+local function findByPartialPath(pathStr)
+	local segments = {}
+	for segment in string.gmatch(pathStr, "[^>]+") do
+		table.insert(segments, segment:match("^%s*(.-)%s*$"))
+	end
+
+	if #segments == 0 then return nil end
+
+	-- Ищем во всем Workspace объект, имя которого совпадает с ПОСЛЕДНИМ сегментом
+	-- А затем проверяем, совпадают ли его родители с остальными сегментами
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj.Name == segments[#segments] then
+			local match = true
+			local current = obj
+			for i = #segments - 1, 1, -1 do
+				if not current.Parent or current.Parent.Name ~= segments[i] then
+					match = false
+					break
+				end
+				current = current.Parent
+			end
+
+			if match then return obj end
+		end
+	end
+	return nil
+end
+
+-- Улучшенная функция: ищет объект, который "заканчивается" на введенный путь
+local function findSmartPath(pathStr)
+	local segments = {}
+	for segment in string.gmatch(pathStr, "[^>]+") do
+		table.insert(segments, segment:match("^%s*(.-)%s*$"):lower())
+	end
+
+	if #segments == 0 then return nil end
+
+	-- Перебор всех объектов в Workspace
+	for _, obj in pairs(workspace:GetDescendants()) do
+		-- Сверяем имя последнего сегмента
+		if obj.Name:lower() == segments[#segments] then
+			local current = obj
+			local matchCount = 1
+
+			-- Проверяем родителей вверх по иерархии
+			for i = #segments - 1, 1, -1 do
+				if current.Parent and current.Parent.Name:lower() == segments[i] then
+					matchCount = matchCount + 1
+					current = current.Parent
+				else
+					break
+				end
+			end
+
+			-- Если совпали все сегменты пути
+			if matchCount == #segments then
+				return obj
+			end
+		end
+	end
+	return nil
+end
 
 fastProxBtn.MouseButton1Click:Connect(function()
 	fastProxActive = not fastProxActive
 
 	if fastProxActive then
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-		log("FastProx: ENABLED (Turbo Mode)")
+		log("FastProx: STARTING...")
 
-		-- 1. Сбор объектов в таблицу
-		targetPrompts = {} -- Очищаем перед новым поиском
-		local foundCount = 0
+		targetPrompts = {}
+		local pathText = objectPathBox.Text
 
-		for _, obj in pairs(workspace:GetDescendants()) do
-			-- Проверяем путь: ... > Base > Spawn > ProximityPrompt
-			if obj:IsA("ProximityPrompt") then
-				local parent = obj.Parent
-				if parent and (parent.Name == "Spawn" or parent.Name == "Base") then
-					table.insert(targetPrompts, obj)
-					foundCount = foundCount + 1
+		-- 1. Определяем цель
+		if pathText ~= "" then
+			log("Resolving path: " .. pathText)
+			-- Пытаемся найти умным поиском
+			local target = findSmartPath(pathText)
+
+			if target then
+				log("FOUND: " .. target:GetFullName())
+				-- Собираем все промпты внутри найденного пути
+				if target:IsA("ProximityPrompt") then
+					table.insert(targetPrompts, target)
+				end
+				for _, descendant in pairs(target:GetDescendants()) do
+					if descendant:IsA("ProximityPrompt") then
+						table.insert(targetPrompts, descendant)
+					end
+				end
+			else
+				log("ERROR: Could not resolve '" .. pathText .. "'")
+				fastProxActive = false
+				fastProxBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+				return
+			end
+		else
+			-- Если путь пустой, ищем стандартные Spawn/Base в Plots
+			log("Mode: Global Plots Scan")
+			for _, obj in pairs(workspace:GetDescendants()) do
+				if obj:IsA("ProximityPrompt") then
+					local p = obj.Parent
+					if p and (p.Name == "Spawn" or p.Name == "Base") then
+						table.insert(targetPrompts, obj)
+					end
 				end
 			end
 		end
 
-		log("Added to table: " .. foundCount .. " prompts")
+		log("Active Prompts: " .. #targetPrompts)
 
-		-- 2. Асинхронный "Турбо-цикл" для борьбы с сервером
+		-- 2. Высокочастотный цикл (Turbo)
 		task.spawn(function()
 			while fastProxActive do
-				-- Используем pairs для перебора сохраненных в таблице объектов
 				for i = #targetPrompts, 1, -1 do
-					local prompt = targetPrompts[i]
-
-					-- Проверка, не удален ли объект из игры (чтобы не было ошибок)
-					if prompt and prompt.Parent then
-						-- Принудительно ставим 0, даже если сервер меняет обратно
-						if prompt.HoldDuration ~= 0 then
-							prompt.HoldDuration = 0
+					local p = targetPrompts[i]
+					if p and p.Parent then
+						-- Жесткая фиксация значения
+						if p.HoldDuration ~= 0 then
+							p.HoldDuration = 0
 						end
 					else
-						-- Удаляем из таблицы, если объект уничтожен
 						table.remove(targetPrompts, i)
 					end
 				end
-
-				-- Минимально возможная задержка в движке Roblox
-				-- task.wait() без аргументов ~0.03 сек, heartbeat еще быстрее
+				-- Ждем один кадр рендеринга
 				game:GetService("RunService").Heartbeat:Wait()
 			end
 		end)
-
 	else
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
 		log("FastProx: DISABLED")
-		targetPrompts = {} -- Очищаем таблицу при выключении
+		targetPrompts = {}
 	end
 end)
 
@@ -262,6 +343,7 @@ scanBtn.MouseButton1Click:Connect(function()
 		end
 	end
 	outputBox.Text = #found > 0 and table.concat(found, "\n") or "Nothing found."
+	print(outputBox.Text)
 end)
 
 getPosBtn.MouseButton1Click:Connect(function()
