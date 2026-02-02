@@ -245,24 +245,36 @@ local function findSmartPath(pathStr)
 end
 
 local fastProxActive = false
-local targetPrompts = {}
+local targetObjects = {} -- Теперь храним не только промпты, а все подозрительные объекты
 
--- Функция обхода (пытается всеми способами активировать промпт)
-local function bypassActivate(prompt)
-	if not prompt or not prompt.Parent then return end
+-- Функция для "лечения" объекта (обнуление задержек)
+local function patchHoldProperties(obj)
+	if not obj then return end
 
-	-- 1. Пытаемся обнулить (для визуального удобства)
-	prompt.HoldDuration = 0
+	-- 1. Стандартные ProximityPrompt
+	if obj:IsA("ProximityPrompt") then
+		obj.HoldDuration = 0.1 -- Ставим 0.1 вместо 0 для обхода базовых проверок
+	end
 
-	-- 2. Эмулируем мгновенное завершение (для многих игр это обход)
-	-- Если твой чит поддерживает fireproximityprompt, это сработает на 100%
-	if fireproximityprompt then
-		fireproximityprompt(prompt)
-	else
-		-- Если функции нет, используем стандартные события
-		prompt:InputHoldBegin()
-		task.wait() -- микро-пауза
-		prompt:InputHoldEnd()
+	-- 2. Проверка атрибутов (часто используется в кастомных системах)
+	local attributes = obj:GetAttributes()
+	for name, value in pairs(attributes) do
+		local lowerName = name:lower()
+		if lowerName:find("dur") or lowerName:find("hold") or lowerName:find("time") then
+			if type(value) == "number" and value > 0.1 then
+				obj:SetAttribute(name, 0.1)
+			end
+		end
+	end
+
+	-- 3. Проверка Value-объектов внутри (NumberValue, FloatValue и т.д.)
+	if obj:IsA("NumberValue") or obj:IsA("IntValue") then
+		local lowerName = obj.Name:lower()
+		if lowerName:find("dur") or lowerName:find("hold") or lowerName:find("time") then
+			if obj.Value > 0.1 then
+				obj.Value = 0.1
+			end
+		end
 	end
 end
 
@@ -271,58 +283,52 @@ fastProxBtn.MouseButton1Click:Connect(function()
 
 	if fastProxActive then
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-		log("BYPASS MODE: ENABLED")
+		log("UNIVERSAL MODE: ON (0.1s)")
 
-		targetPrompts = {}
+		targetObjects = {}
 		local pathText = objectPathBox.Text:gsub("%s+", "")
 
-		-- Сбор объектов (как в прошлом шаге)
+		-- Сбор целей
 		if pathText ~= "" then
 			local target = findSmartPath(pathText)
 			if target then
-				if target:IsA("ProximityPrompt") then table.insert(targetPrompts, target) end
+				table.insert(targetObjects, target)
 				for _, d in pairs(target:GetDescendants()) do
-					if d:IsA("ProximityPrompt") then table.insert(targetPrompts, d) end
+					table.insert(targetObjects, d)
 				end
 			end
 		else
-			for _, obj in pairs(workspace:GetDescendants()) do
-				if obj:IsA("ProximityPrompt") and (obj.Parent.Name == "Spawn" or obj.Parent.Name == "Base") then
-					table.insert(targetPrompts, obj)
+			-- Если путь пустой, берем все объекты в Plots (или Workspace, если Plots нет)
+			local root = workspace:FindFirstChild("Plots") or workspace
+			for _, obj in pairs(root:GetDescendants()) do
+				-- Добавляем только тех, кто похож на кнопки или имеет нужные свойства
+				local n = obj.Name:lower()
+				if obj:IsA("ProximityPrompt") or n:find("spawn") or n:find("base") or n:find("button") then
+					table.insert(targetObjects, obj)
 				end
 			end
 		end
 
-		-- ТУРБО-ЦИКЛ С ОБХОДОМ
+		log("Monitoring " .. #targetObjects .. " potential objects")
+
+		-- Цикл "силовой" перезаписи
 		task.spawn(function()
 			while fastProxActive do
-				for i = #targetPrompts, 1, -1 do
-					local p = targetPrompts[i]
-					if p and p.Parent then
-						-- Метод "Силового давления":
-						-- Каждые несколько кадров принудительно ставим 0
-						p.HoldDuration = 0
-
-						-- Если игрок стоит рядом, пробуем "прожать" кнопку за него
-						-- Это помогает обойти серверную проверку на некоторых защитах
-						if p.Enabled and (speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")) then
-							local dist = (p.Parent.Position - speaker.Character.HumanoidRootPart.Position).Magnitude
-							if dist <= p.MaxActivationDistance then
-								-- Раскомментируй строку ниже, если хочешь АВТО-НАЖАТИЕ без рук
-								-- bypassActivate(p) 
-							end
-						end
+				for i = #targetObjects, 1, -1 do
+					local obj = targetObjects[i]
+					if obj and obj.Parent then
+						patchHoldProperties(obj)
 					else
-						table.remove(targetPrompts, i)
+						table.remove(targetObjects, i)
 					end
 				end
-				game:GetService("RunService").Heartbeat:Wait()
+				task.wait(0.2) -- Небольшая задержка, чтобы не вешать клиент при огромном списке
 			end
 		end)
 	else
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
-		log("BYPASS MODE: OFF")
-		targetPrompts = {}
+		log("UNIVERSAL MODE: OFF")
+		targetObjects = {}
 	end
 end)
 
