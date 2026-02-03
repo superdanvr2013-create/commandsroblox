@@ -55,19 +55,24 @@ local function addMessage(txt)
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 end
 
+-- Определяем функцию запроса для Xeno
+local httpRequest = (syn and syn.request) or (http and http.request) or request
+
 local function apiCall(msg)
+    if not httpRequest then 
+        warn("Xeno request function not found!")
+        return 
+    end
+
     local payload = {
         userid = player.UserId,
-        sessionid = sessionId,
-        username = player.Name,
-        message = msg
+        sessionid = tostring(sessionId),
+        username = tostring(player.Name),
+        message = tostring(msg)
     }
 
-    -- Проверяем, запущено ли это через инжектор (наличие функции request)
-    local httpRequest = (syn and syn.request) or (http and http.request) or request
-
-    if httpRequest then
-        local response = httpRequest({
+    local success, response = pcall(function()
+        return httpRequest({
             Url = API_URL,
             Method = "POST",
             Headers = {
@@ -76,23 +81,29 @@ local function apiCall(msg)
             },
             Body = HttpService:JSONEncode(payload)
         })
+    end)
 
-        if response and response.Success then
-            local res = HttpService:JSONDecode(response.Body)
-            if res.status == "success" then
-                if msg == "" and res.data then
-                    for _, text in ipairs(res.data) do
-                        addMessage(text)
-                    end
-                elseif msg ~= "" then
-                    addMessage(res.username .. ": " .. res.message)
+    if success and response then
+        -- Если сервер вернул 400, выведем тело ответа, чтобы понять причину
+        if response.StatusCode ~= 200 then
+            warn("API Error " .. response.StatusCode .. ": " .. response.Body)
+            return
+        end
+
+        local decodeSuccess, res = pcall(function() return HttpService:JSONDecode(response.Body) end)
+        
+        if decodeSuccess and res.status == "success" then
+            if msg == "" and res.data then
+                for _, text in ipairs(res.data) do
+                    -- Добавляем сообщение в UI (функция addMessage должна быть в коде выше)
+                    if addMessage then addMessage(text) end
                 end
+            elseif msg ~= "" then
+                if addMessage then addMessage(res.username .. ": " .. res.message) end
             end
-        else
-            warn("Xeno API Error: " .. tostring(response.StatusCode))
         end
     else
-        warn("Инжектор не поддерживает функцию request!")
+        warn("Critical Request Failure: " .. tostring(response))
     end
 end
 
