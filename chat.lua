@@ -56,39 +56,44 @@ local function addMessage(txt)
 end
 
 local function apiCall(msg)
-	local data = {
-		userid = player.UserId,
-		sessionid = sessionId, -- Передаем строку
-		username = player.Name,
-		message = msg
-	}
+    local payload = {
+        userid = player.UserId,
+        sessionid = sessionId,
+        username = player.Name,
+        message = msg
+    }
 
-	local success, response = pcall(function()
-		return HttpService:RequestAsync({
-			Url = API_URL,
-			Method = "POST",
-			Headers = {
-				["Content-Type"] = "application/json",
-				["Authorization"] = "Bearer " .. TOKEN
-			},
-			Body = HttpService:JSONEncode(data)
-		})
-	end)
+    -- Проверяем, запущено ли это через инжектор (наличие функции request)
+    local httpRequest = (syn and syn.request) or (http and http.request) or request
 
-	if success and response.Success then
-		local res = HttpService:JSONDecode(response.Body)
-		if res.status == "success" then
-			if msg == "" and res.data then
-				for _, text in ipairs(res.data) do
-					addMessage(text)
-				end
-			elseif msg ~= "" then
-				addMessage(res.username .. ": " .. res.message)
-			end
-		end
-	else
-		warn("API Error: " .. tostring(response))
-	end
+    if httpRequest then
+        local response = httpRequest({
+            Url = API_URL,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = "Bearer " .. TOKEN
+            },
+            Body = HttpService:JSONEncode(payload)
+        })
+
+        if response and response.Success then
+            local res = HttpService:JSONDecode(response.Body)
+            if res.status == "success" then
+                if msg == "" and res.data then
+                    for _, text in ipairs(res.data) do
+                        addMessage(text)
+                    end
+                elseif msg ~= "" then
+                    addMessage(res.username .. ": " .. res.message)
+                end
+            end
+        else
+            warn("Xeno API Error: " .. tostring(response.StatusCode))
+        end
+    else
+        warn("Инжектор не поддерживает функцию request!")
+    end
 end
 
 btn.MouseButton1Click:Connect(function()
