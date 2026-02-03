@@ -15,28 +15,28 @@ screenGui.Name = "XenoChatUI"
 local frame = Instance.new("Frame", screenGui)
 frame.Size = UDim2.new(0, 300, 0, 350)
 frame.Position = UDim2.new(0, 20, 0.5, -175)
--- Черный и полупрозрачный фон
 frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-frame.BackgroundTransparency = 0.3 
+frame.BackgroundTransparency = 0.3 -- Полупрозрачный черный
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
 
--- Заголовок (панель управления)
+-- Заголовок
 local titleBar = Instance.new("Frame", frame)
 titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 titleBar.BackgroundTransparency = 0.2
+titleBar.BorderSizePixel = 0
 
 local title = Instance.new("TextLabel", titleBar)
 title.Size = UDim2.new(1, -40, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
-title.Text = "CHAT: " .. string.sub(sessionId, 1, 8)
+title.Text = "GLOBAL CHAT"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 14
+title.TextSize = 16
 
 -- Кнопка свернуть/развернуть
 local toggleBtn = Instance.new("TextButton", titleBar)
@@ -60,18 +60,20 @@ scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scroll.ScrollBarThickness = 4
 scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
 
 local layout = Instance.new("UIListLayout", scroll)
-layout.Padding = Nil -- Можно добавить отступ между сообщениями
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 4) -- ИСПРАВЛЕНО: Теперь тут корректный отступ 4 пикселя
 
 local input = Instance.new("TextBox", contentFrame)
-input.Size = UDim2.new(1, -70, 0, 30)
+input.Size = UDim2.new(1, -75, 0, 30)
 input.Position = UDim2.new(0, 5, 1, -35)
 input.PlaceholderText = "Текст..."
-input.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-input.BackgroundTransparency = 0.3
+input.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 input.TextColor3 = Color3.new(1, 1, 1)
 input.TextSize = 16
+input.ClearTextOnFocus = true
 
 local btn = Instance.new("TextButton", contentFrame)
 btn.Size = UDim2.new(0, 60, 0, 30)
@@ -79,6 +81,7 @@ btn.Position = UDim2.new(1, -65, 1, -35)
 btn.Text = "SEND"
 btn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
 btn.TextColor3 = Color3.new(1, 1, 1)
+btn.Font = Enum.Font.SourceSansBold
 
 -- Логика сворачивания
 local isMinimized = false
@@ -86,30 +89,33 @@ toggleBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     if isMinimized then
         contentFrame.Visible = false
-        frame.Size = UDim2.new(0, 300, 0, 30) -- Только заголовок
+        frame.Size = UDim2.new(0, 300, 0, 30)
         toggleBtn.Text = "+"
     else
         contentFrame.Visible = true
-        frame.Size = UDim2.new(0, 300, 0, 350) -- Полный размер
+        frame.Size = UDim2.new(0, 300, 0, 350)
         toggleBtn.Text = "−"
     end
 end)
 
 local function addMessage(txt)
-	local lbl = Instance.new("TextLabel", scroll)
-	lbl.Size = UDim2.new(1, -10, 0, 25)
-	lbl.Text = " " .. txt
-	lbl.TextColor3 = Color3.new(1, 1, 1)
-	lbl.BackgroundTransparency = 1
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
+    local lbl = Instance.new("TextLabel", scroll)
+    lbl.Size = UDim2.new(1, -10, 0, 0) -- Высота определится автоматически
+    lbl.AutomaticSize = Enum.AutomaticSize.Y
+    lbl.Text = " " .. txt
+    lbl.TextColor3 = Color3.new(1, 1, 1)
+    lbl.BackgroundTransparency = 1
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextWrapped = true
-    -- Увеличенный шрифт сообщений
-    lbl.TextSize = 16 
+    lbl.TextSize = 18 -- Увеличенный шрифт
+    lbl.Font = Enum.Font.SourceSans
     
-    scroll.CanvasPosition = Vector2.new(0, 9999)
+    -- Плавный скролл вниз
+    task.wait(0.1)
+    scroll.CanvasPosition = Vector2.new(0, scroll.AbsoluteCanvasSize.Y)
 end
 
--- API Call (без изменений логики)
+-- API
 local function apiCall(msg)
     local httpRequest = (syn and syn.request) or (http and http.request) or request
     if not httpRequest then return end
@@ -127,7 +133,10 @@ local function apiCall(msg)
             return httpRequest({
                 Url = API_URL,
                 Method = "POST",
-                Headers = {["Content-Type"] = "application/json", ["Authorization"] = "Bearer "..TOKEN},
+                Headers = {
+                    ["Content-Type"] = "application/json",
+                    ["Authorization"] = "Bearer "..TOKEN
+                },
                 Body = HttpService:JSONEncode(payload)
             })
         end)
@@ -151,10 +160,11 @@ btn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Поллинг
 task.spawn(function()
-    warn("[Xeno] Chat UI Loaded")
-	while true do
-		apiCall("") 
-		task.wait(3)
-	end
+    warn("[Xeno] Chat Started Successfully")
+    while true do
+        apiCall("") 
+        task.wait(3)
+    end
 end)
