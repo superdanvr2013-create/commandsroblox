@@ -56,30 +56,21 @@ local function addMessage(txt)
 end
 
 local function apiCall(msg)
-    -- Проверяем наличие функции запроса в инжекторе Xeno
-    local httpRequest = (syn and syn.request) or (http and http.request) or request
-    
-    if not httpRequest then 
-        warn("Xeno: Функция request не найдена! Убедитесь, что инжектор запущен.")
-        return 
-    end
+    if not httpRequest then return end
 
-    -- Формируем таблицу данных (Payload)
-    -- Мы адаптируем её под структуру твоего weirdstrictworldaidata.php
+    -- Формируем данные ТАК, как их ждет ваш PHP (согласно файлу weirdstrictworldaidata.php)
     local payload = {
         userid = player.UserId,
-        username = tostring(player.Name),
-        sessionid = tostring(sessionId), -- Передаем GUID как строку
-        Recipient = "GlobalChat",        -- Обязательное поле для твоего PHP
-        Question = tostring(msg),        -- Текст сообщения
-        QuestionTranslate = "",          -- Заглушка (требуется в PHP)
-        answer = "",                     -- Заглушка
-        answer_translate = "",           -- Заглушка
+        Recipient = "GlobalChat", -- PHP требует это поле!
+        Question = msg ~= "" and msg or "POLLING", -- Поле для текста
+        QuestionTranslate = "", -- Пустышка, чтобы PHP не ругался
+        answer = "", 
+        answer_translate = "",
         language = "ru",
-        lessonid = 0
+        lessonid = 0,
+        sessionid = tostring(sessionId) -- Наше новое поле
     }
 
-    -- Выполняем запрос
     local success, response = pcall(function()
         return httpRequest({
             Url = API_URL,
@@ -92,33 +83,12 @@ local function apiCall(msg)
         })
     end)
 
-    -- Обработка результата
     if success and response then
-        if response.StatusCode == 200 then
-            local decodeSuccess, res = pcall(function() 
-                return HttpService:JSONDecode(response.Body) 
-            end)
-
-            if decodeSuccess and res.status == "success" then
-                -- Если мы просто опрашивали (msg == ""), выводим новые сообщения
-                if msg == "" and res.data then
-                    for _, text in ipairs(res.data) do
-                        if addMessage then addMessage(text) end
-                    end
-                -- Если мы отправляли сообщение
-                elseif msg ~= "" then
-                    -- Твой PHP при успехе возвращает статус, выводим свое сообщение в чат
-                    if addMessage then addMessage(player.Name .. ": " .. msg) end
-                end
-            else
-                warn("Ошибка парсинга JSON: " .. tostring(response.Body))
-            end
-        else
-            -- Если пришла ошибка 400/500, выводим её текст из PHP
-            warn("Ошибка сервера " .. response.StatusCode .. ": " .. response.Body)
+        if response.StatusCode ~= 200 then
+            warn("API Error " .. response.StatusCode .. ": " .. response.Body)
+            return
         end
-    else
-        warn("Критическая ошибка запроса: " .. tostring(response))
+        -- ... дальше обработка ответа ...
     end
 end
 
