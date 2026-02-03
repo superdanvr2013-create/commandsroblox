@@ -56,69 +56,40 @@ local function addMessage(txt)
 end
 
 local function apiCall(msg)
-    -- Проверяем наличие функции запроса в инжекторе Xeno
     local httpRequest = (syn and syn.request) or (http and http.request) or request
-    
-    if not httpRequest then 
-        warn("Xeno: Функция request не найдена! Убедитесь, что инжектор запущен.")
-        return 
-    end
+    if not httpRequest then return warn("Request function missing") end
 
-    -- Формируем таблицу данных (Payload)
-    -- Мы адаптируем её под структуру твоего weirdstrictworldaidata.php
     local payload = {
         userid = player.UserId,
         username = tostring(player.Name),
-        sessionid = tostring(sessionId), -- Передаем GUID как строку
-        Recipient = "GlobalChat",        -- Обязательное поле для твоего PHP
-        Question = tostring(msg),        -- Текст сообщения
-        QuestionTranslate = "",          -- Заглушка (требуется в PHP)
-        answer = "",                     -- Заглушка
-        answer_translate = "",           -- Заглушка
-        language = "ru",
-        lessonid = 0
+        sessionid = tostring(sessionId),
+        Question = tostring(msg),
+        Recipient = "GlobalChat"
     }
 
-    -- Выполняем запрос
-    local success, response = pcall(function()
-        return httpRequest({
-            Url = API_URL,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json",
-                ["Authorization"] = "Bearer " .. TOKEN
-            },
-            Body = HttpService:JSONEncode(payload)
-        })
-    end)
+    local response = httpRequest({
+        Url = API_URL,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Bearer " .. TOKEN -- Проверь, чтобы в TOKEN не было лишних пробелов
+        },
+        Body = HttpService:JSONEncode(payload)
+    })
 
-    -- Обработка результата
-    if success and response then
+    if response then
+        print("Xeno Status Code: " .. tostring(response.StatusCode))
+        print("Xeno Body: " .. tostring(response.Body))
+        
         if response.StatusCode == 200 then
-            local decodeSuccess, res = pcall(function() 
-                return HttpService:JSONDecode(response.Body) 
-            end)
-
-            if decodeSuccess and res.status == "success" then
-                -- Если мы просто опрашивали (msg == ""), выводим новые сообщения
-                if msg == "" and res.data then
-                    for _, text in ipairs(res.data) do
-                        if addMessage then addMessage(text) end
-                    end
-                -- Если мы отправляли сообщение
-                elseif msg ~= "" then
-                    -- Твой PHP при успехе возвращает статус, выводим свое сообщение в чат
-                    if addMessage then addMessage(player.Name .. ": " .. msg) end
-                end
-            else
-                warn("Ошибка парсинга JSON: " .. tostring(response.Body))
+            local res = HttpService:JSONDecode(response.Body)
+            if res.status == "success" then
+                -- Логика добавления в чат
+                if msg ~= "" then addMessage(player.Name .. ": " .. msg) end
             end
-        else
-            -- Если пришла ошибка 400/500, выводим её текст из PHP
-            warn("Ошибка сервера " .. response.StatusCode .. ": " .. response.Body)
         end
     else
-        warn("Критическая ошибка запроса: " .. tostring(response))
+        warn("Xeno: Сервер вообще не ответил (No response object)")
     end
 end
 
