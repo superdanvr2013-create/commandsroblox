@@ -10,7 +10,7 @@ local player = Players.LocalPlayer
 local userId = player.UserId
 local username = player.Name
 -- Используем JobId как sessionid, если пусто (в Studio), ставим заглушку
-local sessionId = (game.JobId ~= "" and game.JobId) or "STUDIO_DEBUG_SESSION"
+local sessionId = (game.JobId ~= "" and game.JobId) or "STUDIO_TEST_SESSION"
 
 -- UI Переменные
 local MAX_MESSAGES = 20
