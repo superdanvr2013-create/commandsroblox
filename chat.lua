@@ -15,50 +15,106 @@ screenGui.Name = "XenoChatUI"
 local frame = Instance.new("Frame", screenGui)
 frame.Size = UDim2.new(0, 300, 0, 350)
 frame.Position = UDim2.new(0, 20, 0.5, -175)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+-- Черный и полупрозрачный фон
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0.3 
+frame.BorderSizePixel = 0
 frame.Active = true
-frame.Draggable = true -- Можно двигать по экрану
+frame.Draggable = true
 
-local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(1, -10, 1, -70)
-scroll.Position = UDim2.new(0, 5, 0, 30)
+-- Заголовок (панель управления)
+local titleBar = Instance.new("Frame", frame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+titleBar.BackgroundTransparency = 0.2
+
+local title = Instance.new("TextLabel", titleBar)
+title.Size = UDim2.new(1, -40, 1, 0)
+title.Position = UDim2.new(0, 10, 0, 0)
+title.Text = "CHAT: " .. string.sub(sessionId, 1, 8)
+title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundTransparency = 1
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 14
+
+-- Кнопка свернуть/развернуть
+local toggleBtn = Instance.new("TextButton", titleBar)
+toggleBtn.Size = UDim2.new(0, 25, 0, 25)
+toggleBtn.Position = UDim2.new(1, -30, 0, 2)
+toggleBtn.Text = "−"
+toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 18
+
+local contentFrame = Instance.new("Frame", frame)
+contentFrame.Size = UDim2.new(1, 0, 1, -30)
+contentFrame.Position = UDim2.new(0, 0, 0, 30)
+contentFrame.BackgroundTransparency = 1
+
+local scroll = Instance.new("ScrollingFrame", contentFrame)
+scroll.Size = UDim2.new(1, -10, 1, -45)
+scroll.Position = UDim2.new(0, 5, 0, 5)
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scroll.ScrollBarThickness = 4
-local layout = Instance.new("UIListLayout", scroll)
-layout.SortOrder = Enum.SortOrder.LayoutOrder
+scroll.BackgroundTransparency = 1
 
-local input = Instance.new("TextBox", frame)
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = Nil -- Можно добавить отступ между сообщениями
+
+local input = Instance.new("TextBox", contentFrame)
 input.Size = UDim2.new(1, -70, 0, 30)
 input.Position = UDim2.new(0, 5, 1, -35)
-input.PlaceholderText = "Напиши сообщение..."
-input.Text = ""
+input.PlaceholderText = "Текст..."
+input.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+input.BackgroundTransparency = 0.3
+input.TextColor3 = Color3.new(1, 1, 1)
+input.TextSize = 16
 
-local btn = Instance.new("TextButton", frame)
+local btn = Instance.new("TextButton", contentFrame)
 btn.Size = UDim2.new(0, 60, 0, 30)
 btn.Position = UDim2.new(1, -65, 1, -35)
-btn.Text = "Send"
+btn.Text = "SEND"
 btn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+btn.TextColor3 = Color3.new(1, 1, 1)
+
+-- Логика сворачивания
+local isMinimized = false
+toggleBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        contentFrame.Visible = false
+        frame.Size = UDim2.new(0, 300, 0, 30) -- Только заголовок
+        toggleBtn.Text = "+"
+    else
+        contentFrame.Visible = true
+        frame.Size = UDim2.new(0, 300, 0, 350) -- Полный размер
+        toggleBtn.Text = "−"
+    end
+end)
 
 local function addMessage(txt)
 	local lbl = Instance.new("TextLabel", scroll)
-	lbl.Size = UDim2.new(1, -5, 0, 20)
+	lbl.Size = UDim2.new(1, -10, 0, 25)
 	lbl.Text = " " .. txt
 	lbl.TextColor3 = Color3.new(1, 1, 1)
 	lbl.BackgroundTransparency = 1
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextWrapped = true
-    -- Авто-скролл вниз
+    -- Увеличенный шрифт сообщений
+    lbl.TextSize = 16 
+    
     scroll.CanvasPosition = Vector2.new(0, 9999)
 end
 
+-- API Call (без изменений логики)
 local function apiCall(msg)
     local httpRequest = (syn and syn.request) or (http and http.request) or request
     if not httpRequest then return end
-
     local isPolling = (msg == "")
     
-    -- Используем defer для моментального освобождения основного потока
     task.defer(function()
         local payload = {
             userid = player.UserId,
@@ -67,49 +123,36 @@ local function apiCall(msg)
             Question = isPolling and "POLLING" or tostring(msg),
             Recipient = "GlobalChat"
         }
-
         local success, response = pcall(function()
             return httpRequest({
                 Url = API_URL,
                 Method = "POST",
-                Headers = {
-                    ["Content-Type"] = "application/json",
-                    ["Authorization"] = "Bearer " .. TOKEN
-                },
+                Headers = {["Content-Type"] = "application/json", ["Authorization"] = "Bearer "..TOKEN},
                 Body = HttpService:JSONEncode(payload)
             })
         end)
-
-        if success and response then
-            if response.StatusCode == 200 then
-                local res = HttpService:JSONDecode(response.Body)
-                if res.status == "success" and res.data then
-                    for _, text in ipairs(res.data) do
-                        addMessage(text)
-                    end
+        if success and response and response.StatusCode == 200 then
+            local res = HttpService:JSONDecode(response.Body)
+            if res.status == "success" and res.data then
+                for _, text in ipairs(res.data) do
+                    addMessage(text)
                 end
-            else
-                warn("[Xeno] Server Error: " .. response.StatusCode .. " | " .. response.Body)
             end
-        else
-            warn("[Xeno] Connection Failed: " .. tostring(response))
         end
     end)
 end
 
--- Отправка
 btn.MouseButton1Click:Connect(function()
     local text = input.Text
     if text ~= "" then
-        addMessage(player.Name .. ": " .. text) -- Свое сообщение локально
+        addMessage(player.Name .. ": " .. text)
         apiCall(text)
         input.Text = ""
     end
 end)
 
--- Поллинг (каждые 3 секунды)
 task.spawn(function()
-    warn("[Xeno] Chat Started. Session: " .. sessionId)
+    warn("[Xeno] Chat UI Loaded")
 	while true do
 		apiCall("") 
 		task.wait(3)
