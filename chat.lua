@@ -7,7 +7,7 @@ local TOKEN = "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4"
 
 local sessionId = game.JobId ~= "" and game.JobId or "STUDIO_" .. player.UserId
 
--- Переменные для анти-спама
+-- Переменные анти-спама
 local cooldownTime = 5
 local lastSendTick = 0
 
@@ -57,7 +57,7 @@ contentFrame.Position = UDim2.new(0, 0, 0, 30)
 contentFrame.BackgroundTransparency = 1
 
 local scroll = Instance.new("ScrollingFrame", contentFrame)
-scroll.Size = UDim2.new(1, -10, 1, -75) -- Изменил размер, чтобы влез таймер
+scroll.Size = UDim2.new(1, -10, 1, -75)
 scroll.Position = UDim2.new(0, 5, 0, 5)
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -69,22 +69,22 @@ local layout = Instance.new("UIListLayout", scroll)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0, 4)
 
--- Таймер над кнопкой
+-- Таймер
 local timerLabel = Instance.new("TextLabel", contentFrame)
 timerLabel.Size = UDim2.new(0, 60, 0, 20)
 timerLabel.Position = UDim2.new(1, -65, 1, -55)
-timerLabel.Text = "" -- Пусто по умолчанию
+timerLabel.Text = "" 
 timerLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
 timerLabel.BackgroundTransparency = 1
 timerLabel.Font = Enum.Font.SourceSansBold
 timerLabel.TextSize = 14
 
+-- Исправленное поле ввода
 local input = Instance.new("TextBox", contentFrame)
-input.Text = ""
 input.Size = UDim2.new(1, -75, 0, 30)
 input.Position = UDim2.new(0, 5, 1, -35)
-input.PlaceholderText = "Текст..."
-input.Text = ""
+input.PlaceholderText = "Введите сообщение..."
+input.Text = "" -- ЯВНО обнуляем текст, чтобы не было надписи "TextBox"
 input.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 input.TextColor3 = Color3.new(1, 1, 1)
 input.TextSize = 16
@@ -98,7 +98,7 @@ btn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
 btn.TextColor3 = Color3.new(1, 1, 1)
 btn.Font = Enum.Font.SourceSansBold
 
--- Логика таймера
+-- Кулдаун логика
 local function startCooldown()
     lastSendTick = tick()
     btn.Active = false
@@ -117,7 +117,7 @@ local function startCooldown()
     end)
 end
 
--- Логика сворачивания
+-- Сворачивание
 local isMinimized = false
 toggleBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
@@ -148,7 +148,6 @@ local function addMessage(txt)
     scroll.CanvasPosition = Vector2.new(0, scroll.AbsoluteCanvasSize.Y)
 end
 
--- API
 local function apiCall(msg)
     local httpRequest = (syn and syn.request) or (http and http.request) or request
     if not httpRequest then return end
@@ -185,19 +184,17 @@ local function apiCall(msg)
 end
 
 btn.MouseButton1Click:Connect(function()
-    -- Проверка кулдауна
     if tick() - lastSendTick < cooldownTime then return end
     
     local text = input.Text
-    if text ~= "" then
+    if text ~= "" and text ~= "TextBox" then -- Доп. проверка
         addMessage(player.Name .. ": " .. text)
         apiCall(text)
         input.Text = ""
-        startCooldown() -- Запуск таймера
+        startCooldown()
     end
 end)
 
--- Поллинг
 task.spawn(function()
     warn("[Xeno] Chat Started Successfully")
     while true do
