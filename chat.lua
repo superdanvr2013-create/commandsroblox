@@ -80,9 +80,11 @@ timerLabel.Font = Enum.Font.SourceSansBold
 timerLabel.TextSize = 14
 
 local input = Instance.new("TextBox", contentFrame)
+input.Text = ""
 input.Size = UDim2.new(1, -75, 0, 30)
 input.Position = UDim2.new(0, 5, 1, -35)
 input.PlaceholderText = "Текст..."
+input.Text = ""
 input.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 input.TextColor3 = Color3.new(1, 1, 1)
 input.TextSize = 16
