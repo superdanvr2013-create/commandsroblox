@@ -25,28 +25,66 @@ local function createButton(name, text, position, color)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
 	btn.Text = text
-	btn.Size = UDim2.new(0, 220, 0, 40)
+	btn.Size = UDim2.new(0, 220, 0, 35) -- Чуть уменьшил высоту, чтобы все влезло
 	btn.Position = position
 	btn.BackgroundColor3 = color
 	btn.TextColor3 = Color3.new(1,1,1)
 	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 14
+	btn.TextSize = 13
 	btn.Parent = screenGui
-
+	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = btn
 	return btn
 end
 
--- Кнопки управления (5 штук)
+-- Создаем 6 кнопок
 local freezeBtn     = createButton("FreezeBtn", "Заморозить", UDim2.new(0.02, 0, 0.45, 0), Color3.fromRGB(46, 204, 113))
-local platformBtn   = createButton("PlatformBtn", "Платформа (L-Ctrl)", UDim2.new(0.02, 0, 0.52, 0), Color3.fromRGB(52, 152, 219))
-local clearBtn      = createButton("ClearBtn", "Удалить платформы", UDim2.new(0.02, 0, 0.59, 0), Color3.fromRGB(149, 165, 166))
-local customAnimBtn = createButton("CustomAnimBtn", "Стиль: WICKED POPULAR", UDim2.new(0.02, 0, 0.66, 0), Color3.fromRGB(142, 68, 173))
-local defaultAnimBtn = createButton("DefaultAnimBtn", "Стиль: СТАНДАРТ", UDim2.new(0.02, 0, 0.73, 0), Color3.fromRGB(44, 62, 80))
+local platformBtn   = createButton("PlatformBtn", "Платформа (L-Ctrl)", UDim2.new(0.02, 0, 0.50, 0), Color3.fromRGB(52, 152, 219))
+local clearBtn      = createButton("ClearBtn", "Удалить платформы", UDim2.new(0.02, 0, 0.55, 0), Color3.fromRGB(149, 165, 166))
+local customAnimBtn = createButton("CustomAnimBtn", "Стиль: WICKED POPULAR", UDim2.new(0.02, 0, 0.60, 0), Color3.fromRGB(142, 68, 173))
+local defaultAnimBtn = createButton("DefaultAnimBtn", "Стиль: СТАНДАРТ", UDim2.new(0.02, 0, 0.65, 0), Color3.fromRGB(44, 62, 80))
+local xrayBtn       = createButton("XrayBtn", "Показать невидимые", UDim2.new(0.02, 0, 0.70, 0), Color3.fromRGB(211, 84, 0))
 
--- === 2. ЛОГИКА АНИМАЦИИ ===
+-- === 2. ЛОГИКА VISIBILITY (X-RAY) ===
+
+local savedInvisibleParts = {} -- Таблица для запоминания скрытых частей
+local isXrayActive = false
+
+xrayBtn.MouseButton1Click:Connect(function()
+	isXrayActive = not isXrayActive
+	
+	if isXrayActive then
+		-- ВКЛЮЧАЕМ: Ищем невидимые блоки и делаем их видимыми
+		for _, obj in pairs(workspace:GetDescendants()) do
+			if obj:IsA("BasePart") and obj.Transparency >= 1 then
+				-- Сохраняем в таблицу: [объект] = его старая прозрачность (обычно 1)
+				savedInvisibleParts[obj] = obj.Transparency
+				-- Делаем полупрозрачным (красноватый оттенок для заметности)
+				obj.Transparency = 0.5
+				-- (Опционально) Можно добавить SelectionBox, но пока просто прозрачность
+			end
+		end
+		
+		xrayBtn.Text = "Скрытые: ВИДНЫ"
+		xrayBtn.BackgroundColor3 = Color3.fromRGB(230, 126, 34) -- Оранжевый поярче
+	else
+		-- ВЫКЛЮЧАЕМ: Возвращаем как было
+		for part, oldTrans in pairs(savedInvisibleParts) do
+			if part and part.Parent then -- Проверяем, существует ли деталь до сих пор
+				part.Transparency = oldTrans
+			end
+		end
+		-- Очищаем список
+		table.clear(savedInvisibleParts)
+		
+		xrayBtn.Text = "Показать невидимые"
+		xrayBtn.BackgroundColor3 = Color3.fromRGB(211, 84, 0) -- Темно-оранжевый
+	end
+end)
+
+-- === 3. ЛОГИКА АНИМАЦИИ ===
 
 local function applyWickedIds(scriptObj)
 	local function setVal(folderName, childName, id)
@@ -75,10 +113,10 @@ end
 local function switchAnimation(mode)
 	local char = player.Character
 	if not char or not savedAnimateScript then return end
-
+	
 	local old = char:FindFirstChild("Animate")
 	if old then old:Destroy() end
-
+	
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if hum then
 		local animator = hum:FindFirstChildOfClass("Animator")
@@ -88,15 +126,19 @@ local function switchAnimation(mode)
 			end
 		end
 	end
-
+	
 	local newAnimate = savedAnimateScript:Clone()
 	if mode == "Wicked" then
 		applyWickedIds(newAnimate)
 		customAnimBtn.Text = "Стиль: WICKED (ВКЛ)"
 		defaultAnimBtn.Text = "Стиль: СТАНДАРТ"
+		customAnimBtn.BackgroundColor3 = Color3.fromRGB(100, 40, 140)
+		defaultAnimBtn.BackgroundColor3 = Color3.fromRGB(44, 62, 80)
 	else
 		customAnimBtn.Text = "Стиль: WICKED POPULAR"
 		defaultAnimBtn.Text = "Стиль: СТАНДАРТ (ВКЛ)"
+		customAnimBtn.BackgroundColor3 = Color3.fromRGB(142, 68, 173)
+		defaultAnimBtn.BackgroundColor3 = Color3.fromRGB(22, 160, 133)
 	end
 	newAnimate.Parent = char
 end
@@ -115,7 +157,7 @@ defaultAnimBtn.MouseButton1Click:Connect(function() switchAnimation("Default") e
 player.CharacterAdded:Connect(onCharacterAdded)
 if player.Character then onCharacterAdded(player.Character) end
 
--- === 3. ФИЗИКА И ПЛАТФОРМЫ ===
+-- === 4. ФИЗИКА И ПЛАТФОРМЫ ===
 
 local isAnchored = false
 freezeBtn.MouseButton1Click:Connect(function()
