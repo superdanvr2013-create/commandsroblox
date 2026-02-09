@@ -65,22 +65,33 @@ local customAnimBtn = createButton("CustomAnimBtn", "Стиль: WICKED POPULAR"
 local defaultAnimBtn = createButton("DefaultAnimBtn", "Стиль: СТАНДАРТ", UDim2.new(0.02, 0, 0.70, 0), Color3.fromRGB(44, 62, 80))
 local xrayBtn       = createButton("XrayBtn", "Показать невидимые", UDim2.new(0.02, 0, 0.75, 0), Color3.fromRGB(50, 50, 50))
 
--- === 2. ЛОГИКА ИЗМЕНЕНИЯ РАЗМЕРА (ТОЛЬКО ПОД НОГАМИ) ===
-
 local function resizeCurrentPlatform(axis, amount)
 	local char = player.Character
 	if not char then return end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	
-	-- Ищем деталь на которой стоим
-	local floorPart = hum and hum.SeatPart or (hum and hum.FloorPart)
-	
-	if floorPart and floorPart.Name == "MyPlatform" then
-		local s = floorPart.Size
-		if axis == "X" then
-			floorPart.Size = Vector3.new(math.max(1, s.X + amount), s.Y, s.Z)
-		elseif axis == "Z" then
-			floorPart.Size = Vector3.new(s.X, s.Y, math.max(1, s.Z + amount))
+
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	-- Пускаем "луч" вниз от ног персонажа, чтобы найти деталь
+	local rayOrigin = root.Position
+	local rayDirection = Vector3.new(0, -6, 0) -- Ищем на 6 студов вниз
+
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterDescendantsInstances = {char} -- Игнорируем самого игрока
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+	if result and result.Instance then
+		local target = result.Instance
+		-- Проверяем, та ли это платформа
+		if target.Name == "MyPlatform" then
+			local s = target.Size
+			if axis == "X" then
+				target.Size = Vector3.new(math.max(1, s.X + amount), s.Y, s.Z)
+			elseif axis == "Z" then
+				target.Size = Vector3.new(s.X, s.Y, math.max(1, s.Z + amount))
+			end
 		end
 	end
 end
