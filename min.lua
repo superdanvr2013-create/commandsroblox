@@ -1,79 +1,125 @@
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService") -- Сервис для клавиш
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- 1. Создаем интерфейс динамически
+-- === НАСТРОЙКИ АНИМАЦИИ ===
+local WICKED_IDS = {
+	run = 72301599441680,
+	walk = 92072849924640,
+	jump = 104325245285198,
+	fall = 121152442762481,
+	idle = {118832222982049, 76049494037641}, 
+	climb = 131326830509784,
+}
+
+local savedAnimateScript = nil 
+
+-- === 1. СОЗДАНИЕ ИНТЕРФЕЙСА ===
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "PlatformControlGui"
+screenGui.Name = "UltraControlGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
 local function createButton(name, text, position, color)
-	local button = Instance.new("TextButton")
-	button.Name = name
-	button.Text = text
-	button.Transparency = 0.5
-	button.Size = UDim2.new(0, 220, 0, 45)
-	button.Position = position
-	button.BackgroundColor3 = color
-	button.TextColor3 = Color3.new(1, 1, 1)
-	button.Font = Enum.Font.SourceSansBold
-	button.TextSize = 18
-	button.Parent = screenGui
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Text = text
+	btn.Size = UDim2.new(0, 220, 0, 40)
+	btn.Position = position
+	btn.BackgroundColor3 = color
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 14
+	btn.Parent = screenGui
 
-	local uiCorner = Instance.new("UICorner")
-	uiCorner.CornerRadius = UDim.new(0, 10)
-	uiCorner.Parent = button
-	return button
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = btn
+	return btn
 end
 
-local freezeBtn = createButton("FreezeBtn", "Заморозить", UDim2.new(0.02, 0, 0.65, 0), Color3.fromRGB(46, 204, 113))
-local platformBtn = createButton("PlatformBtn", "Платформа (L-Ctrl)", UDim2.new(0.02, 0, 0.72, 0), Color3.fromRGB(52, 152, 219))
-local clearBtn = createButton("ClearBtn", "Удалить платформы", UDim2.new(0.02, 0, 0.79, 0), Color3.fromRGB(149, 165, 166))
+-- Кнопки управления (5 штук)
+local freezeBtn     = createButton("FreezeBtn", "Заморозить", UDim2.new(0.02, 0, 0.45, 0), Color3.fromRGB(46, 204, 113))
+local platformBtn   = createButton("PlatformBtn", "Платформа (L-Ctrl)", UDim2.new(0.02, 0, 0.52, 0), Color3.fromRGB(52, 152, 219))
+local clearBtn      = createButton("ClearBtn", "Удалить платформы", UDim2.new(0.02, 0, 0.59, 0), Color3.fromRGB(149, 165, 166))
+local customAnimBtn = createButton("CustomAnimBtn", "Стиль: WICKED POPULAR", UDim2.new(0.02, 0, 0.66, 0), Color3.fromRGB(142, 68, 173))
+local defaultAnimBtn = createButton("DefaultAnimBtn", "Стиль: СТАНДАРТ", UDim2.new(0.02, 0, 0.73, 0), Color3.fromRGB(44, 62, 80))
 
-------------------------------------------------------------------
--- 2. Логика
+-- === 2. ЛОГИКА АНИМАЦИИ ===
+
+local function applyWickedIds(scriptObj)
+	local function setVal(folderName, childName, id)
+		local f = scriptObj:FindFirstChild(folderName)
+		if f then
+			local anim = f:FindFirstChild(childName)
+			if anim and anim:IsA("Animation") then
+				anim.AnimationId = "rbxassetid://"..tostring(id)
+			end
+		end
+	end
+	setVal("run", "RunAnim", WICKED_IDS.run)
+	setVal("walk", "WalkAnim", WICKED_IDS.walk)
+	setVal("jump", "JumpAnim", WICKED_IDS.jump)
+	setVal("fall", "FallAnim", WICKED_IDS.fall)
+	setVal("climb", "ClimbAnim", WICKED_IDS.climb)
+	local idleF = scriptObj:FindFirstChild("idle")
+	if idleF then
+		local a1 = idleF:FindFirstChild("Animation1")
+		local a2 = idleF:FindFirstChild("Animation2")
+		if a1 then a1.AnimationId = "rbxassetid://"..tostring(WICKED_IDS.idle[1]) end
+		if a2 then a2.AnimationId = "rbxassetid://"..tostring(WICKED_IDS.idle[2]) end
+	end
+end
+
+local function switchAnimation(mode)
+	local char = player.Character
+	if not char or not savedAnimateScript then return end
+
+	local old = char:FindFirstChild("Animate")
+	if old then old:Destroy() end
+
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		local animator = hum:FindFirstChildOfClass("Animator")
+		if animator then
+			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+				track:Stop(0)
+			end
+		end
+	end
+
+	local newAnimate = savedAnimateScript:Clone()
+	if mode == "Wicked" then
+		applyWickedIds(newAnimate)
+		customAnimBtn.Text = "Стиль: WICKED (ВКЛ)"
+		defaultAnimBtn.Text = "Стиль: СТАНДАРТ"
+	else
+		customAnimBtn.Text = "Стиль: WICKED POPULAR"
+		defaultAnimBtn.Text = "Стиль: СТАНДАРТ (ВКЛ)"
+	end
+	newAnimate.Parent = char
+end
+
+local function onCharacterAdded(char)
+	local original = char:WaitForChild("Animate", 10)
+	if original and not savedAnimateScript then
+		original.Archivable = true
+		savedAnimateScript = original:Clone()
+	end
+end
+
+customAnimBtn.MouseButton1Click:Connect(function() switchAnimation("Wicked") end)
+defaultAnimBtn.MouseButton1Click:Connect(function() switchAnimation("Default") end)
+
+player.CharacterAdded:Connect(onCharacterAdded)
+if player.Character then onCharacterAdded(player.Character) end
+
+-- === 3. ФИЗИКА И ПЛАТФОРМЫ ===
 
 local isAnchored = false
-
--- Функция создания платформы (вынесли отдельно для удобства)
-local function spawnPlatform()
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-
-	if root then
-		local platform = Instance.new("Part")
-		platform.Name = "MyPlatform"
-		platform.Size = Vector3.new(10, 1, 10)
-		platform.Anchored = true
-		platform.Color = Color3.fromRGB(120, 120, 120) 
-		platform.Transparency = 0.5 
-		platform.Material = Enum.Material.SmoothPlastic
-
-		-- Ставим под ноги
-		platform.Position = root.Position + Vector3.new(0, -3.5, 0)
-		platform.Parent = game.Workspace
-	end
-end
-
--- Обработка нажатия кнопки на экране
-platformBtn.MouseButton1Click:Connect(spawnPlatform)
-
--- Обработка горячей клавиши (Left Control)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	-- gameProcessed проверяет, не печатает ли игрок в этот момент в чате
-	if gameProcessed then return end
-
-	if input.KeyCode == Enum.KeyCode.LeftControl then
-		spawnPlatform()
-	end
-end)
-
--- Логика заморозки
 freezeBtn.MouseButton1Click:Connect(function()
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if root then
 		isAnchored = not isAnchored
 		root.Anchored = isAnchored
@@ -82,11 +128,28 @@ freezeBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Очистка всех "MyPlatform"
+local function spawnPlatform()
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if root then
+		local p = Instance.new("Part")
+		p.Name = "MyPlatform"
+		p.Size = Vector3.new(10, 1, 10)
+		p.Anchored = true
+		p.Transparency = 0.5
+		p.Color = Color3.fromRGB(128, 128, 128)
+		p.Material = Enum.Material.SmoothPlastic
+		p.Position = root.Position + Vector3.new(0, -3.5, 0)
+		p.Parent = workspace
+	end
+end
+
+platformBtn.MouseButton1Click:Connect(spawnPlatform)
+UserInputService.InputBegan:Connect(function(input, g)
+	if not g and input.KeyCode == Enum.KeyCode.LeftControl then spawnPlatform() end
+end)
+
 clearBtn.MouseButton1Click:Connect(function()
-	for _, obj in pairs(game.Workspace:GetChildren()) do
-		if obj.Name == "MyPlatform" then
-			obj:Destroy()
-		end
+	for _, v in pairs(workspace:GetChildren()) do
+		if v.Name == "MyPlatform" then v:Destroy() end
 	end
 end)
