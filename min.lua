@@ -13,6 +13,7 @@ local function createButton(name, text, position, color)
 	local button = Instance.new("TextButton")
 	button.Name = name
 	button.Text = text
+	button.Transparency = 0.5
 	button.Size = UDim2.new(0, 220, 0, 45)
 	button.Position = position
 	button.BackgroundColor3 = color
