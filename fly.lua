@@ -10,8 +10,8 @@ local DIST_RIGHT   = 14
 local DIST_BACK    = 95
 local DIST_EXTRA_UP = 5 -- На сколько еще поднять вверх во время движения назад
 
-local SPEED_BEFORE = 20  
-local SPEED_AFTER  = 10  
+local SPEED_BEFORE = 30  
+local SPEED_AFTER  = 15  
 -- =================
 
 -- Создаем GUI
