@@ -5,10 +5,10 @@ local Root = Character:WaitForChild("HumanoidRootPart")
 -- === НАСТРОЙКИ ===
 local DIST_UP      = 6
 local DIST_FORWARD = 95
-local DIST_LEFT    = 15
-local DIST_RIGHT   = 15
+local DIST_LEFT    = 14
+local DIST_RIGHT   = 14
 local DIST_BACK    = 95
-local SPEED        = 25 
+local SPEED        = 20 
 -- =================
 
 -- Создаем GUI
