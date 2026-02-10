@@ -3,12 +3,12 @@ local Character = Player.Character or Player.CharacterAdded:Wait()
 local Root = Character:WaitForChild("HumanoidRootPart")
 
 -- === НАСТРОЙКИ ===
-local DIST_UP      = 5
-local DIST_FORWARD = 90
+local DIST_UP      = 6
+local DIST_FORWARD = 95
 local DIST_LEFT    = 15
 local DIST_RIGHT   = 15
-local DIST_BACK    = 90
-local SPEED        = 30 
+local DIST_BACK    = 95
+local SPEED        = 25 
 -- =================
 
 -- Создаем GUI
