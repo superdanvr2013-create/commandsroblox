@@ -1,62 +1,57 @@
-local RunService = game:GetService("RunService")
 local Player = game.Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local Root = Character:WaitForChild("HumanoidRootPart")
 
--- === НАСТРОЙКИ ДИСТАНЦИИ (в студах) ===
-local DIST_UP      = 0   
-local DIST_FORWARD = 100   
-local DIST_LEFT    = 15   
-local DIST_RIGHT   = 15   
-local DIST_BACK    = 100   
-
--- === НАСТРОЙКА СКОРОСТИ (студов в секунду) ===
-local SPEED = 20 
--- ======================================
+-- === НАСТРОЙКИ ===
+local DIST_UP      = 4
+local DIST_FORWARD = 100
+local DIST_LEFT    = 15
+local DIST_RIGHT   = 15
+local DIST_BACK    = 100
+local SPEED        = 20 
+-- =================
 
 -- Создаем GUI
 local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
 local Button = Instance.new("TextButton", ScreenGui)
 Button.Size = UDim2.new(0, 200, 0, 50)
 Button.Position = UDim2.new(0.5, -100, 0.8, -50)
-Button.Text = "Запустить движение"
-Button.BackgroundColor3 = Color3.fromRGB(230, 126, 34)
+Button.Text = "Запустить (Physics Mode)"
+Button.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
 Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.SourceSansBold
-Button.TextSize = 20
+Button.TextSize = 18
 
 local isMoving = false
 
--- Функция для перемещения вручную через CFrame
-local function moveManual(directionVector, distance)
-	local traveled = 0
-	local startCFrame = Root.CFrame
+-- Универсальная функция движения через BodyVelocity
+local function movePhysical(direction, distance)
+	if distance <= 0 then return end
 
-	-- directionVector должен быть нормализован (длина 1)
-	local unitDir = directionVector.Unit
+	-- Создаем "двигатель"
+	local bv = Instance.new("BodyVelocity")
+	bv.MaxForce = Vector3.new(1, 1, 1) * 10^6 -- Огромная сила, чтобы гравитация не мешала
+	bv.Velocity = direction * SPEED
+	bv.Parent = Root
 
-	-- Подключаемся к циклу обновления кадров
-	local connection
-	connection = RunService.Heartbeat:Connect(function(dt)
-		local step = SPEED * dt -- Расстояние за этот кадр
+	-- Рассчитываем время пути (t = s / v)
+	local travelTime = distance / SPEED
+	task.wait(travelTime)
 
-		if traveled + step >= distance then
-			-- Если это последний шаг, ставим точно в цель
-			local finalStep = distance - traveled
-			Root.CFrame = Root.CFrame * CFrame.new(unitDir * finalStep)
-			traveled = distance
-			connection:Disconnect() -- Останавливаем цикл
-		else
-			-- Обычный шаг
-			Root.CFrame = Root.CFrame * CFrame.new(unitDir * step)
-			traveled = traveled + step
-		end
-	end)
+	-- Выключаем двигатель
+	bv:Destroy()
+	Root.Velocity = Vector3.new(0,0,0) -- Мгновенная остановка
+end
 
-	-- Ждем, пока перемещение закончится
-	while traveled < distance do
-		task.wait()
-	end
+-- Функция фиксации (паузы)
+local function holdPhysical(duration)
+	local bv = Instance.new("BodyVelocity")
+	bv.MaxForce = Vector3.new(1, 1, 1) * 10^6
+	bv.Velocity = Vector3.new(0, 0, 0) -- Скорость ноль = стоять на месте
+	bv.Parent = Root
+
+	task.wait(duration)
+	bv:Destroy()
 end
 
 Button.MouseButton1Click:Connect(function()
@@ -64,36 +59,32 @@ Button.MouseButton1Click:Connect(function()
 	isMoving = true
 	Button.Active = false
 
-	-- Включаем Anchored, чтобы гравитация не мешала
-	Root.Anchored = true
-
-	-- 1. Вверх
+	-- 1. Вверх (Мировая координата)
 	Button.Text = "Вверх..."
-	moveManual(Vector3.new(0, 1, 0), DIST_UP)
+	movePhysical(Vector3.new(0, 1, 0), DIST_UP)
 
-	-- 2. Вперед
+	-- 2. Вперед (Относительно взгляда)
 	Button.Text = "Вперед..."
-	moveManual(Vector3.new(0, 0, -1), DIST_FORWARD)
+	movePhysical(Root.CFrame.LookVector, DIST_FORWARD)
 
 	-- 3. Влево
 	Button.Text = "Влево..."
-	moveManual(Vector3.new(-1, 0, 0), DIST_LEFT)
+	movePhysical(-Root.CFrame.RightVector, DIST_LEFT)
 
-	-- ПАУЗА
-	Button.Text = "ПАУЗА (3 сек)"
-	task.wait(3)
+	-- ПАУЗА (Игрок висит за счет BodyVelocity с нулевой скоростью)
+	Button.Text = "ПАУЗА (4 сек)"
+	holdPhysical(4)
 
 	-- 4. Вправо
 	Button.Text = "Вправо..."
-	moveManual(Vector3.new(1, 0, 0), DIST_RIGHT)
+	movePhysical(Root.CFrame.RightVector, DIST_RIGHT)
 
 	-- 5. Назад
 	Button.Text = "Назад..."
-	moveManual(Vector3.new(0, 0, 1), DIST_BACK)
+	movePhysical(-Root.CFrame.LookVector, DIST_BACK)
 
-	-- Завершение
-	Root.Anchored = false
+	-- Финал
 	isMoving = false
 	Button.Active = true
-	Button.Text = "Запустить движение"
+	Button.Text = "Запустить (Physics Mode)"
 end)
