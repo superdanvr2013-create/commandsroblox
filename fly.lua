@@ -1,14 +1,17 @@
+local TweenService = game:GetService("TweenService")
 local Player = game.Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Root = Character:WaitForChild("HumanoidRootPart")
 
 -- === НАСТРОЙКИ ДИСТАНЦИИ (в студах) ===
-local DIST_UP      = 8  -- На сколько поднять вверх
-local DIST_FORWARD = 50  -- На сколько пронести вперед
-local DIST_LEFT    = 15  -- На сколько капельку влево
-local DIST_RIGHT   = 15  -- На сколько вправо (для возврата)
-local DIST_BACK    = 50  -- На сколько назад (для возврата)
-local MOVE_SPEED   = 30 -- Скорость перемещения (чем выше, тем резче)
+local DIST_UP      = 4   -- Вверх
+local DIST_FORWARD = 100   -- Вперед
+local DIST_LEFT    = 15   -- Влево
+local DIST_RIGHT   = 15   -- Вправо
+local DIST_BACK    = 100   -- Назад
+
+-- === НАСТРОЙКА СКОРОСТИ (студов в секунду) ===
+local CONST_SPEED  = 20   -- Чем выше число, тем быстрее все движения
 -- ======================================
 
 -- Создаем GUI
@@ -17,43 +20,26 @@ local Button = Instance.new("TextButton", ScreenGui)
 Button.Size = UDim2.new(0, 200, 0, 50)
 Button.Position = UDim2.new(0.5, -100, 0.8, -50)
 Button.Text = "Запустить цикл"
-Button.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
+Button.BackgroundColor3 = Color3.fromRGB(142, 68, 173)
 Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.SourceSansBold
 Button.TextSize = 20
 
 local isMoving = false
 
--- Функция перемещения на определенное расстояние
-local function moveToDistance(directionVector, distance)
+-- Функция плавного перемещения с расчетом времени под скорость
+local function move(offsetVector, distance)
 	if distance <= 0 then return end
 
-	local attachment = Instance.new("Attachment", HumanoidRootPart)
-	local linearVelocity = Instance.new("LinearVelocity", attachment)
+	-- Рассчитываем время специально для этой дистанции
+	local calculatedTime = distance / CONST_SPEED
 
-	linearVelocity.MaxForce = 1000000
-	linearVelocity.VectorVelocity = directionVector.Unit * MOVE_SPEED
-	linearVelocity.Attachment0 = attachment
+	local targetCFrame = Root.CFrame * CFrame.new(offsetVector)
+	local tweenInfo = TweenInfo.new(calculatedTime, Enum.EasingStyle.Linear) -- Linear делает скорость равномерной
+	local tween = TweenService:Create(Root, tweenInfo, {CFrame = targetCFrame})
 
-	-- Рассчитываем время, нужное для преодоления дистанции: t = s / v
-	local duration = distance / MOVE_SPEED
-	task.wait(duration)
-
-	attachment:Destroy()
-end
-
--- Функция фиксации в воздухе
-local function holdInAir(duration)
-	local holdAttachment = Instance.new("Attachment", HumanoidRootPart)
-	local alignPos = Instance.new("AlignPosition", holdAttachment)
-	alignPos.Mode = Enum.PositionAlignmentMode.OneAttachment
-	alignPos.Attachment0 = holdAttachment
-	alignPos.Position = HumanoidRootPart.Position
-	alignPos.MaxForce = 1000000
-	alignPos.Responsiveness = 200
-
-	task.wait(duration)
-	holdAttachment:Destroy()
+	tween:Play()
+	tween.Completed:Wait()
 end
 
 Button.MouseButton1Click:Connect(function()
@@ -61,31 +47,35 @@ Button.MouseButton1Click:Connect(function()
 	isMoving = true
 	Button.Active = false
 
+	-- Отключаем гравитацию, чтобы не дергало
+	Root.Anchored = true 
+
 	-- 1. Вверх
 	Button.Text = "Вверх..."
-	moveToDistance(Vector3.new(0, 1, 0), DIST_UP)
+	move(Vector3.new(0, DIST_UP, 0), DIST_UP)
 
-	-- 2. Вперед
+	-- 2. Вперед (в CFrame вперед это -Z)
 	Button.Text = "Вперед..."
-	moveToDistance(HumanoidRootPart.CFrame.LookVector, DIST_FORWARD)
+	move(Vector3.new(0, 0, -DIST_FORWARD), DIST_FORWARD)
 
-	-- 3. Влево
+	-- 3. Влево (в CFrame влево это -X)
 	Button.Text = "Влево..."
-	moveToDistance(-HumanoidRootPart.CFrame.RightVector, DIST_LEFT)
+	move(Vector3.new(-DIST_LEFT, 0, 0), DIST_LEFT)
 
 	-- ПАУЗА (Зависание)
 	Button.Text = "ПАУЗА (4 сек)"
-	holdInAir(4)
+	task.wait(4)
 
 	-- 4. Вправо
 	Button.Text = "Вправо..."
-	moveToDistance(HumanoidRootPart.CFrame.RightVector, DIST_RIGHT)
+	move(Vector3.new(DIST_RIGHT, 0, 0), DIST_RIGHT)
 
 	-- 5. Назад
 	Button.Text = "Назад..."
-	moveToDistance(-HumanoidRootPart.CFrame.LookVector, DIST_BACK)
+	move(Vector3.new(0, 0, DIST_BACK), DIST_BACK)
 
-	-- Финал
+	-- Возвращаем физику
+	Root.Anchored = false
 	isMoving = false
 	Button.Active = true
 	Button.Text = "Запустить цикл"
