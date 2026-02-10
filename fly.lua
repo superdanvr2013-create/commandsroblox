@@ -3,12 +3,12 @@ local Character = Player.Character or Player.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- === НАСТРОЙКИ ДИСТАНЦИИ (в студах) ===
-local DIST_UP      = 5  -- На сколько поднять вверх
-local DIST_FORWARD = 100  -- На сколько пронести вперед
+local DIST_UP      = 8  -- На сколько поднять вверх
+local DIST_FORWARD = 50  -- На сколько пронести вперед
 local DIST_LEFT    = 15  -- На сколько капельку влево
 local DIST_RIGHT   = 15  -- На сколько вправо (для возврата)
-local DIST_BACK    = 100  -- На сколько назад (для возврата)
-local MOVE_SPEED   = 20 -- Скорость перемещения (чем выше, тем резче)
+local DIST_BACK    = 50  -- На сколько назад (для возврата)
+local MOVE_SPEED   = 30 -- Скорость перемещения (чем выше, тем резче)
 -- ======================================
 
 -- Создаем GUI
