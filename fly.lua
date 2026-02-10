@@ -3,14 +3,14 @@ local Character = Player.Character or Player.CharacterAdded:Wait()
 local Root = Character:WaitForChild("HumanoidRootPart")
 
 -- === НАСТРОЙКИ ===
-local DIST_UP      = 6
+local DIST_UP      = 7
 local DIST_FORWARD = 95
-local DIST_LEFT    = 14
-local DIST_RIGHT   = 14
+local DIST_LEFT    = 16
+local DIST_RIGHT   = 16
 local DIST_BACK    = 95
-local DIST_EXTRA_UP = 5 -- На сколько еще поднять вверх во время движения назад
+local DIST_EXTRA_UP = 10 -- На сколько еще поднять вверх во время движения назад
 
-local SPEED_BEFORE = 30  
+local SPEED_BEFORE = 35  
 local SPEED_AFTER  = 15  
 -- =================
 
