@@ -4,7 +4,7 @@ local Character = Player.Character or Player.CharacterAdded:Wait()
 local Root = Character:WaitForChild("HumanoidRootPart")
 
 -- === НАСТРОЙКИ ДИСТАНЦИИ (в студах) ===
-local DIST_UP      = 4   
+local DIST_UP      = 0   
 local DIST_FORWARD = 100   
 local DIST_LEFT    = 15   
 local DIST_RIGHT   = 15   
