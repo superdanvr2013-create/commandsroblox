@@ -2,61 +2,91 @@ local Player = game.Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
+-- === НАСТРОЙКИ ДИСТАНЦИИ (в студах) ===
+local DIST_UP      = 2  -- На сколько поднять вверх
+local DIST_FORWARD = 70  -- На сколько пронести вперед
+local DIST_LEFT    = 10  -- На сколько капельку влево
+local DIST_RIGHT   = 10  -- На сколько вправо (для возврата)
+local DIST_BACK    = 70  -- На сколько назад (для возврата)
+local MOVE_SPEED   = 20 -- Скорость перемещения (чем выше, тем резче)
+-- ======================================
+
 -- Создаем GUI
 local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
 local Button = Instance.new("TextButton", ScreenGui)
 Button.Size = UDim2.new(0, 200, 0, 50)
 Button.Position = UDim2.new(0.5, -100, 0.8, -50)
-Button.Text = "Начать полет"
-Button.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+Button.Text = "Запустить цикл"
+Button.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
 Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.SourceSansBold
 Button.TextSize = 20
 
 local isMoving = false
 
--- Функция движения
-local function move(directionVector, duration)
+-- Функция перемещения на определенное расстояние
+local function moveToDistance(directionVector, distance)
+	if distance <= 0 then return end
+
 	local attachment = Instance.new("Attachment", HumanoidRootPart)
 	local linearVelocity = Instance.new("LinearVelocity", attachment)
 
-	linearVelocity.MaxForce = 100000 
-	linearVelocity.VectorVelocity = directionVector
+	linearVelocity.MaxForce = 1000000
+	linearVelocity.VectorVelocity = directionVector.Unit * MOVE_SPEED
 	linearVelocity.Attachment0 = attachment
 
+	-- Рассчитываем время, нужное для преодоления дистанции: t = s / v
+	local duration = distance / MOVE_SPEED
 	task.wait(duration)
+
 	attachment:Destroy()
+end
+
+-- Функция фиксации в воздухе
+local function holdInAir(duration)
+	local holdAttachment = Instance.new("Attachment", HumanoidRootPart)
+	local alignPos = Instance.new("AlignPosition", holdAttachment)
+	alignPos.Mode = Enum.PositionAlignmentMode.OneAttachment
+	alignPos.Attachment0 = holdAttachment
+	alignPos.Position = HumanoidRootPart.Position
+	alignPos.MaxForce = 1000000
+	alignPos.Responsiveness = 200
+
+	task.wait(duration)
+	holdAttachment:Destroy()
 end
 
 Button.MouseButton1Click:Connect(function()
 	if isMoving then return end
 	isMoving = true
 	Button.Active = false
-	Button.Text = "Летим..."
 
-	-- 1. Вверх (на 3 секунды)
-	-- Vector3.new(0, 10, 0) толкает строго вверх
-	move(Vector3.new(0, 1.5, 0), 3)
+	-- 1. Вверх
+	Button.Text = "Вверх..."
+	moveToDistance(Vector3.new(0, 1, 0), DIST_UP)
 
-	-- 2. Вперед (на 3 секунды)
-	local forwardDir = HumanoidRootPart.CFrame.LookVector * 15
-	move(forwardDir, 3)
+	-- 2. Вперед
+	Button.Text = "Вперед..."
+	moveToDistance(HumanoidRootPart.CFrame.LookVector, DIST_FORWARD)
 
-	-- 3. Влево (на 4 секунды)
-	local leftDir = -HumanoidRootPart.CFrame.RightVector * 3
-	move(leftDir, 4)
+	-- 3. Влево
+	Button.Text = "Влево..."
+	moveToDistance(-HumanoidRootPart.CFrame.RightVector, DIST_LEFT)
 
-	-- 4. Вправо (на 4 секунды) — возвращаемся по горизонтали
-	-- Скорость та же, время то же, значит вернемся в центр
-	move(-leftDir, 4)
+	-- ПАУЗА (Зависание)
+	Button.Text = "ПАУЗА (4 сек)"
+	holdInAir(4)
 
-	-- 5. Назад (на 3 секунды) — возвращаемся в точку старта
-	move(-forwardDir, 3)
+	-- 4. Вправо
+	Button.Text = "Вправо..."
+	moveToDistance(HumanoidRootPart.CFrame.RightVector, DIST_RIGHT)
 
-	-- Завершение
-	Button.Text = "Готово!"
-	task.wait(1)
+	-- 5. Назад
+	Button.Text = "Назад..."
+	moveToDistance(-HumanoidRootPart.CFrame.LookVector, DIST_BACK)
+
+	-- Финал
 	isMoving = false
 	Button.Active = true
-	Button.Text = "Начать полет"
+	Button.Text = "Запустить цикл"
 end)
