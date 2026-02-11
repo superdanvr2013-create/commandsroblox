@@ -3,8 +3,8 @@ local Character = Player.Character or Player.CharacterAdded:Wait()
 local Root = Character:WaitForChild("HumanoidRootPart")
 
 -- === НАСТРОЙКИ ===
-local DIST_UP = 30       -- На сколько студов поднять вверх
-local SPEED_UP = 25       -- Скорость подъема (чем меньше, тем медленнее)
+local DIST_UP = 50       -- На сколько студов поднять вверх
+local SPEED_UP = 35       -- Скорость подъема (чем меньше, тем медленнее)
 -- =================
 
 -- Создаем GUI
