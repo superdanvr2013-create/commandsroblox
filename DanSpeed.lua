@@ -1,16 +1,6 @@
 -- Настройки
 
 -- Сервисы
-game.Players.LocalPlayer:WaitForChild("PlayerGui")
-wait(1) -- Небольшая задержка для гарантии загрузки
-
--- Перебираем все объекты в Workspace
-for _, obj in ipairs(workspace:GetDescendants()) do
-	-- Проверяем, является ли объект BasePart (часть) и блоком
-	if obj:IsA("BasePart") and obj.Shape == Enum.PartShape.Block then
-		obj.CanCollide = false
-	end
-end
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local RunService = game:GetService("RunService") 
