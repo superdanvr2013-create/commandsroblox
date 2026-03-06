@@ -1,6 +1,4 @@
 -- Настройки
-
--- Сервисы
 local Players = game:GetService("Players") 
 local UserInputService = game:GetService("UserInputService") 
 local RunService = game:GetService("RunService") 
@@ -16,8 +14,6 @@ local espActive = false
 local isAnchored = false 
 local targetSpeed = 16 
 local targetJump = 7
-
-local speeds = 1 
 local nowe = false 
 
 -- ГЛАВНЫЙ ИНТЕРФЕЙС
@@ -29,7 +25,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main 
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30) 
 Frame.Position = UDim2.new(0.05, 0, 0.05, 0) 
-Frame.Size = UDim2.new(0, 280, 0, 620) -- Увеличена высота для новой кнопки
+Frame.Size = UDim2.new(0, 280, 0, 700) -- Увеличена высота для списка игроков
 Frame.Active = true 
 Frame.Draggable = true 
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
@@ -57,102 +53,156 @@ local function createBtn(name, text, pos, size, color)
 end
 
 -------------------------------------------------------------------
--- КНОПКИ УПРАВЛЕНИЯ (С четким распределением позиций)
+-- КНОПКИ УПРАВЛЕНИЯ
 -------------------------------------------------------------------
--- 1. ESP (Y: 0.1)
 local espBtn = createBtn("EspBtn", "ESP: OFF", UDim2.new(0.05, 0, 0.08, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(80, 80, 80))
-
--- 2. Air Jump (Y: 0.18)
 local jumpBtn = createBtn("JumpBtn", "AIR JUMP (L-CTRL)", UDim2.new(0.05, 0, 0.16, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(0, 150, 255))
-
--- 3. Speed Lock (Y: 0.26)
 local speedLockBtn = createBtn("SpeedBtn", "SPEED LOCK: OFF", UDim2.new(0.05, 0, 0.24, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(120, 40, 200))
 
--- 4. Speed Input Container (Y: 0.34)
+-- Speed/Jump Input Container
 local speedContainer = Instance.new("Frame", Frame)
 speedContainer.Name = "SpeedContainer"
 speedContainer.Position = UDim2.new(0.05, 0, 0.32, 0)
 speedContainer.Size = UDim2.new(0.9, 0, 0, 35)
 speedContainer.BackgroundTransparency = 1
 
---local speedInputBtn = Instance.new("TextButton", speedContainer)
---speedInputBtn.Name = "SpeedInputBtn"
---speedInputBtn.Text = "SPEED: " .. targetSpeed
---speedInputBtn.Position = UDim2.new(0, 0, 0, 0)
---speedInputBtn.Size = UDim2.new(0.65, 0, 1, 0)
---speedInputBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
---speedInputBtn.Font = Enum.Font.GothamSemibold
---speedInputBtn.TextColor3 = Color3.new(1,1,1)
---speedInputBtn.TextSize = 10
---Instance.new("UICorner", speedInputBtn).CornerRadius = UDim.new(0, 4)
-
-local speedTextBox = Instance.new("TextBox", speedContainer)
-speedTextBox.Name = "SpeedTextBox"
-speedTextBox.Position = UDim2.new(0.68, 0, 0, 0)
-speedTextBox.Size = UDim2.new(0.3, -10, 1, 0)
-speedTextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-speedTextBox.Text = tostring(targetSpeed)
-speedTextBox.TextColor3 = Color3.new(1,1,1)
-speedTextBox.PlaceholderText = "0-100"
-speedTextBox.Font = Enum.Font.Gotham
-speedTextBox.TextSize = 12
-speedTextBox.TextXAlignment = Enum.TextXAlignment.Center
-Instance.new("UICorner", speedTextBox).CornerRadius = UDim.new(0, 4)
-
 local JumpTextBox = Instance.new("TextBox", speedContainer)
 JumpTextBox.Name = "JumpTextBox"
-JumpTextBox.Position = UDim2.new(0.2, 0, 0, 0)
+JumpTextBox.Position = UDim2.new(0.05, 0, 0, 0)
 JumpTextBox.Size = UDim2.new(0.3, -10, 1, 0)
 JumpTextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 JumpTextBox.Text = tostring(targetJump)
 JumpTextBox.TextColor3 = Color3.new(1,1,1)
-JumpTextBox.PlaceholderText = "0-100"
+JumpTextBox.PlaceholderText = "Jump"
 JumpTextBox.Font = Enum.Font.Gotham
 JumpTextBox.TextSize = 12
 JumpTextBox.TextXAlignment = Enum.TextXAlignment.Center
 Instance.new("UICorner", JumpTextBox).CornerRadius = UDim.new(0, 4)
 
+local speedTextBox = Instance.new("TextBox", speedContainer)
+speedTextBox.Name = "SpeedTextBox"
+speedTextBox.Position = UDim2.new(0.38, 0, 0, 0)
+speedTextBox.Size = UDim2.new(0.3, -10, 1, 0)
+speedTextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+speedTextBox.Text = tostring(targetSpeed)
+speedTextBox.TextColor3 = Color3.new(1,1,1)
+speedTextBox.PlaceholderText = "Speed"
+speedTextBox.Font = Enum.Font.Gotham
+speedTextBox.TextSize = 12
+speedTextBox.TextXAlignment = Enum.TextXAlignment.Center
+Instance.new("UICorner", speedTextBox).CornerRadius = UDim.new(0, 4)
 
-
-
--- 5. Fly Mode (Y: 0.42)
 local flyBtn = createBtn("FlyToggle", "FLY MODE", UDim2.new(0.05, 0, 0.40, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(200, 160, 0))
-
--- 6. ANCHORED (Y: 0.50)
 local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", UDim2.new(0.05, 0, 0.48, 0), UDim2.new(0.9, 0, 0, 35), Color3.fromRGB(40, 40, 45))
 
 -------------------------------------------------------------------
--- ЛОГИКА SPEED INPUT
+-- ЛОГИКА INPUT
 -------------------------------------------------------------------
---speedInputBtn.MouseButton1Click:Connect(function()
---	speedTextBox:CaptureFocus()
---end)
-
-speedTextBox.FocusLost:Connect(function(enterPressed)
+speedTextBox.FocusLost:Connect(function()
 	local input = tonumber(speedTextBox.Text)
 	if input and input >= 0 and input <= 100 then
 		targetSpeed = input
-		--speedInputBtn.Text = "SPEED: " .. targetSpeed
-		speedTextBox.Text = tostring(targetSpeed)
-	else
 		speedTextBox.Text = tostring(targetSpeed)
 	end
 end)
 
-
-JumpTextBox.FocusLost:Connect(function(enterPressed)
+JumpTextBox.FocusLost:Connect(function()
 	local input = tonumber(JumpTextBox.Text)
 	if input and input >= 0 and input <= 100 then
 		targetJump = input
-		--speedInputBtn.Text = "SPEED: " .. targetSpeed
-		JumpTextBox.Text = tostring(targetJump)
-	else
 		JumpTextBox.Text = tostring(targetJump)
 	end
 end)
 
 -------------------------------------------------------------------
--- ЛОГИКА ANCHORED
+-- СПИСОК ИГРОКОВ (НОВЫЙ БЛОК)
+-------------------------------------------------------------------
+local playersFrame = Instance.new("ScrollingFrame", Frame)
+playersFrame.Name = "PlayersList"
+playersFrame.Position = UDim2.new(0.05, 0, 0.57, 0)
+playersFrame.Size = UDim2.new(0.9, 0, 0, 130)
+playersFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+playersFrame.BorderSizePixel = 0
+playersFrame.ScrollBarThickness = 6
+playersFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+Instance.new("UICorner", playersFrame).CornerRadius = UDim.new(0, 4)
+
+local playersTitle = Instance.new("TextLabel", playersFrame)
+playersTitle.Text = "ИГРОКИ НА СЕРВЕРЕ:"
+playersTitle.Size = UDim2.new(1, 0, 0, 25)
+playersTitle.Position = UDim2.new(0, 0, 0, 0)
+playersTitle.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+playersTitle.TextColor3 = Color3.fromRGB(0, 255, 127)
+playersTitle.Font = Enum.Font.GothamBold
+playersTitle.TextSize = 11
+Instance.new("UICorner", playersTitle).CornerRadius = UDim.new(0, 4)
+
+local function updatePlayersList()
+	for _, child in pairs(playersFrame:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+	
+	local players = Players:GetPlayers()
+	local yPos = 30
+	for i, player in ipairs(players) do
+		if player ~= speaker then
+			local playerBtn = Instance.new("TextButton", playersFrame)
+			playerBtn.Name = "PlayerBtn_" .. player.Name
+			playerBtn.Text = player.Name
+			playerBtn.Position = UDim2.new(0, 5, 0, yPos)
+			playerBtn.Size = UDim2.new(1, -10, 0, 25)
+			playerBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+			playerBtn.Font = Enum.Font.GothamSemibold
+			playerBtn.TextColor3 = Color3.new(1,1,1)
+			playerBtn.TextSize = 11
+			playerBtn.TextXAlignment = Enum.TextXAlignment.Left
+			Instance.new("UICorner", playerBtn).CornerRadius = UDim.new(0, 4)
+			
+			-- ТЕЛЕПОРТАЦИЯ ПО НАЖАТИЮ
+			playerBtn.MouseButton1Click:Connect(function()
+				local speakerChar = speaker.Character
+				local targetChar = player.Character
+				if speakerChar and targetChar and speakerChar:FindFirstChild("HumanoidRootPart") and targetChar:FindFirstChild("HumanoidRootPart") then
+					speakerChar.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
+					playerBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+					wait(0.3)
+					playerBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+				end
+			end)
+			
+			yPos = yPos + 30
+		end
+	end
+	
+	playersFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(yPos, 130))
+end
+
+-- Обновление списка каждые 5 секунд
+task.spawn(function()
+	while true do
+		updatePlayersList()
+		task.wait(5)
+	end
+end)
+
+-------------------------------------------------------------------
+-- TOP-3 GENERATION
+-------------------------------------------------------------------
+local topBox = Instance.new("TextLabel", Frame) 
+topBox.Size = UDim2.new(0.9, 0, 0, 100) 
+topBox.Position = UDim2.new(0.05, 0, 0.73, 0) 
+topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
+topBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
+topBox.TextSize = 12 
+topBox.Font = Enum.Font.Code 
+topBox.Text = "Searching for Gen..." 
+topBox.TextWrapped = true
+Instance.new("UICorner", topBox).CornerRadius = UDim.new(0, 4)
+
+-------------------------------------------------------------------
+-- ЛОГИКА КНОПОК
 -------------------------------------------------------------------
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -166,21 +216,6 @@ anchorBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Блок для вывода ТОП-3 Generation
-local topBox = Instance.new("TextLabel", Frame) 
-topBox.Size = UDim2.new(0.9, 0, 0, 100) 
-topBox.Position = UDim2.new(0.05, 0, 0.8, 0) 
-topBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15) 
-topBox.TextColor3 = Color3.fromRGB(255, 255, 255) 
-topBox.TextSize = 12 
-topBox.Font = Enum.Font.Code 
-topBox.Text = "Searching for Gen..." 
-topBox.TextWrapped = true
-Instance.new("UICorner", topBox) 
-
--------------------------------------------------------------------
--- ЛОГИКА ПАРСИНГА И СОРТИРОВКИ
--------------------------------------------------------------------
 local function getNumericValue(text)
 	local valStr, suffix = text:match("([%d%.]+)([MB])") 
 	if valStr and suffix then 
@@ -217,12 +252,12 @@ task.spawn(function()
 		end
 		table.sort(found, function(a, b) return a.value > b.value end) 
 
-		local resultText = "TOP 3 GENERATION:\\n"
+		local resultText = "TOP 3 GENERATION:\n"
 		for i = 1, 3 do
 			if found[i] then
-				resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\\n"
+				resultText = resultText .. i .. ". [" .. found[i].path .. "] " .. found[i].original .. "\n"
 			else 
-				resultText = resultText .. i .. ". ---\\n" 
+				resultText = resultText .. i .. ". ---\n" 
 			end
 		end
 		topBox.Text = resultText 
@@ -231,7 +266,7 @@ task.spawn(function()
 end)
 
 -------------------------------------------------------------------
--- ФУНКЦИОНАЛ (ESP, JUMP, SPEED) - ИСПОЛЬЗУЕМ НОВУЮ ЛОГИКУ
+-- ОСНОВНОЙ ФУНКЦИОНАЛ
 -------------------------------------------------------------------
 local function updateESP()
 	for _, player in pairs(Players:GetPlayers()) do 
@@ -285,7 +320,6 @@ end
 jumpBtn.MouseButton1Click:Connect(doAirJump)
 UserInputService.InputBegan:Connect(function(i, p) if not p and i.KeyCode == Enum.KeyCode.LeftControl then doAirJump() end end)
 
--- НОВАЯ ЛОГИКА SPEED LOCK С ИСПОЛЬЗОВАНИЕМ ПРЕДЛОЖЕННОГО КОДА
 speedLockBtn.MouseButton1Click:Connect(function()
 	speedLockActive = not speedLockActive
 	speedLockBtn.Text = speedLockActive and "SPEED LOCK: ON" or "SPEED LOCK: OFF"
@@ -294,25 +328,22 @@ end)
 
 flyBtn.MouseButton1Click:Connect(function() nowe = not nowe end)
 
--- НОВАЯ СИСТЕМА SPEED С ИСПОЛЬЗОВАНИЕМ RenderStepped
+-- ОСНОВНОЙ LOOP
 RunService.RenderStepped:Connect(function()
-	--if speedLockActive then
 	for i, v in workspace:GetDescendants() do
 		if v.ClassName ~= "Humanoid" then continue end
 		local plr = Players:GetPlayerFromCharacter(v:FindFirstAncestorOfClass("Model"))
 		if plr == nil then continue end
 		if plr ~= speaker then continue end
-		v.WalkSpeed = targetSpeed  -- Используем targetSpeed из TextBox (0-100)
+		v.WalkSpeed = targetSpeed
 		v.JumpHeight = targetJump
 	end
-	--end
 
 	if espActive then updateESP() end
 	if nowe and speaker.Character then 
-		speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * speeds)
+		speaker.Character:TranslateBy(speaker.Character.Humanoid.MoveDirection * 16)
 	end
 
-	-- Принудительное удержание Anchored, если включено
 	if isAnchored and speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart") then
 		if not speaker.Character.HumanoidRootPart.Anchored then
 			speaker.Character.HumanoidRootPart.Anchored = true
@@ -327,5 +358,7 @@ closebutton.Position = UDim2.new(0.9, 0, 0, 0)
 closebutton.Size = UDim2.new(0, 25, 0, 25)
 closebutton.BackgroundColor3 = Color3.new(0.8,0,0)
 closebutton.TextColor3 = Color3.new(1,1,1) 
+closebutton.Font = Enum.Font.GothamBold
+closebutton.TextSize = 14
+Instance.new("UICorner", closebutton).CornerRadius = UDim.new(0, 4)
 closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
-
