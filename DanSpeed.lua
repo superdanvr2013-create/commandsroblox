@@ -170,7 +170,7 @@ local function updatePlayersList()
 				local speakerChar = speaker.Character
 				local targetChar = player.Character
 				if speakerChar and targetChar and speakerChar:FindFirstChild("HumanoidRootPart") and targetChar:FindFirstChild("HumanoidRootPart") then
-					speakerChar.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame * CFrame.new(0, 3, -5) -- Немного выше и сзади
+					speakerChar.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame
 					playerBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
 					wait(0.2)
 					playerBtn.BackgroundColor3 = isFriend(player.Name) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(40, 45, 55)
