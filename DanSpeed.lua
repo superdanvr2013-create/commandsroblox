@@ -123,7 +123,7 @@ Instance.new("UICorner", playersTitle).CornerRadius = UDim.new(0, 6)
 local function isFriend(playerName)
 	-- Здесь можно добавить логику проверки друзей
 	-- Пока что подсвечиваем случайных игроков красным для демонстрации
-	local friendNames = {"Friend1", "Friend2", "Admin"} -- Пример друзей
+	local friendNames = {"Alena030417", "Igran127", "Artyrka_Korol31", "Natalia4012003"} -- Пример друзей
 	for _, friend in pairs(friendNames) do
 		if string.find(string.lower(playerName), string.lower(friend)) then
 			return true
