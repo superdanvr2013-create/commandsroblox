@@ -25,7 +25,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main 
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30) 
 Frame.Position = UDim2.new(0.05, 0, 0.05, 0) 
-Frame.Size = UDim2.new(0, 300, 0, 650) -- Шире и выше для длинного списка
+Frame.Size = UDim2.new(0, 300, 0, 650) 
 Frame.Active = true 
 Frame.Draggable = true 
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8) 
@@ -101,7 +101,7 @@ local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", UDim2.new(0.05, 0, 0.5
 local playersFrame = Instance.new("ScrollingFrame", Frame)
 playersFrame.Name = "PlayersList"
 playersFrame.Position = UDim2.new(0.05, 0, 0.64, 0)
-playersFrame.Size = UDim2.new(0.9, 0, 0, 300) -- Очень высокий список
+playersFrame.Size = UDim2.new(0.9, 0, 0, 300)
 playersFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 playersFrame.BorderSizePixel = 0
 playersFrame.ScrollBarThickness = 8
@@ -110,7 +110,7 @@ playersFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 Instance.new("UICorner", playersFrame).CornerRadius = UDim.new(0, 6)
 
 local playersTitle = Instance.new("TextLabel", playersFrame)
-playersTitle.Text = "👥 ИГРОКИ НА СЕРВЕРЕ (Клик = ТП)"
+playersTitle.Text = "👥 ИГРОКИ НА СЕРВЕРЕ (Клик = ТП В HRP)"
 playersTitle.Size = UDim2.new(1, 0, 0, 35)
 playersTitle.Position = UDim2.new(0, 0, 0, 0)
 playersTitle.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
@@ -119,11 +119,8 @@ playersTitle.Font = Enum.Font.GothamBold
 playersTitle.TextSize = 14
 Instance.new("UICorner", playersTitle).CornerRadius = UDim.new(0, 6)
 
--- ФУНКЦИЯ ПРОВЕРКИ ДРУЗЕЙ (упрощенная - по имени, можно доработать)
 local function isFriend(playerName)
-	-- Здесь можно добавить логику проверки друзей
-	-- Пока что подсвечиваем случайных игроков красным для демонстрации
-	local friendNames = {"Alena030417", "Igran127", "Artyrka_Korol31", "Natalia4012003"} -- Пример друзей
+	local friendNames = {"Friend1", "Friend2", "Admin"} -- Добавьте своих друзей сюда
 	for _, friend in pairs(friendNames) do
 		if string.find(string.lower(playerName), string.lower(friend)) then
 			return true
@@ -148,7 +145,7 @@ local function updatePlayersList()
 			playerBtn.Name = "PlayerBtn_" .. player.Name
 			playerBtn.Text = "🎮 " .. player.Name .. " [" .. i .. "]"
 			playerBtn.Position = UDim2.new(0, 8, 0, yPos)
-			playerBtn.Size = UDim2.new(1, -16, 0, 38) -- Высокие кнопки для удобства
+			playerBtn.Size = UDim2.new(1, -16, 0, 38)
 			playerBtn.BackgroundColor3 = isFriend(player.Name) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(40, 45, 55)
 			playerBtn.Font = Enum.Font.GothamSemibold
 			playerBtn.TextColor3 = Color3.new(1,1,1)
@@ -165,18 +162,27 @@ local function updatePlayersList()
 				playerBtn.BackgroundColor3 = isFriend(player.Name) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(40, 45, 55)
 			end)
 			
-			-- ТЕЛЕПОРТАЦИЯ
+			-- ✅ ТЕЛЕПОРТАЦИЯ ПРЯМО В HumanoidRootPart
 			playerBtn.MouseButton1Click:Connect(function()
 				local speakerChar = speaker.Character
 				local targetChar = player.Character
-				if speakerChar and targetChar and speakerChar:FindFirstChild("HumanoidRootPart") and targetChar:FindFirstChild("HumanoidRootPart") then
-					speakerChar.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame
-					playerBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-					wait(0.2)
-					playerBtn.BackgroundColor3 = isFriend(player.Name) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(40, 45, 55)
-					print("✅ Телепорт к " .. player.Name) -- Для отладки
-				else
-					print("❌ Не удалось телепортироваться к " .. player.Name)
+				if speakerChar and targetChar then
+					local speakerHRP = speakerChar:FindFirstChild("HumanoidRootPart")
+					local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+					
+					if speakerHRP and targetHRP then
+						-- ПРЯМАЯ ТЕЛЕПОРТАЦИЯ В ТОЧКУ HumanoidRootPart
+						speakerHRP.CFrame = targetHRP.CFrame
+						
+						-- Визуальная обратная связь
+						playerBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+						task.wait(0.2)
+						playerBtn.BackgroundColor3 = isFriend(player.Name) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(40, 45, 55)
+						
+						print("✅ ТП в HRP игрока: " .. player.Name)
+					else
+						print("❌ HRP не найден у " .. player.Name)
+					end
 				end
 			end)
 			
@@ -187,7 +193,6 @@ local function updatePlayersList()
 	playersFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(yPos, 400))
 end
 
--- Обновление каждые 3 секунды
 task.spawn(function()
 	while true do
 		updatePlayersList()
@@ -200,7 +205,7 @@ end)
 -------------------------------------------------------------------
 speedTextBox.FocusLost:Connect(function()
 	local input = tonumber(speedTextBox.Text)
-	if input and input >= 0 and input <= 500 then -- Увеличил лимит
+	if input and input >= 0 and input <= 500 then
 		targetSpeed = input
 		speedTextBox.Text = tostring(targetSpeed)
 	end
