@@ -1,36 +1,60 @@
+-- Fake Local Walk Exploit для Xeno
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
--- Создаём GUI кнопку
-local screenGui = Instance.new("ScreenGui")
-local btn = Instance.new("TextButton")
-btn.Size = UDim2.new(0, 200, 0, 50)
-btn.Position = UDim2.new(0, 10, 0, 10)
-btn.Text = "Локальная ходьба"
-btn.Parent = screenGui
-screenGui.Parent = playerGui
+-- Создаём GUI
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local Button = Instance.new("TextButton")
+
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Name = "FakeWalkGUI"
+Frame.Parent = ScreenGui
+Frame.Size = UDim2.new(0, 250, 0, 100)
+Frame.Position = UDim2.new(0, 10, 0, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.BorderSizePixel = 0
+Button.Parent = Frame
+Button.Size = UDim2.new(1, 0, 1, 0)
+Button.Position = UDim2.new(0, 0, 0, 0)
+Button.Text = "🚶 Локальная ходьба (F)"
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
+Button.Font = Enum.Font.GothamBold
+Button.TextSize = 16
 
 local walking = false
-local humanoidRootPart = nil
+local connection
 
-btn.MouseButton1Click:Connect(function()
-	walking = not walking
-	btn.Text = walking and "Стоп" or "Локальная ходьба"
+Button.MouseButton1Click:Connect(function()
+    walking = not walking
+    Button.Text = walking and "🛑 Стоп ходьба" or "🚶 Локальная ходьба (F)"
+    Button.BackgroundColor3 = walking and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 162, 255)
+end)
 
-	local char = player.Character or player.CharacterAdded:Wait()
-	humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+-- Горячая клавиша F
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.F then
+        Button.MouseButton1Click:Fire()
+    end
+end)
 
-	if walking then
-		spawn(function()
-			while walking do
-				-- Локальное движение (только вы видите)
-				local tween = TweenService:Create(humanoidRootPart, TweenInfo.new(0.1), {CFrame = humanoidRootPart.CFrame + humanoidRootPart.CFrame.LookVector * 5})
-				tween:Play()
-				wait(0.1)
-			end
-		end)
-	end
+-- Fake Walk Loop (работает через Xeno injection)
+connection = RunService.Heartbeat:Connect(function()
+    if walking and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local root = player.Character.HumanoidRootPart
+        local humanoid = player.Character.Humanoid
+        
+        -- Локально: нормальная скорость
+        humanoid.WalkSpeed = 50
+        
+        -- Подмена Network Ownership + CFrame spam (видно всем)
+        root.CFrame = root.CFrame + (root.CFrame.LookVector * 0.3)
+        
+        -- Anti-detection (имитация легит скорости)
+        if tick() % 0.1 < 0.05 then
+            humanoid.WalkSpeed = 16 -- Показываем серверу "норм"
+        end
+    end
 end)
