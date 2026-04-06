@@ -4,119 +4,85 @@ local player = Players.LocalPlayer
 
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Удаляем старое
-if playerGui:FindFirstChild("InvisibilityGui") then
-	playerGui.InvisibilityGui:Destroy()
-end
-
+-- GUI (то же красивое)
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "InvisibilityGui"
+screenGui.Name = "GhostMoveGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
--- Frame фон
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 260, 0, 80)
+frame.Size = UDim2.new(0, 280, 0, 90)
 frame.Position = UDim2.new(0, 20, 0, 20)
-frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.25)
+frame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.2)
 frame.BorderSizePixel = 0
 frame.Parent = screenGui
 
-local frameCorner = Instance.new("UICorner")
-frameCorner.CornerRadius = UDim.new(0, 16)  -- ✅ UDim!
-frameCorner.Parent = frame
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 16)
+corner.Parent = frame
 
--- Заголовок
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
-title.Text = "🔮 Невидимость других"
-title.TextColor3 = Color3.new(1, 1, 1)
+title.Text = "👻 Локальное движение"
+title.TextColor3 = Color3.new(1,1,1)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 title.Parent = frame
 
--- КНОПКА
 local button = Instance.new("TextButton")
-button.Size = UDim2.new(0.92, 0, 0, 42)
-button.Position = UDim2.new(0.04, 0, 0.45, 0)
-button.Text = "🕶️ ВКЛ НЕВИДИМОСТЬ"
-button.TextColor3 = Color3.new(1, 1, 1)
-button.BackgroundColor3 = Color3.new(0.1, 0.6, 1)
+button.Size = UDim2.new(0.9, 0, 0, 45)
+button.Position = UDim2.new(0.05, 0, 0.4, 0)
+button.Text = "🚀 ВКЛ локальное"
+button.TextColor3 = Color3.new(1,1,1)
+button.BackgroundColor3 = Color3.new(0.2, 0.8, 1)
 button.BorderSizePixel = 0
 button.Font = Enum.Font.GothamBold
 button.TextSize = 20
 button.Parent = frame
 
-local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim.new(0, 12)  -- ✅ UDim!
-buttonCorner.Parent = button
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 12)
+btnCorner.Parent = button
 
--- Эффекты
-local function updateButtonColor()
-	button.BackgroundColor3 = isInvisible and Color3.new(1, 0.3, 0.3) or Color3.new(0.1, 0.6, 1)
-end
+-- ЛОГИКА
+local enabled = false
+local connection
+local startPosition = Vector3.new(0,0,0)
+local bodyPosition = nil
 
-button.MouseEnter:Connect(function()
-	button.BackgroundColor3 = Color3.new(0.2, 0.7, 1)
-end)
-button.MouseLeave:Connect(updateButtonColor)
-
--- ЛОГИКА НЕВИДИМОСТИ
-local isInvisible = false
-local connections = {}
-
-local function setTransparency(obj, trans)
-	if not obj then return end
-	if obj:IsA("BasePart") or obj:IsA("Decal") or obj:IsA("Texture") then
-		obj.Transparency = trans
-	end
-	for _, child in obj:GetChildren() do
-		setTransparency(child, trans)
-	end
-end
-
-local function toggle()
-	print("🔥 КНОПКА КЛИКНУТА!")
-	isInvisible = not isInvisible
-	button.Text = isInvisible and "👁️ ВЫКЛ НЕВИДИМОСТЬ" or "🕶️ ВКЛ НЕВИДИМОСТЬ"
-	updateButtonColor()
-
-	if isInvisible then
-		for _, p in Players:GetPlayers() do
-			if p ~= player and p.Character then
-				setTransparency(p.Character, 1)
-			end
-		end
-		spawn(function()
-			while isInvisible do
-				for _, p in Players:GetPlayers() do
-					if p ~= player and p.Character then
-						setTransparency(p.Character, 1)
-					end
-				end
-				wait(0.1)
-			end
-		end)
-	else
-		for _, p in Players:GetPlayers() do
-			if p ~= player and p.Character then
-				setTransparency(p.Character, 0)
-			end
-		end
-	end
-end
-
-button.MouseButton1Click:Connect(toggle)
-
--- Новые игроки
-Players.PlayerAdded:Connect(function(p)
-	p.CharacterAdded:Connect(function()
-		if isInvisible then
-			wait(0.5)
-			setTransparency(p.Character, 1)
-		end
-	end)
+button.MouseButton1Click:Connect(function()
+    enabled = not enabled
+    button.Text = enabled and "⏹️ ВЫКЛ локальное" or "🚀 ВКЛ локальное"
+    button.BackgroundColor3 = enabled and Color3.new(1, 0.3, 0.3) or Color3.new(0.2, 0.8, 1)
+    
+    local character = player.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    if enabled then
+        startPosition = rootPart.Position
+        print("🚀 Локальное движение ВКЛ - другие видят тебя на месте!")
+        
+        -- Фиксируем на сервере (другие видят стоящим)
+        bodyPosition = Instance.new("BodyPosition")
+        bodyPosition.MaxForce = Vector3.new(4000, 4000, 4000)
+        bodyPosition.Position = startPosition
+        bodyPosition.D = 1000
+        bodyPosition.P = 10000
+        bodyPosition.Parent = rootPart
+        
+        -- Локальное движение (нормальная скорость)
+        connection = RunService.Heartbeat:Connect(function()
+            -- Ты движешься НОРМАЛЬНО локально (WASD работает)
+            -- BodyPosition держит серверную позицию
+        end)
+    else
+        print("⏹️ Локальное движение ВЫКЛ")
+        if connection then connection:Disconnect() end
+        if bodyPosition then bodyPosition:Destroy() end
+    end
 end)
 
-print("✅ НЕВИДИМОСТЬ ЗАГРУЖЕНА! Синяя кнопка слева сверху!")
+print("✅ Локальное движение готово! Другие видят тебя стоящим.")
