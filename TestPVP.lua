@@ -34,7 +34,7 @@ local btnCorner = Instance.new("UICorner")
 btnCorner.CornerRadius = UDim.new(0, 8)
 btnCorner.Parent = button
 
--- Левитация 2 секунды
+-- Левитация низко + сразу отпустить
 local levitating = false
 local bodyVelocity
 
@@ -46,17 +46,18 @@ button.MouseButton1Click:Connect(function()
     
     if not levitating then
         levitating = true
-        button.Text = "⏳ Левитация..."
+        button.Text = "⏳ Подъём..."
         button.BackgroundColor3 = Color3.new(1, 0.5, 0)
         
         bodyVelocity = Instance.new("BodyVelocity")
         bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
-        bodyVelocity.Velocity = Vector3.new(0, 20, 0)  -- Чуть быстрее
+        bodyVelocity.Velocity = Vector3.new(0, 12, 0)  -- Низкий подъём
         bodyVelocity.Parent = rootPart
         
-        -- 2 секунды (быстрее)
-        task.wait(2)
+        -- 1.5 секунды подъёма
+        task.wait(1.5)
         
+        -- СРАЗУ отпускаем
         if bodyVelocity then
             bodyVelocity:Destroy()
         end
@@ -68,4 +69,4 @@ button.MouseButton1Click:Connect(function()
     end
 end)
 
-print("✅ Левитация 2 сек готова!")
+print("✅ Низкая левитация готова!")
