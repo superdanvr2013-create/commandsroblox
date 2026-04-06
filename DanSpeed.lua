@@ -14,8 +14,65 @@ local isAnchored = false
 local targetSpeed = 25
 local targetJump = 10
 
+-- Левитация через платформу
+local levitatePart = nil
+local levitateSpeed = 10
+
+local function createLevitatePart()
+	if levitatePart then
+		levitatePart:Destroy()
+		levitatePart = nil
+	end
+
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	levitatePart = Instance.new("Part")
+	levitatePart.Name = "LevitatePart"
+	levitatePart.Size = Vector3.new(6, 0.5, 6)
+	levitatePart.Anchored = true
+	levitatePart.CanCollide = true
+	levitatePart.Transparency = 0.95
+	levitatePart.Material = Enum.Material.SmoothPlastic
+	levitatePart.Color = Color3.fromRGB(0, 0, 0)
+	levitatePart.CFrame = root.CFrame * CFrame.new(0, -1.5, 0)
+	levitatePart.Parent = workspace
+
+	task.spawn(function()
+		while levitatePart and (levitatingCtrl or levitatingToggle) do
+			local char = speaker.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if root then
+				local targetCFrame = root.CFrame * CFrame.new(0, -1.5, 0)
+				levitatePart.CFrame = targetCFrame
+				levitatePart.Velocity = Vector3.new(0, levitateSpeed, 0)
+			else
+				break
+			end
+			task.wait(0.05)
+		end
+		if levitatePart then
+			levitatePart:Destroy()
+			levitatePart = nil
+		end
+	end)
+end
+
+local function stopLevitation()
+	levitatingCtrl = false
+	levitatingToggle = false
+
+	if levitatePart then
+		levitatePart:Destroy()
+		levitatePart = nil
+	end
+end
+
+-------------------------------------------------------------------
 -- GUI
-main.Name = "EliteX_Lite"
+-------------------------------------------------------------------
+main.Name = "EliteX_Fly"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -23,14 +80,14 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 260, 0, 280)
+Frame.Size = UDim2.new(0, 260, 0, 300)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
 
 local title = Instance.new("TextLabel")
 title.Parent = Frame
-title.Text = "ELITEX — Lite"
+title.Text = "ELITEX — Levitation"
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
@@ -59,12 +116,6 @@ local espBtn = createBtn("EspBtn", "ESP: OFF", 40, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
-	for i, part in pairs(ESPParts) do
-		if not part or not part.Parent then
-			ESPParts[i] = nil
-		end
-	end
-
 	ESPParts = {}
 
 	for _, player in pairs(Players:GetPlayers()) do
@@ -100,7 +151,7 @@ espBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- СПИД И ПРЫЖОК (textbox'ы с подписями)
+-- Speed / Jump
 -------------------------------------------------------------------
 local speedRow = Instance.new("Frame")
 speedRow.Name = "SpeedRow"
@@ -179,28 +230,17 @@ jumpTextBox.FocusLost:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- ЛЕВИТАЦИЯ
+-- ЛЕВИТАЦИЯ ЧЕРЕЗ ПЛАТФОРМУ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 130, Color3.fromRGB(120, 40, 200))
-local bodyVelocity = nil
-
-local function createBodyVelocity(root)
-	if bodyVelocity then
-		bodyVelocity:Destroy()
-		bodyVelocity = nil
-	end
-
-	bodyVelocity = Instance.new("BodyVelocity")
-	bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-	bodyVelocity.P = 1000
-	bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-	bodyVelocity.Parent = root
-end
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 140, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.LeftControl then
 		levitatingCtrl = true
+		if not levitatePart then
+			createLevitatePart()
+		end
 	end
 end)
 
@@ -208,6 +248,10 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.LeftControl then
 		levitatingCtrl = false
+		if not levitatingToggle and levitatePart then
+			levitatePart:Destroy()
+			levitatePart = nil
+		end
 	end
 end)
 
@@ -215,55 +259,42 @@ levitationBtn.MouseButton1Click:Connect(function()
 	levitatingToggle = not levitatingToggle
 	levitationBtn.Text = levitatingToggle and "ЛЕВИТАЦИЯ: ON" or "ЛЕВИТАЦИЯ: OFF"
 	levitationBtn.BackgroundColor3 = levitatingToggle and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(120, 40, 200)
+
+	if levitatingToggle or levitatingCtrl then
+		if not levitatePart then
+			createLevitatePart()
+		end
+	else
+		stopLevitation()
+	end
 end)
 
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 170, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 180, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
 	anchorBtn.Text = isAnchored and "ANCHORED: ON" or "ANCHORED: OFF"
 	anchorBtn.BackgroundColor3 = isAnchored and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(40, 40, 45)
+
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.Anchored = isAnchored
+	end
 end)
 
 -------------------------------------------------------------------
--- ЛЕГКИЙ ОСНОВНОЙ LOOP
+-- ЛЕГКИЙ LOOP (только скорость / прыжок + ESP)
 -------------------------------------------------------------------
-RunService.RenderStepped:Connect(function()
+RunService.Stepped:Connect(function()
 	local char = speaker.Character
 	local hum = char and char:FindFirstChild("Humanoid")
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-
-	-- Скорость / прыжок только для нашего Humanoid
 	if hum then
 		hum.WalkSpeed = targetSpeed
 		hum.JumpHeight = targetJump
-	end
-
-	-- Левитация (Ctrl + кнопка)
-	if root then
-		if levitatingCtrl or levitatingToggle then
-			if not bodyVelocity then
-				createBodyVelocity(root)
-			end
-			bodyVelocity.Velocity = Vector3.new(
-				char.Humanoid.MoveDirection.X * 10,
-				16,
-				char.Humanoid.MoveDirection.Z * 10
-			)
-		else
-			if bodyVelocity then
-				bodyVelocity:Destroy()
-				bodyVelocity = nil
-			end
-		end
-
-		-- Anchor
-		if isAnchored then
-			root.Anchored = true
-		end
 	end
 end)
 
@@ -281,7 +312,8 @@ closeBtn.TextSize = 18
 closeBtn.Parent = Frame
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 closeBtn.MouseButton1Click:Connect(function()
+	stopLevitation()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite v2 — без тормозов, лёгкий и чистый")
+print("✅ EliteX — левитация через платформу (Ctrl + кнопка), без лагов")
