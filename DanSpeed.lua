@@ -11,8 +11,8 @@ local espActive = false
 local levitatingCtrl = false
 local levitatingToggle = false
 local isAnchored = false
-local targetSpeed = 25
-local targetJump = 10
+local targetSpeed = 20
+local targetJump = 15
 
 -- Левитация через платформу
 local levitatePart = nil
