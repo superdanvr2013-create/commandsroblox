@@ -251,30 +251,32 @@ local function findNearestPlayer()
 	return closestPlayer
 end
 
--- Только крутимся к ближайшему игроку, без телепортации и без кружения по всему миру
+-- ПОВОРОТ ТОЛЬКО ЧЕРЕЗ Humanoid, БЕЗ ПРЯМОГО ПОВОРОТА HRP
 RunService.Heartbeat:Connect(function()
 	if not isAutoAim then return end
 
-	local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
-	if not root then return end
+	local char = speaker.Character
+	local hum = char and char:FindFirstChild("Humanoid")
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not hum or not root then return end
 
 	local nearestHRP = findNearestPlayer()
 	if not nearestHRP then return end
 
-	local from = root.Position
-	local to = nearestHRP.Position
+	-- отключаем авто‑поворот, чтобы AIM не конфликтовал
+	hum.AutoRotate = false
 
-	-- Плоский вектор вперёд
-	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
-	if flat.Magnitude < 0.1 then return end
-
-	-- ЧИСТЫЙ поворот к цели, без накопления
-	local newCFrame = CFrame.lookAt(
-		root.Position,              -- остаёмся в той же точке
-		root.Position + flat        -- смотрим на ближайшего игрока
+	-- вектор вперёд
+	local flat = Vector3.new(
+		nearestHRP.Position.X - root.Position.X,
+		0,
+		nearestHRP.Position.Z - root.Position.Z
 	)
 
-	root.CFrame = newCFrame
+	if flat.Magnitude < 0.1 then return end
+
+	-- заставляем персонажа идти в направлении ближайшего игрока
+	hum:Move(flat.Unit, false)  -- false = без влияния на Jump/аналог
 end)
 
 -------------------------------------------------------------------
