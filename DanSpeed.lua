@@ -214,7 +214,7 @@ kickBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- AUTO AIM: вращение к ближайшему чужому игроку (только Y поворот)
+-- AUTO AIM: поворот к БЛИЖАЙШЕМУ чужому игроку (без кручения)
 -------------------------------------------------------------------
 local aimBtn = createBtn("AimBtn", "AIM NEAREST: OFF", 210, Color3.fromRGB(0, 180, 255))
 
@@ -251,7 +251,7 @@ local function findNearestPlayer()
 	return closestPlayer
 end
 
--- Вращение HRP к ближайшему игроку, без телепортации
+-- Только крутимся к ближайшему игроку, без телепортации и без кружения по всему миру
 RunService.Heartbeat:Connect(function()
 	if not isAutoAim then return end
 
@@ -261,22 +261,20 @@ RunService.Heartbeat:Connect(function()
 	local nearestHRP = findNearestPlayer()
 	if not nearestHRP then return end
 
-	local fromPos = root.Position
-	local toPos = nearestHRP.Position
+	local from = root.Position
+	local to = nearestHRP.Position
 
-	-- Плоский вектор вперёд (Y обнулён)
-	local flat = Vector3.new(toPos.X - fromPos.X, 0, toPos.Z - fromPos.Z)
+	-- Плоский вектор вперёд
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
 	if flat.Magnitude < 0.1 then return end
 
-	-- Только вращаем HRP, не двигаем позицию
-	local orientation = CFrame.fromMatrix(
-		Vector3.new(),                     -- origin (не влияет)
-		flat.Unit,                         -- LookVector
-		Vector3.new(0, 1, 0)              -- UpVector
+	-- ЧИСТЫЙ поворот к цели, без накопления
+	local newCFrame = CFrame.lookAt(
+		root.Position,              -- остаёмся в той же точке
+		root.Position + flat        -- смотрим на ближайшего игрока
 	)
 
-	-- Оставляем старую Position, меняем только поворот
-	root.CFrame = root.CFrame * orientation
+	root.CFrame = newCFrame
 end)
 
 -------------------------------------------------------------------
