@@ -212,6 +212,67 @@ local kickBtn = createBtn("KickBtn", "KICK", 170, Color3.fromRGB(255, 50, 50))
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()  -- локально "кикает" игрока
 end)
+-------------------------------------------------------------------
+-- AUTO AIM к ближайшему чужому игроку
+-------------------------------------------------------------------
+local aimBtn = createBtn("AimBtn", "AIM NEAREST: OFF", 210, Color3.fromRGB(0, 180, 255))
+
+local isAutoAim = false
+
+aimBtn.MouseButton1Click:Connect(function()
+	isAutoAim = not isAutoAim
+	aimBtn.Text = isAutoAim and "AIM NEAREST: ON" or "AIM NEAREST: OFF"
+	aimBtn.BackgroundColor3 = isAutoAim and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(0, 180, 255)
+end)
+
+-- Поиск ближайшего чужого игрока
+local function findNearestPlayer()
+	local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+
+	local closestPlayer
+	local closestDist = math.huge
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= speaker then
+			local char = plr.Character
+			local hum = char and char:FindFirstChild("Humanoid")
+			local target = char and char:FindFirstChild("HumanoidRootPart")
+			if hum and target and hum.Health > 0 then
+				local dist = (target.Position - root.Position).Magnitude
+				if dist < closestDist then
+					closestDist = dist
+					closestPlayer = target
+				end
+			end
+		end
+	end
+
+	return closestPlayer
+end
+
+-- Основной цикл автоматического поворота
+RunService.Heartbeat:Connect(function()
+	if not isAutoAim then return end
+
+	local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	local nearestHRP = findNearestPlayer()
+	if not nearestHRP then return end
+
+	-- Вращаем HRP, чтобы смотреть на ближайшего игрока
+	local direction = nearestHRP.Position - root.Position
+	if direction.Magnitude > 0.1 then
+		local flat = Vector3.new(direction.X, 0, direction.Z)
+		local angle = math.atan2(-flat.Z, flat.X)
+		root.CFrame = CFrame.fromMatrix(
+			root.CFrame.Position,
+			CFrame.Angles(0, angle, 0).LookVector,
+			Vector3.new(0, 1, 0)
+		):toWorldSpace(root.CFrame)
+	end
+end)
 
 -------------------------------------------------------------------
 -- ЛЕГКИЙ LOOP (ничего лишнего)
