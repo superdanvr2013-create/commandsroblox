@@ -214,7 +214,7 @@ kickBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- AUTO AIM: постоянно смотришь на ближайшего чужого игрока
+-- AUTO AIM: постоянно смотреть на ближайшего чужого игрока
 -------------------------------------------------------------------
 local aimBtn = createBtn("AimBtn", "AIM NEAREST: OFF", 210, Color3.fromRGB(0, 180, 255))
 
@@ -223,12 +223,15 @@ local isAutoAim = false
 aimBtn.MouseButton1Click:Connect(function()
 	isAutoAim = not isAutoAim
 	aimBtn.Text = isAutoAim and "AIM NEAREST: ON" or "AIM NEAREST: OFF"
-	aimBtn.BackgroundColor3 = isAutoAim and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(0, 180, 255)
 
 	local char = speaker.Character
 	local hum = char and char:FindFirstChild("Humanoid")
-	if hum then
-		hum.AutoRotate = not isAutoAim  -- когда aim включён, отключаем автоповорот
+	if not hum then return end
+
+	if isAutoAim then
+		hum.AutoRotate = false
+	else
+		hum.AutoRotate = true
 	end
 end)
 
@@ -257,14 +260,17 @@ local function findNearestPlayer()
 	return closestPlayer
 end
 
--- ПОВОРОТ К БЛИЖАЙШЕМУ ИГРОКУ ПОСТОЯННО
+-- Постоянно смотрим на ближайшего чужого игрока, пока isAutoAim = true
 RunService.Heartbeat:Connect(function()
-	if not isAutoAim then return end
-
 	local char = speaker.Character
 	local hum = char and char:FindFirstChild("Humanoid")
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not hum or not root then return end
+
+	-- если aim выключен, не трогаем никак
+	if not isAutoAim then
+		return
+	end
 
 	local nearestHRP = findNearestPlayer()
 	if not nearestHRP then return end
@@ -278,7 +284,7 @@ RunService.Heartbeat:Connect(function()
 
 	if flat.Magnitude < 0.1 then return end
 
-	-- заставляем персонажа каждый кадр ехать/смотреть в сторону ближайшего игрока
+	-- заставляем персонажа смотреть в сторону ближайшего игрока
 	hum:Move(flat.Unit, false)
 end)
 
