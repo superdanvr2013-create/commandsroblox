@@ -5,7 +5,7 @@ local player = Players.LocalPlayer
 
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Создаём GUI
+-- GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "LevitationGui"
 screenGui.Parent = playerGui
@@ -34,37 +34,38 @@ local btnCorner = Instance.new("UICorner")
 btnCorner.CornerRadius = UDim.new(0, 8)
 btnCorner.Parent = button
 
--- Логика левитации
+-- Левитация 2 секунды
 local levitating = false
 local bodyVelocity
 
 button.MouseButton1Click:Connect(function()
-	local character = player.Character
-	if not character then return end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	if not rootPart then return end
-
-	if not levitating then
-		levitating = true
-		button.Text = "⏳ Левитация..."
-		button.BackgroundColor3 = Color3.new(1, 0.5, 0)
-
-		bodyVelocity = Instance.new("BodyVelocity")
-		bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
-		bodyVelocity.Velocity = Vector3.new(0, 15, 0)  -- Медленный подъём
-		bodyVelocity.Parent = rootPart
-
-		wait(1.5)
-
-		if bodyVelocity then
-			bodyVelocity:Destroy()
-		end
-
-		levitating = false
-		button.Text = "🪶 Левитация"
-		button.BackgroundColor3 = Color3.new(0, 0.7, 1)
-		print("Левитация завершена!")
-	end
+    local character = player.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    if not levitating then
+        levitating = true
+        button.Text = "⏳ Левитация..."
+        button.BackgroundColor3 = Color3.new(1, 0.5, 0)
+        
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+        bodyVelocity.Velocity = Vector3.new(0, 20, 0)  -- Чуть быстрее
+        bodyVelocity.Parent = rootPart
+        
+        -- 2 секунды (быстрее)
+        task.wait(2)
+        
+        if bodyVelocity then
+            bodyVelocity:Destroy()
+        end
+        
+        levitating = false
+        button.Text = "🪶 Левитация"
+        button.BackgroundColor3 = Color3.new(0, 0.7, 1)
+        print("Левитация завершена!")
+    end
 end)
 
-print("✅ Левитация готова! Кнопка слева сверху.")
+print("✅ Левитация 2 сек готова!")
