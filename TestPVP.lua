@@ -2,135 +2,121 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
-local playerGui = player:WaitForChild("PlayerGui", 10)
-if not playerGui then return end
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- Удаляем старое
-pcall(function() playerGui.InvisibilityGui:Destroy() end)
+if playerGui:FindFirstChild("InvisibilityGui") then
+	playerGui.InvisibilityGui:Destroy()
+end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "InvisibilityGui"
 screenGui.ResetOnSpawn = false
-screenGui.DisplayOrder = 100
 screenGui.Parent = playerGui
 
--- Frame ФОН (ZIndex=1)
+-- Frame фон
 local frame = Instance.new("Frame")
-frame.Name = "Frame"
-frame.Size = UDim2.new(0, 250, 0, 70)
+frame.Size = UDim2.new(0, 260, 0, 80)
 frame.Position = UDim2.new(0, 20, 0, 20)
-frame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.25)
 frame.BorderSizePixel = 0
-frame.ZIndex = 1
-frame.Active = true
-frame.Draggable = true
 frame.Parent = screenGui
 
 local frameCorner = Instance.new("UICorner")
-frameCorner.CornerRadius = UDim2.new(0, 15, 0, 15)
+frameCorner.CornerRadius = UDim.new(0, 16)  -- ✅ UDim!
 frameCorner.Parent = frame
 
--- Заголовок (виден всегда)
+-- Заголовок
 local title = Instance.new("TextLabel")
-title.Name = "Title"
-title.Size = UDim2.new(1, 0, 0, 25)
-title.Position = UDim2.new(0, 0, 0, 5)
+title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
-title.Text = "Невидимость других игроков"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "🔮 Невидимость других"
+title.TextColor3 = Color3.new(1, 1, 1)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
-title.ZIndex = 2
 title.Parent = frame
 
--- КНОПКА (ZIndex=10, НАВЕРХУ!)
+-- КНОПКА
 local button = Instance.new("TextButton")
-button.Name = "Button"
-button.Size = UDim2.new(0.9, 0, 0, 35)
-button.Position = UDim2.new(0.05, 0, 0.4, 0)
+button.Size = UDim2.new(0.92, 0, 0, 42)
+button.Position = UDim2.new(0.04, 0, 0.45, 0)
 button.Text = "🕶️ ВКЛ НЕВИДИМОСТЬ"
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.BackgroundColor3 = Color3.new(0.1, 0.6, 1)
 button.BorderSizePixel = 0
 button.Font = Enum.Font.GothamBold
-button.TextSize = 18  -- ФИКС TextScaled бага!
-button.ZIndex = 10  -- НАИВЫШЕ!
+button.TextSize = 20
 button.Parent = frame
 
 local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim2.new(0, 10, 0, 10)
-buttonCorner.ZIndex = 10
+buttonCorner.CornerRadius = UDim.new(0, 12)  -- ✅ UDim!
 buttonCorner.Parent = button
 
--- Hover эффект
+-- Эффекты
+local function updateButtonColor()
+	button.BackgroundColor3 = isInvisible and Color3.new(1, 0.3, 0.3) or Color3.new(0.1, 0.6, 1)
+end
+
 button.MouseEnter:Connect(function()
-    button.BackgroundColor3 = Color3.fromRGB(0, 140, 220)
+	button.BackgroundColor3 = Color3.new(0.2, 0.7, 1)
 end)
-button.MouseLeave:Connect(function()
-    button.BackgroundColor3 = isInvisible and Color3.fromRGB(220, 50, 50) or Color3.fromRGB(0, 162, 255)
-end)
+button.MouseLeave:Connect(updateButtonColor)
 
--- Переменные
+-- ЛОГИКА НЕВИДИМОСТИ
 local isInvisible = false
-local originalTransparencies = {}
 local connections = {}
-local updateConnection
 
-local function setTransparency(instance, transparency)
-    if not instance then return end
-    if instance:IsA("BasePart") or instance:IsA("Decal") or instance:IsA("Texture") then
-        if transparency == 1 and not originalTransparencies[instance] then
-            originalTransparencies[instance] = instance.Transparency
-        elseif transparency == 0 and originalTransparencies[instance] then
-            instance.Transparency = originalTransparencies[instance]
-            originalTransparencies[instance] = nil
-        end
-        instance.Transparency = transparency
-    end
-    for _, child in pairs(instance:GetChildren()) do
-        setTransparency(child, transparency)
-    end
+local function setTransparency(obj, trans)
+	if not obj then return end
+	if obj:IsA("BasePart") or obj:IsA("Decal") or obj:IsA("Texture") then
+		obj.Transparency = trans
+	end
+	for _, child in obj:GetChildren() do
+		setTransparency(child, trans)
+	end
 end
 
-local function toggleInvisibility()
-    print("Клик по кнопке!")  -- Проверка F9
-    isInvisible = not isInvisible
-    button.Text = isInvisible and "👁️ ВЫКЛ НЕВИДИМОСТЬ" or "🕶️ ВКЛ НЕВИДИМОСТЬ"
-    button.BackgroundColor3 = isInvisible and Color3.fromRGB(220, 50, 50) or Color3.fromRGB(0, 162, 255)
-    
-    -- Очистка...
-    for i = #connections, 1, -1 do
-        if connections[i] then connections[i]:Disconnect() end
-    end
-    connections = {}
-    if updateConnection then updateConnection:Disconnect() end
-    
-    if isInvisible then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= player and p.Character then
-                setTransparency(p.Character, 1)
-            end
-        end
-        updateConnection = RunService.Heartbeat:Connect(function()
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= player and p.Character then setTransparency(p.Character, 1) end
-            end
-        end)
-    else
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= player and p.Character then
-                setTransparency(p.Character, 0)
-            end
-        end
-    end
+local function toggle()
+	print("🔥 КНОПКА КЛИКНУТА!")
+	isInvisible = not isInvisible
+	button.Text = isInvisible and "👁️ ВЫКЛ НЕВИДИМОСТЬ" or "🕶️ ВКЛ НЕВИДИМОСТЬ"
+	updateButtonColor()
+
+	if isInvisible then
+		for _, p in Players:GetPlayers() do
+			if p ~= player and p.Character then
+				setTransparency(p.Character, 1)
+			end
+		end
+		spawn(function()
+			while isInvisible do
+				for _, p in Players:GetPlayers() do
+					if p ~= player and p.Character then
+						setTransparency(p.Character, 1)
+					end
+				end
+				wait(0.1)
+			end
+		end)
+	else
+		for _, p in Players:GetPlayers() do
+			if p ~= player and p.Character then
+				setTransparency(p.Character, 0)
+			end
+		end
+	end
 end
 
-button.MouseButton1Click:Connect(toggleInvisibility)
+button.MouseButton1Click:Connect(toggle)
 
-Players.PlayerAdded:Connect(function(newPlayer)
-    table.insert(connections, newPlayer.CharacterAdded:Connect(function()
-        if isInvisible then task.wait(0.3); setTransparency(newPlayer.Character, 1) end
-    end))
+-- Новые игроки
+Players.PlayerAdded:Connect(function(p)
+	p.CharacterAdded:Connect(function()
+		if isInvisible then
+			wait(0.5)
+			setTransparency(p.Character, 1)
+		end
+	end)
 end)
 
-print("✅ GUI КНОПКА готова! Левый верхний угол. F9 для логов.")
+print("✅ НЕВИДИМОСТЬ ЗАГРУЖЕНА! Синяя кнопка слева сверху!")
