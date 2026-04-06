@@ -55,7 +55,7 @@ button.MouseButton1Click:Connect(function()
 		bodyVelocity.Velocity = Vector3.new(0, 15, 0)  -- Медленный подъём
 		bodyVelocity.Parent = rootPart
 
-		wait(2.5)
+		wait(2)
 
 		if bodyVelocity then
 			bodyVelocity:Destroy()
