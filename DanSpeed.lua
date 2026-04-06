@@ -212,8 +212,9 @@ local kickBtn = createBtn("KickBtn", "KICK", 170, Color3.fromRGB(255, 50, 50))
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()  -- локально "кикает" игрока
 end)
+
 -------------------------------------------------------------------
--- AUTO AIM к ближайшему чужому игроку
+-- AUTO AIM к ближайшему чужому игроку (ТОЛЬКО ПОВОРОТ)
 -------------------------------------------------------------------
 local aimBtn = createBtn("AimBtn", "AIM NEAREST: OFF", 210, Color3.fromRGB(0, 180, 255))
 
@@ -225,7 +226,6 @@ aimBtn.MouseButton1Click:Connect(function()
 	aimBtn.BackgroundColor3 = isAutoAim and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(0, 180, 255)
 end)
 
--- Поиск ближайшего чужого игрока
 local function findNearestPlayer()
 	local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
 	if not root then return nil end
@@ -251,7 +251,7 @@ local function findNearestPlayer()
 	return closestPlayer
 end
 
--- Основной цикл автоматического поворота
+-- Основной цикл ПОВОРОТА лица к ближайшему игроку
 RunService.Heartbeat:Connect(function()
 	if not isAutoAim then return end
 
@@ -261,17 +261,20 @@ RunService.Heartbeat:Connect(function()
 	local nearestHRP = findNearestPlayer()
 	if not nearestHRP then return end
 
-	-- Вращаем HRP, чтобы смотреть на ближайшего игрока
-	local direction = nearestHRP.Position - root.Position
-	if direction.Magnitude > 0.1 then
-		local flat = Vector3.new(direction.X, 0, direction.Z)
-		local angle = math.atan2(-flat.Z, flat.X)
-		root.CFrame = CFrame.fromMatrix(
-			root.CFrame.Position,
-			CFrame.Angles(0, angle, 0).LookVector,
-			Vector3.new(0, 1, 0)
-		):toWorldSpace(root.CFrame)
-	end
+	local from = root.Position
+	local to = nearestHRP.Position
+
+	-- Вектор вперёд (Y в ноль → плоский поворот)
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	if flat.Magnitude < 0.1 then return end
+
+	-- Новый CFrame: только поворачиваем, не сдвигаем
+	local newCFrame = CFrame.lookAt(
+		root.Position,                                   -- точка, где стою
+		root.Position + flat                                 -- смотрю в сторону ближайшего
+	) * CFrame.Angles(0, 0, 0)
+
+	root.CFrame = newCFrame
 end)
 
 -------------------------------------------------------------------
