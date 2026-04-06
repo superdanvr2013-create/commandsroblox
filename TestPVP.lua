@@ -45,7 +45,6 @@ button.MouseButton1Click:Connect(function()
 	if not rootPart then return end
 
 	if not levitating then
-		-- Поднимаем медленно (3 сек вверх)
 		levitating = true
 		button.Text = "⏳ Левитация..."
 		button.BackgroundColor3 = Color3.new(1, 0.5, 0)
@@ -55,7 +54,7 @@ button.MouseButton1Click:Connect(function()
 		bodyVelocity.Velocity = Vector3.new(0, 15, 0)  -- Медленный подъём
 		bodyVelocity.Parent = rootPart
 
-		wait(2)
+		wait(1.5)
 
 		if bodyVelocity then
 			bodyVelocity:Destroy()
