@@ -1,60 +1,94 @@
--- Fake Local Walk Exploit для Xeno
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
--- Создаём GUI
-local ScreenGui = Instance.new("ScreenGui")
-local Frame = Instance.new("Frame")
-local Button = Instance.new("TextButton")
+local button = script.Parent -- Замените на путь к вашей кнопке, напр. player.PlayerGui.ScreenGui.Button
+local isInvisible = false
+local originalTransparencies = {} -- Храним оригинальные прозрачности
+local connections = {}
 
-ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.Name = "FakeWalkGUI"
-Frame.Parent = ScreenGui
-Frame.Size = UDim2.new(0, 250, 0, 100)
-Frame.Position = UDim2.new(0, 10, 0, 10)
-Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Frame.BorderSizePixel = 0
-Button.Parent = Frame
-Button.Size = UDim2.new(1, 0, 1, 0)
-Button.Position = UDim2.new(0, 0, 0, 0)
-Button.Text = "🚶 Локальная ходьба (F)"
-Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
-Button.Font = Enum.Font.GothamBold
-Button.TextSize = 16
-
-local walking = false
-local connection
-
-Button.MouseButton1Click:Connect(function()
-    walking = not walking
-    Button.Text = walking and "🛑 Стоп ходьба" or "🚶 Локальная ходьба (F)"
-    Button.BackgroundColor3 = walking and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 162, 255)
-end)
-
--- Горячая клавиша F
-game:GetService("UserInputService").InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.F then
-        Button.MouseButton1Click:Fire()
-    end
-end)
-
--- Fake Walk Loop (работает через Xeno injection)
-connection = RunService.Heartbeat:Connect(function()
-    if walking and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local root = player.Character.HumanoidRootPart
-        local humanoid = player.Character.Humanoid
-        
-        -- Локально: нормальная скорость
-        humanoid.WalkSpeed = 50
-        
-        -- Подмена Network Ownership + CFrame spam (видно всем)
-        root.CFrame = root.CFrame + (root.CFrame.LookVector * 0.3)
-        
-        -- Anti-detection (имитация легит скорости)
-        if tick() % 0.1 < 0.05 then
-            humanoid.WalkSpeed = 16 -- Показываем серверу "норм"
+-- Рекурсивная функция для установки прозрачности
+local function setTransparency(part, transparency)
+    if part:IsA("BasePart") or part:IsA("Decal") then
+        if transparency == 1 then -- Сохраняем оригинал при скрытии
+            if not originalTransparencies[part] then
+                originalTransparencies[part] = part.Transparency
+            end
+        else -- Восстанавливаем при показе
+            if originalTransparencies[part] then
+                part.Transparency = originalTransparencies[part]
+                originalTransparencies[part] = nil
+            end
         end
+        part.Transparency = transparency
+    end
+    
+    -- Рекурсия для детей (аксессуары, инструменты)
+    for _, child in pairs(part:GetChildren()) do
+        setTransparency(child, transparency)
+    end
+end
+
+-- Функция для обработки одного персонажа
+local function handleCharacter(targetPlayer, hide)
+    if targetPlayer == player then return end -- Не трогаем себя
+    
+    local character = targetPlayer.Character
+    if character then
+        setTransparency(character, hide and 1 or 0)
+    end
+    
+    -- Подписка на респавн
+    local charAddedConn = targetPlayer.CharacterAdded:Connect(function(newChar)
+        newChar:WaitForChild("HumanoidRootPart", 5) -- Ждём загрузку
+        setTransparency(newChar, hide and 1 or 0)
+    end)
+    table.insert(connections, charAddedConn)
+end
+
+-- Основной цикл обновления (каждый кадр, для новых игроков/частей)
+local updateConnection
+local function toggleInvisibility()
+    isInvisible = not isInvisible
+    button.Text = isInvisible and "Выкл невидимость" or "Вкл невидимость"
+    
+    -- Отключаем старые коннекшены
+    for _, conn in pairs(connections) do
+        conn:Disconnect()
+    end
+    connections = {}
+    
+    if isInvisible then
+        -- Скрываем всех других
+        for _, targetPlayer in pairs(Players:GetPlayers()) do
+            handleCharacter(targetPlayer, true)
+        end
+        
+        -- Цикл для новых игроков и обновлений
+        updateConnection = RunService.RenderStepped:Connect(function()
+            for _, targetPlayer in pairs(Players:GetPlayers()) do
+                if targetPlayer ~= player and targetPlayer.Character then
+                    setTransparency(targetPlayer.Character, 1)
+                end
+            end
+        end)
+    else
+        -- Показываем всех
+        for _, targetPlayer in pairs(Players:GetPlayers()) do
+            handleCharacter(targetPlayer, false)
+        end
+        
+        if updateConnection then
+            updateConnection:Disconnect()
+        end
+    end
+end
+
+button.MouseButton1Click:Connect(toggleInvisibility)
+
+-- Обработка новых игроков при входе
+Players.PlayerAdded:Connect(function(newPlayer)
+    if isInvisible then
+        handleCharacter(newPlayer, true)
     end
 end)
