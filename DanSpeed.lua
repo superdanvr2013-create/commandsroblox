@@ -11,8 +11,6 @@ local espActive = false
 local levitatingCtrl = false
 local levitatingToggle = false
 local isAnchored = false
-local targetSpeed = 20
-local targetJump = 15
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -62,7 +60,6 @@ end
 local function stopLevitation()
 	levitatingCtrl = false
 	levitatingToggle = false
-
 	if levitatePart then
 		levitatePart:Destroy()
 		levitatePart = nil
@@ -80,14 +77,14 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 260, 0, 300)
+Frame.Size = UDim2.new(0, 240, 0, 260)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
 
 local title = Instance.new("TextLabel")
 title.Parent = Frame
-title.Text = "ELITEX — Levitation"
+title.Text = "ELITEX — Lite"
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
@@ -151,88 +148,9 @@ espBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- Speed / Jump
--------------------------------------------------------------------
-local speedRow = Instance.new("Frame")
-speedRow.Name = "SpeedRow"
-speedRow.Position = UDim2.new(0.05, 0, 0.24, 0)
-speedRow.Size = UDim2.new(0.9, 0, 0, 25)
-speedRow.BackgroundTransparency = 1
-speedRow.Parent = Frame
-
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Text = "Speed"
-speedLabel.Position = UDim2.new(0, 0, 0, 0)
-speedLabel.Size = UDim2.new(0.3, 0, 1, 0)
-speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-speedLabel.Font = Enum.Font.GothamSemibold
-speedLabel.TextSize = 12
-speedLabel.Parent = speedRow
-
-local speedTextBox = Instance.new("TextBox")
-speedTextBox.Name = "SpeedTextBox"
-speedTextBox.Position = UDim2.new(0.35, 0, 0, 0)
-speedTextBox.Size = UDim2.new(0.6, 0, 1, 0)
-speedTextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-speedTextBox.Text = tostring(targetSpeed)
-speedTextBox.TextColor3 = Color3.new(1,1,1)
-speedTextBox.Font = Enum.Font.GothamSemibold
-speedTextBox.TextSize = 12
-speedTextBox.TextXAlignment = Enum.TextXAlignment.Center
-speedTextBox.Parent = speedRow
-Instance.new("UICorner", speedTextBox).CornerRadius = UDim.new(0, 6)
-
-local jumpRow = Instance.new("Frame")
-jumpRow.Name = "JumpRow"
-jumpRow.Position = UDim2.new(0.05, 0, 0.35, 0)
-jumpRow.Size = UDim2.new(0.9, 0, 0, 25)
-jumpRow.BackgroundTransparency = 1
-jumpRow.Parent = Frame
-
-local jumpLabel = Instance.new("TextLabel")
-jumpLabel.Text = "Jump"
-jumpLabel.Position = UDim2.new(0, 0, 0, 0)
-jumpLabel.Size = UDim2.new(0.3, 0, 1, 0)
-jumpLabel.BackgroundTransparency = 1
-jumpLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-jumpLabel.Font = Enum.Font.GothamSemibold
-jumpLabel.TextSize = 12
-jumpLabel.Parent = jumpRow
-
-local jumpTextBox = Instance.new("TextBox")
-jumpTextBox.Name = "JumpTextBox"
-jumpTextBox.Position = UDim2.new(0.35, 0, 0, 0)
-jumpTextBox.Size = UDim2.new(0.6, 0, 1, 0)
-jumpTextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-jumpTextBox.Text = tostring(targetJump)
-jumpTextBox.TextColor3 = Color3.new(1,1,1)
-jumpTextBox.Font = Enum.Font.GothamSemibold
-jumpTextBox.TextSize = 12
-jumpTextBox.TextXAlignment = Enum.TextXAlignment.Center
-jumpTextBox.Parent = jumpRow
-Instance.new("UICorner", jumpTextBox).CornerRadius = UDim.new(0, 6)
-
-speedTextBox.FocusLost:Connect(function()
-	local input = tonumber(speedTextBox.Text)
-	if input and input >= 0 and input <= 500 then
-		targetSpeed = input
-		speedTextBox.Text = tostring(targetSpeed)
-	end
-end)
-
-jumpTextBox.FocusLost:Connect(function()
-	local input = tonumber(jumpTextBox.Text)
-	if input and input >= 0 and input <= 500 then
-		targetJump = input
-		jumpTextBox.Text = tostring(targetJump)
-	end
-end)
-
--------------------------------------------------------------------
 -- ЛЕВИТАЦИЯ ЧЕРЕЗ ПЛАТФОРМУ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 140, Color3.fromRGB(120, 40, 200))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 90, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -272,7 +190,7 @@ end)
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 180, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 130, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -287,14 +205,25 @@ anchorBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- ЛЕГКИЙ LOOP (только скорость / прыжок + ESP)
+-- КНОПКА KICK (локально отключает клиента)
+-------------------------------------------------------------------
+local kickBtn = createBtn("KickBtn", "KICK", 170, Color3.fromRGB(255, 50, 50))
+
+kickBtn.MouseButton1Click:Connect(function()
+	game:Shutdown()  -- локально "кикает" игрока
+end)
+
+-------------------------------------------------------------------
+-- ЛЕГКИЙ LOOP (ничего лишнего)
 -------------------------------------------------------------------
 RunService.Stepped:Connect(function()
 	local char = speaker.Character
-	local hum = char and char:FindFirstChild("Humanoid")
-	if hum then
-		hum.WalkSpeed = targetSpeed
-		hum.JumpHeight = targetJump
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		-- Anchor (если включён) — локальное состояние
+		if isAnchored then
+			root.Anchored = true
+		end
 	end
 end)
 
@@ -316,4 +245,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX — левитация через платформу (Ctrl + кнопка), без лагов")
+print("✅ EliteX Lite — левитация, ESP, Anchor, KICK, без Speed/Jump")
