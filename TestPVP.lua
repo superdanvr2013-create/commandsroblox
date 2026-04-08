@@ -1,72 +1,29 @@
+-- Steal a Brainrot CFrame Speed (No WalkSpeed Change, AntiCheat Safe)
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
 
-local playerGui = player:WaitForChild("PlayerGui")
+local enabled = false
+local speedMultiplier = 3  -- 2=быстро, 5=супер (не переборщи, античит)
 
--- GUI
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "LevitationGui"
-screenGui.Parent = playerGui
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 60)
-frame.Position = UDim2.new(0, 20, 0, 20)
-frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.3)
-frame.BorderSizePixel = 0
-frame.Parent = screenGui
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = frame
-
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, 0, 1, 0)
-button.Text = "🪶 Левитация"
-button.TextColor3 = Color3.new(1, 1, 1)
-button.BackgroundColor3 = Color3.new(0, 0.7, 1)
-button.Font = Enum.Font.GothamBold
-button.TextSize = 18
-button.Parent = frame
-
-local btnCorner = Instance.new("UICorner")
-btnCorner.CornerRadius = UDim.new(0, 8)
-btnCorner.Parent = button
-
--- Левитация низко + сразу отпустить
-local levitating = false
-local bodyVelocity
-
-button.MouseButton1Click:Connect(function()
-    local character = player.Character
-    if not character then return end
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
-    
-    if not levitating then
-        levitating = true
-        button.Text = "⏳ Подъём..."
-        button.BackgroundColor3 = Color3.new(1, 0.5, 0)
-        
-        bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
-        bodyVelocity.Velocity = Vector3.new(0, 12, 0)  -- Низкий подъём
-        bodyVelocity.Parent = rootPart
-        
-        -- 1.5 секунды подъёма
-        task.wait(1.5)
-        
-        -- СРАЗУ отпускаем
-        if bodyVelocity then
-            bodyVelocity:Destroy()
-        end
-        
-        levitating = false
-        button.Text = "🪶 Левитация"
-        button.BackgroundColor3 = Color3.new(0, 0.7, 1)
-        print("Левитация завершена!")
+-- CFrame Speed Loop (по MoveDirection)
+RunService.Heartbeat:Connect(function(dt)
+    if enabled and humanoid.MoveDirection.Magnitude > 0 then
+        local moveVector = humanoid.MoveDirection * speedMultiplier * 16 * dt  -- 16=default speed
+        rootPart.CFrame = rootPart.CFrame + rootPart.CFrame.LookVector * moveVector.Z + rootPart.CFrame.RightVector * moveVector.X
     end
 end)
 
-print("✅ Низкая левитация готова!")
+-- Toggle
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.R then
+        enabled = not enabled
+        print("CFrame Speed: " .. (enabled and "ON (x" .. speedMultiplier .. ")" or "OFF"))
+    end
+end)
+
+print("✅ CFrame Speed готов! R=ON. Двигайся WASD — лети вперед без WalkSpeed!")
