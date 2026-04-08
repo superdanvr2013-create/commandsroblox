@@ -1,4 +1,4 @@
--- Steal a Brainrot GUI Speed FIXED (Кнопки ON/OFF)
+-- Steal a Brainrot UNDETECTED Speed GUI (BodyVelocity Boost)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -6,33 +6,49 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Ждём character
 local function onCharacterAdded(char)
 	local humanoid = char:WaitForChild("Humanoid")
 	local rootPart = char:WaitForChild("HumanoidRootPart")
 
 	local speedEnabled = false
-	local speedMultiplier = 3
+	local bodyVel = nil
 
-	-- Speed Loop
-	local connection
-	connection = RunService.Heartbeat:Connect(function(dt)
-		if speedEnabled and humanoid.MoveDirection.Magnitude > 0 then
-			local moveVector = humanoid.MoveDirection * speedMultiplier * 16 * dt
-			rootPart.CFrame = rootPart.CFrame + rootPart.CFrame.LookVector * moveVector.Z + rootPart.CFrame.RightVector * moveVector.X
+	-- Создаём BodyVelocity (незаметный boost)
+	local function toggleSpeed(enable)
+		speedEnabled = enable
+		if enable then
+			bodyVel = Instance.new("BodyVelocity")
+			bodyVel.MaxForce = Vector3.new(4000, 0, 4000)  -- Только XZ, малый Y
+			bodyVel.Velocity = Vector3.new(0, 0, 0)
+			bodyVel.Parent = rootPart
+			print("🚀 Undetected Speed ON!")
+		else
+			if bodyVel then bodyVel:Destroy() end
+			print("⏹️ Speed OFF!")
+		end
+	end
+
+	-- Update Velocity каждый кадр (по MoveDirection, x2 speed)
+	local conn = RunService.Heartbeat:Connect(function()
+		if speedEnabled and bodyVel then
+			local moveDir = humanoid.MoveDirection
+			if moveDir.Magnitude > 0 then
+				bodyVel.Velocity = moveDir * 32  -- 32 = x2 от default 16, незаметно
+			else
+				bodyVel.Velocity = Vector3.new(0, 0, 0)
+			end
 		end
 	end)
 
 	-- GUI
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "SpeedGUI"
+	screenGui.Name = "UndetectedSpeedGUI"
 	screenGui.Parent = playerGui
 
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(0, 220, 0, 110)
 	frame.Position = UDim2.new(0, 20, 0.5, -55)
 	frame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-	frame.BorderSizePixel = 0
 	frame.Parent = screenGui
 	local ucorner = Instance.new("UICorner")
 	ucorner.CornerRadius = UDim.new(0, 15)
@@ -41,8 +57,8 @@ local function onCharacterAdded(char)
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, 0, 0.35, 0)
 	title.BackgroundTransparency = 1
-	title.Text = "🚀 CFrame Speed x3"
-	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Text = "🛡️ Undetected Speed x2"
+	title.TextColor3 = Color3.fromRGB(0, 255, 200)
 	title.TextScaled = true
 	title.Font = Enum.Font.GothamBold
 	title.Parent = frame
@@ -73,23 +89,18 @@ local function onCharacterAdded(char)
 	cornerOff.CornerRadius = UDim.new(0, 10)
 	cornerOff.Parent = btnOff
 
-	-- Кнопки
 	btnOn.MouseButton1Click:Connect(function()
-		speedEnabled = true
+		toggleSpeed(true)
 		TweenService:Create(btnOn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 255, 0)}):Play()
-		print("🚀 Speed ON!")
 	end)
 
 	btnOff.MouseButton1Click:Connect(function()
-		speedEnabled = false
+		toggleSpeed(false)
 		TweenService:Create(btnOff, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
-		print("⏹️ Speed OFF!")
 	end)
 
-	print("✅ GUI Speed FIXED готов!")
+	print("✅ Undetected BodyVelocity GUI готов! Нет resetов.")
 end
 
-if player.Character then
-	onCharacterAdded(player.Character)
-end
+if player.Character then onCharacterAdded(player.Character) end
 player.CharacterAdded:Connect(onCharacterAdded)
