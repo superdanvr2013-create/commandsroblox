@@ -1,7 +1,6 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local speaker = Players.LocalPlayer
 local main = Instance.new("ScreenGui")
@@ -24,103 +23,45 @@ local originalSpeed = 16
 local originalJump = 50
 
 -- Xray переменные
-local originalMaterials = {}
 local originalTransparencies = {}
 local xrayParts = {}
 
--- Функция для Xray
+-- Функция для Xray (только блоки со словом Wall)
 local function applyXray()
 	if xrayActive then
-		-- Делаем все блоки прозрачными, кроме тех, что под ногами
+		-- Ищем все блоки с названием содержащим "Wall"
 		for _, part in pairs(workspace:GetDescendants()) do
-			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
-				local char = speaker.Character
-				local isUnderFeet = false
-				
-				if char then
-					local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-					if humanoidRootPart then
-						-- Проверяем, находится ли блок под ногами игрока
-						local partPos = part.Position
-						local playerPos = humanoidRootPart.Position
-						local distanceY = playerPos.Y - partPos.Y
-						
-						-- Блок считается под ногами, если он находится ниже игрока и в радиусе 5 стутней
-						if distanceY > 0 and distanceY < 5 and (partPos - playerPos).Magnitude < 10 then
-							isUnderFeet = true
-						end
-					end
+			if part:IsA("BasePart") and string.find(part.Name:lower(), "wall") then
+				if not originalTransparencies[part] then
+					originalTransparencies[part] = part.Transparency
 				end
-				
-				if not isUnderFeet then
-					-- Сохраняем оригинальные свойства
-					if not originalMaterials[part] then
-						originalMaterials[part] = part.Material
-						originalTransparencies[part] = part.Transparency
-					end
-					
-					-- Делаем прозрачным
-					part.Material = Enum.Material.SmoothPlastic
-					part.Transparency = 0.95
-					part.CanCollide = false
-					table.insert(xrayParts, part)
-				end
+				part.Transparency = 0.95
+				table.insert(xrayParts, part)
 			end
 		end
 	else
-		-- Восстанавливаем все блоки
-		for part, material in pairs(originalMaterials) do
+		-- Восстанавливаем прозрачность всех блоков
+		for part, transparency in pairs(originalTransparencies) do
 			if part and part.Parent then
-				part.Material = material
-				part.Transparency = originalTransparencies[part] or 0
-				part.CanCollide = true
+				part.Transparency = transparency
 			end
 		end
-		table.clear(originalMaterials)
 		table.clear(originalTransparencies)
 		table.clear(xrayParts)
 	end
 end
 
--- Функция для обновления Xray (нужно вызывать при движении)
+-- Функция для обновления Xray (для новых блоков)
 local function updateXray()
 	if not xrayActive then return end
 	
-	-- Обновляем блоки под ногами
-	for _, part in pairs(xrayParts) do
-		if part and part.Parent then
-			local char = speaker.Character
-			local isUnderFeet = false
-			
-			if char then
-				local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-				if humanoidRootPart then
-					local partPos = part.Position
-					local playerPos = humanoidRootPart.Position
-					local distanceY = playerPos.Y - partPos.Y
-					
-					if distanceY > 0 and distanceY < 5 and (partPos - playerPos).Magnitude < 10 then
-						isUnderFeet = true
-					end
-				end
-			end
-			
-			if isUnderFeet then
-				-- Восстанавливаем блок под ногами
-				if originalMaterials[part] then
-					part.Material = originalMaterials[part]
-					part.Transparency = originalTransparencies[part] or 0
-					part.CanCollide = true
-				end
-			else
-				-- Делаем прозрачным
-				if not originalMaterials[part] then
-					originalMaterials[part] = part.Material
-					originalTransparencies[part] = part.Transparency
-				end
-				part.Material = Enum.Material.SmoothPlastic
+	-- Проверяем новые блоки
+	for _, part in pairs(workspace:GetDescendants()) do
+		if part:IsA("BasePart") and string.find(part.Name:lower(), "wall") then
+			if not originalTransparencies[part] then
+				originalTransparencies[part] = part.Transparency
 				part.Transparency = 0.95
-				part.CanCollide = false
+				table.insert(xrayParts, part)
 			end
 		end
 	end
@@ -277,7 +218,13 @@ local espBtn = createBtn("EspBtn", "ESP: OFF", 140, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
-	ESPParts = {}
+	-- Очищаем старые ESP
+	for _, part in pairs(ESPParts) do
+		if part and part.Parent then
+			part:Destroy()
+		end
+	end
+	table.clear(ESPParts)
 
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= speaker and player.Character then
@@ -309,6 +256,15 @@ espBtn.MouseButton1Click:Connect(function()
 		end
 		table.clear(ESPParts)
 	end
+end)
+
+-- Обновление ESP при добавлении/удалении игроков
+Players.PlayerAdded:Connect(function()
+	if espActive then updateESP() end
+end)
+
+Players.PlayerRemoving:Connect(function()
+	if espActive then updateESP() end
 end)
 
 -------------------------------------------------------------------
@@ -401,7 +357,7 @@ RunService.Stepped:Connect(function()
 		end
 	end
 	
-	-- Обновляем Xray при движении
+	-- Обновляем Xray (для новых блоков)
 	if xrayActive then
 		updateXray()
 	end
@@ -421,9 +377,12 @@ end)
 
 -- Обработка добавления новых блоков в workspace
 workspace.DescendantAdded:Connect(function(descendant)
-	if xrayActive and descendant:IsA("BasePart") and descendant.Name ~= "HumanoidRootPart" then
-		wait(0.1)
-		applyXray()
+	if xrayActive and descendant:IsA("BasePart") and string.find(descendant.Name:lower(), "wall") then
+		if not originalTransparencies[descendant] then
+			originalTransparencies[descendant] = descendant.Transparency
+			descendant.Transparency = 0.95
+			table.insert(xrayParts, descendant)
+		end
 	end
 end)
 
@@ -454,4 +413,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Xray, Буст скорости/прыжка, ESP, Левитация, Anchor, KICK")
+print("✅ EliteX Lite — Xray (только блоки со словом Wall), Буст, ESP, Левитация, Anchor, KICK")
