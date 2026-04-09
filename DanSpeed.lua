@@ -31,6 +31,7 @@ local xrayRadius = 30
 local teleportTarget = nil
 local teleportButton = nil
 local teleportFrame = nil
+local lastCheckedText = ""
 
 -- Функция для проверки, находится ли блок рядом с игроком (но не под ногами)
 local function isNearPlayerButNotUnder(part)
@@ -48,7 +49,7 @@ local function isNearPlayerButNotUnder(part)
 	return distance <= xrayRadius and not isUnderFeet
 end
 
--- Функция для Xray (только блоки рядом с игроком, кроме тех что под ногами)
+-- Функция для Xray
 local function applyXray()
 	if xrayActive then
 		for part, transparency in pairs(originalTransparencies) do
@@ -121,44 +122,79 @@ local function updateXray()
 	end
 end
 
--- Функция для поиска GUI с текстом "Someone"
-local function findSomeoneGUI()
+-- Функция для поиска всех GUI элементов с текстом
+local function findAllGUIText()
+	local allTexts = {}
 	local playerGui = speaker:FindFirstChild("PlayerGui")
-	if not playerGui then return nil, nil end
+	if not playerGui then return allTexts end
 	
 	-- Рекурсивный поиск всех GUI элементов
-	local function searchGUI(parent)
+	local function searchGUI(parent, depth)
+		if depth > 20 then return end -- Защита от бесконечной рекурсии
+		
 		for _, child in pairs(parent:GetChildren()) do
-			if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
-				if child.Text and string.find(child.Text, "Someone") then
-					return child, child.Text
-				end
+			-- Проверяем TextLabel
+			if child:IsA("TextLabel") and child.Text and child.Text ~= "" then
+				table.insert(allTexts, {element = child, text = child.Text, type = "TextLabel"})
 			end
-			-- Проверяем вложенные элементы
-			local found, foundText = searchGUI(child)
-			if found then
-				return found, foundText
+			-- Проверяем TextButton
+			if child:IsA("TextButton") and child.Text and child.Text ~= "" then
+				table.insert(allTexts, {element = child, text = child.Text, type = "TextButton"})
+			end
+			-- Проверяем TextBox
+			if child:IsA("TextBox") and child.Text and child.Text ~= "" then
+				table.insert(allTexts, {element = child, text = child.Text, type = "TextBox"})
+			end
+			-- Проверяем ScreenGui и Frame
+			if child:IsA("ScreenGui") or child:IsA("Frame") or child:IsA("ScrollingFrame") then
+				searchGUI(child, depth + 1)
 			end
 		end
-		return nil, nil
 	end
 	
-	return searchGUI(playerGui)
+	searchGUI(playerGui, 0)
+	return allTexts
 end
 
 -- Функция для извлечения имени игрока из текста
-local function extractPlayerName(text)
-	-- Ищем слова, которые могут быть именами игроков
-	local words = {}
-	for word in string.gmatch(text, "%S+") do
-		table.insert(words, word)
+local function extractPlayerNameFromText(text)
+	-- Ищем любые имена игроков в тексте
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= speaker then
+			local playerName = player.Name
+			local playerDisplayName = player.DisplayName
+			
+			-- Проверяем, содержится ли имя игрока в тексте
+			if string.find(text, playerName) or string.find(text, playerDisplayName) then
+				return playerName
+			end
+			
+			-- Проверяем вариант с "Someone" и именем рядом
+			if string.find(text:lower(), "someone") and (string.find(text, playerName) or string.find(text, playerDisplayName)) then
+				return playerName
+			end
+		end
 	end
 	
-	-- Проверяем каждое слово, является ли оно именем существующего игрока
-	for _, word in pairs(words) do
-		for _, player in pairs(Players:GetPlayers()) do
-			if player ~= speaker and string.find(word, player.Name) then
-				return player.Name
+	-- Если текст содержит "Someone" но нет точного имени, пробуем извлечь любое слово
+	if string.find(text:lower(), "someone") then
+		-- Ищем слова в кавычках или скобках
+		local inQuotes = string.match(text, '"([^"]+)"')
+		if inQuotes then
+			for _, player in pairs(Players:GetPlayers()) do
+				if player ~= speaker and (string.find(inQuotes, player.Name) or string.find(inQuotes, player.DisplayName)) then
+					return player.Name
+				end
+			end
+		end
+		
+		-- Ищем слова в скобках
+		local inParens = string.match(text, '%(([^%)]+)%')
+		if inParens then
+			for _, player in pairs(Players:GetPlayers()) do
+				if player ~= speaker and (string.find(inParens, player.Name) or string.find(inParens, player.DisplayName)) then
+					return player.Name
+				end
 			end
 		end
 	end
@@ -175,22 +211,34 @@ local function createTeleportButton(targetPlayerName)
 		teleportButton = nil
 	end
 	
-	-- Создаем фрейм для кнопки
+	-- Создаем фрейм для кнопки (поверх основного GUI)
 	teleportFrame = Instance.new("Frame")
 	teleportFrame.Name = "TeleportFrame"
 	teleportFrame.Parent = main
 	teleportFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-	teleportFrame.Position = UDim2.new(0.02, 0, 0.4, 0)
-	teleportFrame.Size = UDim2.new(0, 240, 0, 50)
-	teleportFrame.BackgroundTransparency = 0.1
+	teleportFrame.Position = UDim2.new(0.02, 0, 0.45, 0)
+	teleportFrame.Size = UDim2.new(0, 240, 0, 60)
+	teleportFrame.BackgroundTransparency = 0.05
+	teleportFrame.ZIndex = 10
 	Instance.new("UICorner", teleportFrame).CornerRadius = UDim.new(0, 8)
+	
+	-- Текст с информацией
+	local infoText = Instance.new("TextLabel")
+	infoText.Parent = teleportFrame
+	infoText.Text = "🔍 НАЙДЕН ИГРОК!"
+	infoText.Size = UDim2.new(1, 0, 0, 20)
+	infoText.Position = UDim2.new(0, 0, 0, 5)
+	infoText.BackgroundTransparency = 1
+	infoText.TextColor3 = Color3.fromRGB(0, 255, 0)
+	infoText.Font = Enum.Font.GothamBold
+	infoText.TextSize = 12
 	
 	-- Текст с именем игрока
 	local targetText = Instance.new("TextLabel")
 	targetText.Parent = teleportFrame
 	targetText.Text = "Цель: " .. targetPlayerName
 	targetText.Size = UDim2.new(1, 0, 0, 20)
-	targetText.Position = UDim2.new(0, 0, 0, 5)
+	targetText.Position = UDim2.new(0, 0, 0, 25)
 	targetText.BackgroundTransparency = 1
 	targetText.TextColor3 = Color3.fromRGB(255, 255, 0)
 	targetText.Font = Enum.Font.GothamBold
@@ -200,14 +248,25 @@ local function createTeleportButton(targetPlayerName)
 	teleportButton = Instance.new("TextButton")
 	teleportButton.Name = "TeleportBtn"
 	teleportButton.Parent = teleportFrame
-	teleportButton.Text = "📞 ТЕЛЕПОРТИРОВАТЬСЯ"
-	teleportButton.Position = UDim2.new(0.05, 0, 0, 25)
-	teleportButton.Size = UDim2.new(0.9, 0, 0, 20)
+	teleportButton.Text = "🚀 ТЕЛЕПОРТИРОВАТЬСЯ"
+	teleportButton.Position = UDim2.new(0.05, 0, 0, 45)
+	teleportButton.Size = UDim2.new(0.9, 0, 0, 0)
+	teleportButton.Size = UDim2.new(0.9, 0, 0, 25)
 	teleportButton.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
 	teleportButton.Font = Enum.Font.GothamSemibold
 	teleportButton.TextColor3 = Color3.new(1, 1, 1)
-	teleportButton.TextSize = 11
+	teleportButton.TextSize = 12
+	teleportButton.ZIndex = 11
 	Instance.new("UICorner", teleportButton).CornerRadius = UDim.new(0, 6)
+	
+	-- Анимация появления
+	teleportFrame.BackgroundTransparency = 0.5
+	task.spawn(function()
+		for i = 0.5, 0.05, -0.05 do
+			teleportFrame.BackgroundTransparency = i
+			task.wait(0.05)
+		end
+	end)
 	
 	-- Функция телепортации
 	teleportButton.MouseButton1Click:Connect(function()
@@ -218,27 +277,50 @@ local function createTeleportButton(targetPlayerName)
 			
 			if targetRoot and playerRoot then
 				-- Телепортируем игрока
-				playerRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3) -- Телепортируем на 3 стутни перед игроком
+				local teleportCFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
+				playerRoot.CFrame = teleportCFrame
 				
-				-- Визуальный эффект
+				-- Визуальный эффект в точке телепортации
 				local beam = Instance.new("Part")
-				beam.Size = Vector3.new(1, 1, 1)
+				beam.Size = Vector3.new(2, 2, 2)
 				beam.Anchored = true
 				beam.CanCollide = false
-				beam.Transparency = 0.5
+				beam.Transparency = 0.3
 				beam.Color = Color3.fromRGB(0, 255, 255)
 				beam.Material = Enum.Material.Neon
-				beam.Position = playerRoot.Position
+				beam.Position = teleportCFrame.Position
 				beam.Parent = workspace
-				beam.Size = Vector3.new(5, 5, 5)
+				
+				-- Эффект в точке прибытия
+				local beam2 = Instance.new("Part")
+				beam2.Size = Vector3.new(2, 2, 2)
+				beam2.Anchored = true
+				beam2.CanCollide = false
+				beam2.Transparency = 0.3
+				beam2.Color = Color3.fromRGB(255, 0, 255)
+				beam2.Material = Enum.Material.Neon
+				beam2.Position = playerRoot.Position
+				beam2.Parent = workspace
 				
 				task.spawn(function()
-					task.wait(0.5)
+					for i = 0.3, 1, 0.05 do
+						beam.Transparency = i
+						beam2.Transparency = i
+						beam.Size = beam.Size + Vector3.new(0.5, 0.5, 0.5)
+						beam2.Size = beam2.Size + Vector3.new(0.5, 0.5, 0.5)
+						task.wait(0.05)
+					end
 					beam:Destroy()
+					beam2:Destroy()
 				end)
 				
-				-- Удаляем кнопку после телепортации
-				task.wait(1)
+				-- Уведомление
+				infoText.Text = "✅ Телепортация выполнена!"
+				infoText.TextColor3 = Color3.fromRGB(0, 255, 0)
+				targetText.Text = "Телепортирован к " .. targetPlayerName
+				
+				-- Удаляем кнопку через 2 секунды
+				task.wait(2)
 				if teleportFrame then
 					teleportFrame:Destroy()
 					teleportFrame = nil
@@ -247,8 +329,11 @@ local function createTeleportButton(targetPlayerName)
 			end
 		else
 			-- Если игрок не найден или нет персонажа
-			targetText.Text = "Игрок " .. targetPlayerName .. " не найден!"
-			targetText.TextColor3 = Color3.fromRGB(255, 0, 0)
+			infoText.Text = "❌ Игрок не найден!"
+			infoText.TextColor3 = Color3.fromRGB(255, 0, 0)
+			targetText.Text = targetPlayerName .. " недоступен"
+			teleportButton.Visible = false
+			
 			task.wait(2)
 			if teleportFrame then
 				teleportFrame:Destroy()
@@ -261,25 +346,78 @@ end
 
 -- Функция для проверки GUI каждую секунду
 local function checkForSomeoneGUI()
+	print("🔍 Начинаем поиск GUI с текстом...")
+	
 	while true do
 		if main and main.Parent then
-			local guiElement, guiText = findSomeoneGUI()
-			if guiElement and guiText then
-				local playerName = extractPlayerName(guiText)
-				if playerName and (not teleportFrame or (teleportFrame and teleportFrame.Parent)) then
-					createTeleportButton(playerName)
+			local allGUITexts = findAllGUIText()
+			
+			local foundSomeone = false
+			local foundPlayerName = nil
+			local foundText = nil
+			
+			-- Проверяем все найденные тексты
+			for _, guiInfo in pairs(allGUITexts) do
+				local text = guiInfo.text
+				
+				-- Проверяем наличие слова "Someone" (регистронезависимо)
+				if text and string.find(string.lower(text), "someone") then
+					foundSomeone = true
+					foundText = text
+					print("🔍 Найден GUI с текстом: " .. text)
+					
+					-- Пытаемся извлечь имя игрока
+					local playerName = extractPlayerNameFromText(text)
+					if playerName then
+						foundPlayerName = playerName
+						print("🔍 Извлечено имя игрока: " .. playerName)
+						break
+					end
+				end
+			end
+			
+			-- Если нашли текст с "Someone" и имя игрока
+			if foundSomeone and foundPlayerName then
+				if not teleportFrame or (teleportFrame and not teleportFrame.Parent) then
+					print("✅ Создаем кнопку телепортации для игрока: " .. foundPlayerName)
+					createTeleportButton(foundPlayerName)
+				end
+			elseif foundSomeone and not foundPlayerName then
+				-- Если нашли "Someone" но не смогли определить имя, показываем сообщение
+				if not teleportFrame then
+					print("⚠️ Найдено 'Someone' но не удалось определить имя игрока в тексте: " .. (foundText or "unknown"))
 				end
 			else
 				-- Если GUI исчез, удаляем кнопку
 				if teleportFrame then
+					print("🔴 GUI с 'Someone' исчез, удаляем кнопку")
 					teleportFrame:Destroy()
 					teleportFrame = nil
 					teleportButton = nil
 				end
 			end
 		end
-		task.wait(1) -- Проверяем каждую секунду
+		task.wait(0.5) -- Проверяем каждые 0.5 секунды для быстрой реакции
 	end
+end
+
+-- Функция для отслеживания новых GUI элементов
+local function trackNewGUI()
+	local playerGui = speaker:WaitForChild("PlayerGui")
+	
+	-- Отслеживаем появление новых объектов
+	playerGui.DescendantAdded:Connect(function(descendant)
+		if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+			if descendant.Text and string.find(string.lower(descendant.Text), "someone") then
+				print("🔔 Обнаружен новый GUI элемент с 'Someone'!")
+				local playerName = extractPlayerNameFromText(descendant.Text)
+				if playerName then
+					task.wait(0.2) -- Небольшая задержка для стабильности
+					createTeleportButton(playerName)
+				end
+			end
+		end
+	end)
 end
 
 local function createLevitatePart()
@@ -588,6 +726,7 @@ end)
 
 -- Запускаем проверку GUI для телепортации
 task.spawn(checkForSomeoneGUI)
+task.spawn(trackNewGUI)
 
 -- При первом запуске сохраняем настройки
 if speaker.Character then
@@ -616,4 +755,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Добавлена телепортация к игроку при появлении GUI с словом 'Someone'")
+print("✅ EliteX Lite — Улучшенная телепортация при появлении GUI с 'Someone'")
