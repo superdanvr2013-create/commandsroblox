@@ -25,40 +25,44 @@ local originalJump = 50
 -- Xray переменные
 local originalTransparencies = {}
 local xrayParts = {}
+local xrayRadius = 30 -- Радиус обнаружения блоков
 
--- Функция для проверки, является ли цвет серым или похожим на серый
-local function isGrayColor(color)
-	-- Получаем RGB компоненты (значения от 0 до 1)
-	local r = color.R
-	local g = color.G
-	local b = color.B
+-- Функция для проверки, находится ли блок рядом с игроком (но не под ногами)
+local function isNearPlayerButNotUnder(part)
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return false end
 	
-	-- Серый цвет имеет примерно равные компоненты RGB
-	local average = (r + g + b) / 3
-	local tolerance = 0.15 -- Допустимое отклонение (чем меньше, тем точнее серый)
+	local partPos = part.Position
+	local playerPos = root.Position
+	local distance = (partPos - playerPos).Magnitude
+	local distanceY = playerPos.Y - partPos.Y
 	
-	-- Проверяем, близки ли все компоненты к среднему значению
-	local isGray = math.abs(r - average) <= tolerance and 
-	              math.abs(g - average) <= tolerance and 
-	              math.abs(b - average) <= tolerance
+	-- Блок считается под ногами, если он находится ниже игрока и в радиусе 5 стутней по горизонтали
+	local isUnderFeet = distanceY > 0 and distanceY < 5 and math.abs(partPos.X - playerPos.X) < 5 and math.abs(partPos.Z - playerPos.Z) < 5
 	
-	-- Дополнительно проверяем, что цвет не слишком яркий (белый) и не слишком темный (черный)
-	-- Серые оттенки: от темно-серого до светло-серого
-	local isNotWhite = average < 0.95
-	local isNotBlack = average > 0.05
-	
-	return isGray and isNotWhite and isNotBlack
+	-- Блок рядом с игроком (в радиусе) и НЕ под ногами
+	return distance <= xrayRadius and not isUnderFeet
 end
 
--- Функция для Xray (только серые блоки)
+-- Функция для Xray (только блоки рядом с игроком, кроме тех что под ногами)
 local function applyXray()
 	if xrayActive then
-		-- Ищем все блоки серого цвета
+		-- Очищаем старые данные
+		for part, transparency in pairs(originalTransparencies) do
+			if part and part.Parent then
+				part.Transparency = transparency
+			end
+		end
+		table.clear(originalTransparencies)
+		table.clear(xrayParts)
+		
+		-- Ищем все блоки рядом с игроком (кроме под ногами)
 		for _, part in pairs(workspace:GetDescendants()) do
-			if part:IsA("BasePart") and part.Color then
-				local isGray = isGrayColor(part.Color)
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
+				local isNear = isNearPlayerButNotUnder(part)
 				
-				if isGray then
+				if isNear then
 					if not originalTransparencies[part] then
 						originalTransparencies[part] = part.Transparency
 					end
@@ -79,19 +83,44 @@ local function applyXray()
 	end
 end
 
--- Функция для обновления Xray (для новых блоков)
+-- Функция для обновления Xray (для динамических изменений)
 local function updateXray()
 	if not xrayActive then return end
 	
-	-- Проверяем новые блоки
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	
+	-- Проверяем все блоки в радиусе
 	for _, part in pairs(workspace:GetDescendants()) do
-		if part:IsA("BasePart") and part.Color then
-			local isGray = isGrayColor(part.Color)
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
+			local distance = (part.Position - root.Position).Magnitude
+			local isUnderFeet = false
 			
-			if isGray and not originalTransparencies[part] then
-				originalTransparencies[part] = part.Transparency
-				part.Transparency = 0.95
-				table.insert(xrayParts, part)
+			-- Проверка, под ногами ли блок
+			local distanceY = root.Position.Y - part.Position.Y
+			if distanceY > 0 and distanceY < 5 and math.abs(part.Position.X - root.Position.X) < 5 and math.abs(part.Position.Z - root.Position.Z) < 5 then
+				isUnderFeet = true
+			end
+			
+			-- Если блок в радиусе и не под ногами, но еще не прозрачный
+			if distance <= xrayRadius and not isUnderFeet then
+				if not originalTransparencies[part] then
+					originalTransparencies[part] = part.Transparency
+					part.Transparency = 0.95
+					table.insert(xrayParts, part)
+				end
+			-- Если блок вышел из радиуса или стал под ногами, восстанавливаем
+			elseif originalTransparencies[part] then
+				part.Transparency = originalTransparencies[part]
+				originalTransparencies[part] = nil
+				-- Удаляем из списка
+				for i, p in pairs(xrayParts) do
+					if p == part then
+						table.remove(xrayParts, i)
+						break
+					end
+				end
 			end
 		end
 	end
@@ -387,7 +416,7 @@ RunService.Stepped:Connect(function()
 		end
 	end
 	
-	-- Обновляем Xray (для новых блоков)
+	-- Обновляем Xray при движении игрока
 	if xrayActive then
 		updateXray()
 	end
@@ -407,9 +436,9 @@ end)
 
 -- Обработка добавления новых блоков в workspace
 workspace.DescendantAdded:Connect(function(descendant)
-	if xrayActive and descendant:IsA("BasePart") and descendant.Color then
-		local isGray = isGrayColor(descendant.Color)
-		if isGray and not originalTransparencies[descendant] then
+	if xrayActive and descendant:IsA("BasePart") and descendant.Name ~= "HumanoidRootPart" and descendant.Name ~= "LevitatePart" then
+		local isNear = isNearPlayerButNotUnder(descendant)
+		if isNear and not originalTransparencies[descendant] then
 			originalTransparencies[descendant] = descendant.Transparency
 			descendant.Transparency = 0.95
 			table.insert(xrayParts, descendant)
@@ -444,4 +473,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Xray (только серые блоки), Буст, ESP, Левитация, Anchor, KICK")
+print("✅ EliteX Lite — Xray (блоки рядом с игроком, кроме блоков под ногами), Буст, ESP, Левитация, Anchor, KICK")
