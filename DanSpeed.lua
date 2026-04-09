@@ -669,7 +669,7 @@ local function createTeleportButton()
 	
 	local hotkeyText = Instance.new("TextLabel")
 	hotkeyText.Parent = teleportFrame
-	hotkeyText.Text = "⌨️ Нажмите Q для быстрой телепортации"
+	hotkeyText.Text = "⌨️ Нажмите Z для быстрой телепортации"
 	hotkeyText.Size = UDim2.new(1, 0, 0, 15)
 	hotkeyText.Position = UDim2.new(0, 0, 0, 45)
 	hotkeyText.BackgroundTransparency = 1
@@ -746,8 +746,8 @@ end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
-	-- Клавиша Q для телепорта
-	if input.KeyCode == Enum.KeyCode.Q then
+	-- Клавиша Z для телепортации
+	if input.KeyCode == Enum.KeyCode.Z then
 		if isSomeoneActive and teleportFrame and teleportFrame.Parent then
 			if teleportButton then
 				local originalColor = teleportButton.BackgroundColor3
@@ -775,8 +775,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 	end
 	
-	-- Клавиша R для отделения/прикрепления LowerTorso
-	if input.KeyCode == Enum.KeyCode.R then
+	-- Клавиша Q для отделения/прикрепления LowerTorso
+	if input.KeyCode == Enum.KeyCode.Q then
 		detachLowerTorsoActive = not detachLowerTorsoActive
 		
 		if detachLowerTorsoActive then
@@ -931,17 +931,17 @@ end)
 -------------------------------------------------------------------
 -- DETACH LOWER TORSO
 -------------------------------------------------------------------
-local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF", 140, Color3.fromRGB(150, 0, 150))
+local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 140, Color3.fromRGB(150, 0, 150))
 
 detachBtn.MouseButton1Click:Connect(function()
 	detachLowerTorsoActive = not detachLowerTorsoActive
 	
 	if detachLowerTorsoActive then
-		detachBtn.Text = "🦿 DETACH LOWER TORSO: ON"
+		detachBtn.Text = "🦿 DETACH LOWER TORSO: ON (Q)"
 		detachBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
 		detachLowerTorso()
 	else
-		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
+		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF (Q)"
 		detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
 		reattachLowerTorso()
 	end
@@ -1136,7 +1136,7 @@ speaker.CharacterAdded:Connect(function(character)
 	-- Если была активна функция отделения, отключаем её при респавне
 	if detachLowerTorsoActive then
 		detachLowerTorsoActive = false
-		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
+		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF (Q)"
 		detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
 	end
 end)
@@ -1178,4 +1178,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Исправлены проблемы с анимациями и горячей клавишей R!")
+print("✅ EliteX Lite — Горячие клавиши: Z - телепорт, Q - отделение LowerTorso, Ctrl - левитация!")
