@@ -14,7 +14,7 @@ local isAnchored = false
 local boostActive = false
 local xrayActive = false
 local detachLowerTorsoActive = false
-local animationsActive = true -- Новая настройка для анимаций
+local animationsActive = true
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -140,82 +140,29 @@ local function toggleAnimations(enable)
 	if not humanoid then return end
 	
 	if enable then
-		-- Включаем анимации
 		local animator = humanoid:FindFirstChild("Animator")
 		if not animator then
-			-- Создаем новый аниматор
 			local newAnimator = Instance.new("Animator")
 			newAnimator.Parent = humanoid
 			
-			-- Принудительно обновляем состояние персонажа для перезагрузки анимаций
 			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 			task.wait(0.1)
 			humanoid:ChangeState(Enum.HumanoidStateType.Running)
 			task.wait(0.05)
 			
-			-- Сбрасываем скорость для нормального движения
 			humanoid.WalkSpeed = originalSpeed
 			humanoid.JumpPower = originalJump
 			
 			print("✅ Анимации включены и перезагружены")
 		end
 	else
-		-- Отключаем анимации
 		local animator = humanoid:FindFirstChild("Animator")
 		if animator then
-			-- Останавливаем все текущие анимации
 			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
 				track:Stop()
 			end
-			-- Удаляем аниматор
 			animator:Destroy()
 			print("❌ Анимации отключены")
-		end
-	end
-end
-
--- Функция для сброса состояния персонажа
-local function resetCharacterState()
-	local char = speaker.Character
-	if not char then return end
-	
-	local humanoid = char:FindFirstChild("Humanoid")
-	local rootPart = char:FindFirstChild("HumanoidRootPart")
-	
-	if humanoid then
-		-- Сбрасываем все состояния
-		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-		task.wait(0.1)
-		humanoid:ChangeState(Enum.HumanoidStateType.Running)
-		task.wait(0.05)
-		
-		-- Сбрасываем скорость
-		humanoid.WalkSpeed = originalSpeed
-		humanoid.JumpPower = originalJump
-		
-		-- Принудительно обновляем платформу
-		humanoid.PlatformStand = false
-		
-		-- Сбрасываем прыжок
-		humanoid.Jump = false
-	end
-	
-	if rootPart then
-		-- Сбрасываем скорость корня
-		rootPart.Velocity = Vector3.new()
-		rootPart.RotVelocity = Vector3.new()
-		rootPart.AssemblyLinearVelocity = Vector3.new()
-		rootPart.AssemblyAngularVelocity = Vector3.new()
-	end
-	
-	-- Пересоздаем движения
-	if humanoid then
-		local animator = humanoid:FindFirstChild("Animator")
-		if animator then
-			-- Останавливаем все анимации
-			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-				track:Stop()
-			end
 		end
 	end
 end
@@ -234,7 +181,6 @@ local function detachLowerTorso()
 		return 
 	end
 	
-	-- Останавливаем текущее движение персонажа
 	local humanoid = char:FindFirstChild("Humanoid")
 	if humanoid then
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
@@ -266,7 +212,7 @@ local function detachLowerTorso()
 		RotVelocity = lowerTorso.RotVelocity
 	}
 	
-	-- Отцепляем LowerTorso
+	-- Отцепляем LowerTorso (НЕ делаем anchored!)
 	lowerTorso.Anchored = false
 	lowerTorso.CanCollide = true
 	
@@ -274,7 +220,6 @@ local function detachLowerTorso()
 	lowerTorso.Velocity = Vector3.new()
 	lowerTorso.RotVelocity = Vector3.new()
 	
-	-- Сохраняем ссылку
 	detachedLowerTorso = lowerTorso
 	
 	-- Добавляем свечение
@@ -375,8 +320,8 @@ local function reattachLowerTorso()
 	-- Возвращаем на правильную позицию
 	lowerTorso.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -1, 0)
 	
-	-- Восстанавливаем свойства
-	lowerTorso.Anchored = savedProperties.Anchored or false
+	-- Восстанавливаем свойства (НО НЕ ДЕЛАЕМ ANCHORED!)
+	lowerTorso.Anchored = false -- ВСЕГДА false для нормального движения
 	lowerTorso.CanCollide = savedProperties.CanCollide or true
 	
 	-- ПОЛНЫЙ СБРОС СОСТОЯНИЯ ПЕРСОНАЖА
@@ -426,7 +371,7 @@ local function reattachLowerTorso()
 	savedWelds = {}
 	savedProperties = {}
 	
-	print("✅ LowerTorso восстановлен и прикреплен обратно! Состояние персонажа сброшено.")
+	print("✅ LowerTorso восстановлен и прикреплен обратно! Anchored отключен для нормального движения.")
 end
 
 -- Функция для обновления управления отделенной частью
@@ -780,12 +725,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		detachLowerTorsoActive = not detachLowerTorsoActive
 		
 		if detachLowerTorsoActive then
-			detachBtn.Text = "🦿 DETACH LOWER TORSO: ON"
-			detachBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+			if detachBtn then
+				detachBtn.Text = "🦿 DETACH LOWER TORSO: ON (Q)"
+				detachBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+			end
 			detachLowerTorso()
 		else
-			detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
-			detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+			if detachBtn then
+				detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF (Q)"
+				detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+			end
 			reattachLowerTorso()
 		end
 	end
@@ -917,7 +866,7 @@ boostBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- ANIMATIONS TOGGLE (НОВАЯ КНОПКА)
+-- ANIMATIONS TOGGLE
 -------------------------------------------------------------------
 local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 90, Color3.fromRGB(100, 100, 255))
 
@@ -1127,7 +1076,6 @@ speaker.CharacterAdded:Connect(function(character)
 		applyXray()
 	end
 	if animationsActive then
-		-- Небольшая задержка перед включением анимаций
 		task.wait(0.3)
 		toggleAnimations(true)
 	else
@@ -1178,4 +1126,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Горячие клавиши: Z - телепорт, Q - отделение LowerTorso, Ctrl - левитация!")
+print("✅ EliteX Lite — Исправлено: клавиша Q работает, anchored отключен для нормального движения!")
