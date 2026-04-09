@@ -25,7 +25,12 @@ local originalJump = 50
 -- Xray переменные
 local originalTransparencies = {}
 local xrayParts = {}
-local xrayRadius = 30 -- Радиус обнаружения блоков
+local xrayRadius = 30
+
+-- Переменные для телепортации
+local teleportTarget = nil
+local teleportButton = nil
+local teleportFrame = nil
 
 -- Функция для проверки, находится ли блок рядом с игроком (но не под ногами)
 local function isNearPlayerButNotUnder(part)
@@ -38,17 +43,14 @@ local function isNearPlayerButNotUnder(part)
 	local distance = (partPos - playerPos).Magnitude
 	local distanceY = playerPos.Y - partPos.Y
 	
-	-- Блок считается под ногами, если он находится ниже игрока и в радиусе 5 стутней по горизонтали
 	local isUnderFeet = distanceY > 0 and distanceY < 5 and math.abs(partPos.X - playerPos.X) < 5 and math.abs(partPos.Z - playerPos.Z) < 5
 	
-	-- Блок рядом с игроком (в радиусе) и НЕ под ногами
 	return distance <= xrayRadius and not isUnderFeet
 end
 
 -- Функция для Xray (только блоки рядом с игроком, кроме тех что под ногами)
 local function applyXray()
 	if xrayActive then
-		-- Очищаем старые данные
 		for part, transparency in pairs(originalTransparencies) do
 			if part and part.Parent then
 				part.Transparency = transparency
@@ -57,7 +59,6 @@ local function applyXray()
 		table.clear(originalTransparencies)
 		table.clear(xrayParts)
 		
-		-- Ищем все блоки рядом с игроком (кроме под ногами)
 		for _, part in pairs(workspace:GetDescendants()) do
 			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
 				local isNear = isNearPlayerButNotUnder(part)
@@ -72,7 +73,6 @@ local function applyXray()
 			end
 		end
 	else
-		-- Восстанавливаем прозрачность всех блоков
 		for part, transparency in pairs(originalTransparencies) do
 			if part and part.Parent then
 				part.Transparency = transparency
@@ -83,7 +83,7 @@ local function applyXray()
 	end
 end
 
--- Функция для обновления Xray (для динамических изменений)
+-- Функция для обновления Xray
 local function updateXray()
 	if not xrayActive then return end
 	
@@ -91,30 +91,25 @@ local function updateXray()
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	
-	-- Проверяем все блоки в радиусе
 	for _, part in pairs(workspace:GetDescendants()) do
 		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
 			local distance = (part.Position - root.Position).Magnitude
 			local isUnderFeet = false
 			
-			-- Проверка, под ногами ли блок
 			local distanceY = root.Position.Y - part.Position.Y
 			if distanceY > 0 and distanceY < 5 and math.abs(part.Position.X - root.Position.X) < 5 and math.abs(part.Position.Z - root.Position.Z) < 5 then
 				isUnderFeet = true
 			end
 			
-			-- Если блок в радиусе и не под ногами, но еще не прозрачный
 			if distance <= xrayRadius and not isUnderFeet then
 				if not originalTransparencies[part] then
 					originalTransparencies[part] = part.Transparency
 					part.Transparency = 0.95
 					table.insert(xrayParts, part)
 				end
-			-- Если блок вышел из радиуса или стал под ногами, восстанавливаем
 			elseif originalTransparencies[part] then
 				part.Transparency = originalTransparencies[part]
 				originalTransparencies[part] = nil
-				-- Удаляем из списка
 				for i, p in pairs(xrayParts) do
 					if p == part then
 						table.remove(xrayParts, i)
@@ -123,6 +118,167 @@ local function updateXray()
 				end
 			end
 		end
+	end
+end
+
+-- Функция для поиска GUI с текстом "Someone"
+local function findSomeoneGUI()
+	local playerGui = speaker:FindFirstChild("PlayerGui")
+	if not playerGui then return nil, nil end
+	
+	-- Рекурсивный поиск всех GUI элементов
+	local function searchGUI(parent)
+		for _, child in pairs(parent:GetChildren()) do
+			if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+				if child.Text and string.find(child.Text, "Someone") then
+					return child, child.Text
+				end
+			end
+			-- Проверяем вложенные элементы
+			local found, foundText = searchGUI(child)
+			if found then
+				return found, foundText
+			end
+		end
+		return nil, nil
+	end
+	
+	return searchGUI(playerGui)
+end
+
+-- Функция для извлечения имени игрока из текста
+local function extractPlayerName(text)
+	-- Ищем слова, которые могут быть именами игроков
+	local words = {}
+	for word in string.gmatch(text, "%S+") do
+		table.insert(words, word)
+	end
+	
+	-- Проверяем каждое слово, является ли оно именем существующего игрока
+	for _, word in pairs(words) do
+		for _, player in pairs(Players:GetPlayers()) do
+			if player ~= speaker and string.find(word, player.Name) then
+				return player.Name
+			end
+		end
+	end
+	
+	return nil
+end
+
+-- Функция для создания кнопки телепортации
+local function createTeleportButton(targetPlayerName)
+	-- Удаляем старую кнопку если есть
+	if teleportFrame then
+		teleportFrame:Destroy()
+		teleportFrame = nil
+		teleportButton = nil
+	end
+	
+	-- Создаем фрейм для кнопки
+	teleportFrame = Instance.new("Frame")
+	teleportFrame.Name = "TeleportFrame"
+	teleportFrame.Parent = main
+	teleportFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	teleportFrame.Position = UDim2.new(0.02, 0, 0.4, 0)
+	teleportFrame.Size = UDim2.new(0, 240, 0, 50)
+	teleportFrame.BackgroundTransparency = 0.1
+	Instance.new("UICorner", teleportFrame).CornerRadius = UDim.new(0, 8)
+	
+	-- Текст с именем игрока
+	local targetText = Instance.new("TextLabel")
+	targetText.Parent = teleportFrame
+	targetText.Text = "Цель: " .. targetPlayerName
+	targetText.Size = UDim2.new(1, 0, 0, 20)
+	targetText.Position = UDim2.new(0, 0, 0, 5)
+	targetText.BackgroundTransparency = 1
+	targetText.TextColor3 = Color3.fromRGB(255, 255, 0)
+	targetText.Font = Enum.Font.GothamBold
+	targetText.TextSize = 11
+	
+	-- Кнопка телепортации
+	teleportButton = Instance.new("TextButton")
+	teleportButton.Name = "TeleportBtn"
+	teleportButton.Parent = teleportFrame
+	teleportButton.Text = "📞 ТЕЛЕПОРТИРОВАТЬСЯ"
+	teleportButton.Position = UDim2.new(0.05, 0, 0, 25)
+	teleportButton.Size = UDim2.new(0.9, 0, 0, 20)
+	teleportButton.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+	teleportButton.Font = Enum.Font.GothamSemibold
+	teleportButton.TextColor3 = Color3.new(1, 1, 1)
+	teleportButton.TextSize = 11
+	Instance.new("UICorner", teleportButton).CornerRadius = UDim.new(0, 6)
+	
+	-- Функция телепортации
+	teleportButton.MouseButton1Click:Connect(function()
+		local targetPlayer = Players:FindFirstChild(targetPlayerName)
+		if targetPlayer and targetPlayer.Character then
+			local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+			local playerRoot = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+			
+			if targetRoot and playerRoot then
+				-- Телепортируем игрока
+				playerRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3) -- Телепортируем на 3 стутни перед игроком
+				
+				-- Визуальный эффект
+				local beam = Instance.new("Part")
+				beam.Size = Vector3.new(1, 1, 1)
+				beam.Anchored = true
+				beam.CanCollide = false
+				beam.Transparency = 0.5
+				beam.Color = Color3.fromRGB(0, 255, 255)
+				beam.Material = Enum.Material.Neon
+				beam.Position = playerRoot.Position
+				beam.Parent = workspace
+				beam.Size = Vector3.new(5, 5, 5)
+				
+				task.spawn(function()
+					task.wait(0.5)
+					beam:Destroy()
+				end)
+				
+				-- Удаляем кнопку после телепортации
+				task.wait(1)
+				if teleportFrame then
+					teleportFrame:Destroy()
+					teleportFrame = nil
+					teleportButton = nil
+				end
+			end
+		else
+			-- Если игрок не найден или нет персонажа
+			targetText.Text = "Игрок " .. targetPlayerName .. " не найден!"
+			targetText.TextColor3 = Color3.fromRGB(255, 0, 0)
+			task.wait(2)
+			if teleportFrame then
+				teleportFrame:Destroy()
+				teleportFrame = nil
+				teleportButton = nil
+			end
+		end
+	end)
+end
+
+-- Функция для проверки GUI каждую секунду
+local function checkForSomeoneGUI()
+	while true do
+		if main and main.Parent then
+			local guiElement, guiText = findSomeoneGUI()
+			if guiElement and guiText then
+				local playerName = extractPlayerName(guiText)
+				if playerName and (not teleportFrame or (teleportFrame and teleportFrame.Parent)) then
+					createTeleportButton(playerName)
+				end
+			else
+				-- Если GUI исчез, удаляем кнопку
+				if teleportFrame then
+					teleportFrame:Destroy()
+					teleportFrame = nil
+					teleportButton = nil
+				end
+			end
+		end
+		task.wait(1) -- Проверяем каждую секунду
 	end
 end
 
@@ -266,7 +422,7 @@ xrayBtn.MouseButton1Click:Connect(function()
 	if xrayActive then
 		applyXray()
 	else
-		applyXray() -- Это вызовет восстановление всех блоков
+		applyXray()
 	end
 end)
 
@@ -277,7 +433,6 @@ local espBtn = createBtn("EspBtn", "ESP: OFF", 140, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
-	-- Очищаем старые ESP
 	for _, part in pairs(ESPParts) do
 		if part and part.Parent then
 			part:Destroy()
@@ -317,7 +472,6 @@ espBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Обновление ESP при добавлении/удалении игроков
 Players.PlayerAdded:Connect(function()
 	if espActive then updateESP() end
 end)
@@ -327,7 +481,7 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- ЛЕВИТАЦИЯ ЧЕРЕЗ ПЛАТФОРМУ
+-- ЛЕВИТАЦИЯ
 -------------------------------------------------------------------
 local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 190, Color3.fromRGB(120, 40, 200))
 
@@ -384,7 +538,7 @@ anchorBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- КНОПКА KICK (локально отключает клиента)
+-- KICK
 -------------------------------------------------------------------
 local kickBtn = createBtn("KickBtn", "KICK", 290, Color3.fromRGB(255, 50, 50))
 
@@ -393,7 +547,7 @@ kickBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- ЛЕГКИЙ LOOP
+-- LOOP
 -------------------------------------------------------------------
 RunService.Stepped:Connect(function()
 	local char = speaker.Character
@@ -406,7 +560,6 @@ RunService.Stepped:Connect(function()
 		end
 	end
 	
-	-- Поддерживаем настройки буста
 	if hum and boostActive then
 		if hum.WalkSpeed ~= 30 then
 			hum.WalkSpeed = 30
@@ -416,7 +569,6 @@ RunService.Stepped:Connect(function()
 		end
 	end
 	
-	-- Обновляем Xray при движении игрока
 	if xrayActive then
 		updateXray()
 	end
@@ -434,17 +586,8 @@ speaker.CharacterAdded:Connect(function(character)
 	end
 end)
 
--- Обработка добавления новых блоков в workspace
-workspace.DescendantAdded:Connect(function(descendant)
-	if xrayActive and descendant:IsA("BasePart") and descendant.Name ~= "HumanoidRootPart" and descendant.Name ~= "LevitatePart" then
-		local isNear = isNearPlayerButNotUnder(descendant)
-		if isNear and not originalTransparencies[descendant] then
-			originalTransparencies[descendant] = descendant.Transparency
-			descendant.Transparency = 0.95
-			table.insert(xrayParts, descendant)
-		end
-	end
-end)
+-- Запускаем проверку GUI для телепортации
+task.spawn(checkForSomeoneGUI)
 
 -- При первом запуске сохраняем настройки
 if speaker.Character then
@@ -473,4 +616,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Xray (блоки рядом с игроком, кроме блоков под ногами), Буст, ESP, Левитация, Anchor, KICK")
+print("✅ EliteX Lite — Добавлена телепортация к игроку при появлении GUI с словом 'Someone'")
