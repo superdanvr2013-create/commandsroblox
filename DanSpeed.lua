@@ -11,14 +11,15 @@ local espActive = false
 local levitatingCtrl = false
 local levitatingToggle = false
 local isAnchored = false
+local boostActive = false
 
 -- Левитация через платформу
 local levitatePart = nil
 local levitateSpeed = 10
 
--- Настройки скорости и прыжка
-local walkSpeed = 16
-local jumpPower = 50
+-- Оригинальные настройки персонажа
+local originalSpeed = 16
+local originalJump = 50
 
 local function createLevitatePart()
 	if levitatePart then
@@ -70,13 +71,28 @@ local function stopLevitation()
 	end
 end
 
--- Функция применения настроек скорости/прыжка
-local function applyMovementSettings()
+-- Функция для применения буста
+local function applyBoost()
 	local char = speaker.Character
 	local hum = char and char:FindFirstChild("Humanoid")
 	if hum then
-		hum.WalkSpeed = walkSpeed
-		hum.JumpPower = jumpPower
+		if boostActive then
+			hum.WalkSpeed = 30
+			hum.JumpPower = 10
+		else
+			hum.WalkSpeed = originalSpeed
+			hum.JumpPower = originalJump
+		end
+	end
+end
+
+-- Сохраняем оригинальные настройки при появлении персонажа
+local function saveOriginalSettings()
+	local char = speaker.Character
+	local hum = char and char:FindFirstChild("Humanoid")
+	if hum then
+		originalSpeed = hum.WalkSpeed
+		originalJump = hum.JumpPower
 	end
 end
 
@@ -91,7 +107,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 380) -- Увеличен размер
+Frame.Size = UDim2.new(0, 240, 0, 310)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -120,69 +136,16 @@ local function createBtn(name, text, y, color)
 	return btn
 end
 
-local function createTextBox(name, label, y, defaultValue)
-	-- Текстовая метка
-	local lbl = Instance.new("TextLabel")
-	lbl.Name = name .. "_Label"
-	lbl.Parent = Frame
-	lbl.Text = label
-	lbl.Position = UDim2.new(0.05, 0, 0, y)
-	lbl.Size = UDim2.new(0.4, 0, 0, 20)
-	lbl.BackgroundTransparency = 1
-	lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-	lbl.Font = Enum.Font.Gotham
-	lbl.TextSize = 11
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	
-	-- Поле ввода
-	local box = Instance.new("TextBox")
-	box.Name = name
-	box.Parent = Frame
-	box.Text = tostring(defaultValue)
-	box.Position = UDim2.new(0.55, 0, 0, y)
-	box.Size = UDim2.new(0.4, 0, 0, 20)
-	box.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-	box.TextColor3 = Color3.new(1, 1, 1)
-	box.Font = Enum.Font.Gotham
-	box.TextSize = 11
-	box.TextXAlignment = Enum.TextXAlignment.Center
-	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
-	
-	return box
-end
-
 -------------------------------------------------------------------
--- SPEED TextBox
+-- SPEED AND JUMP BOOST
 -------------------------------------------------------------------
-local speedBox = createTextBox("SpeedBox", "SPEED:", 35, 16)
+local boostBtn = createBtn("BoostBtn", "SPEED & JUMP BOOST: OFF", 40, Color3.fromRGB(0, 150, 0))
 
-speedBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		local newSpeed = tonumber(speedBox.Text)
-		if newSpeed and newSpeed >= 0 and newSpeed <= 100 then
-			walkSpeed = newSpeed
-			applyMovementSettings()
-		else
-			speedBox.Text = tostring(walkSpeed)
-		end
-	end
-end)
-
--------------------------------------------------------------------
--- JUMP TextBox
--------------------------------------------------------------------
-local jumpBox = createTextBox("JumpBox", "JUMP POWER:", 60, 50)
-
-jumpBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		local newJump = tonumber(jumpBox.Text)
-		if newJump and newJump >= 0 and newJump <= 200 then
-			jumpPower = newJump
-			applyMovementSettings()
-		else
-			jumpBox.Text = tostring(jumpPower)
-		end
-	end
+boostBtn.MouseButton1Click:Connect(function()
+	boostActive = not boostActive
+	boostBtn.Text = boostActive and "SPEED & JUMP BOOST: ON" or "SPEED & JUMP BOOST: OFF"
+	boostBtn.BackgroundColor3 = boostActive and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(0, 150, 0)
+	applyBoost()
 end)
 
 -------------------------------------------------------------------
@@ -192,12 +155,7 @@ local espBtn = createBtn("EspBtn", "ESP: OFF", 90, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
-	for _, part in pairs(ESPParts) do
-		if part and part.Parent then
-			part:Destroy()
-		end
-	end
-	table.clear(ESPParts)
+	ESPParts = {}
 
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= speaker and player.Character then
@@ -231,19 +189,10 @@ espBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Обновление ESP при добавлении/удалении игроков
-Players.PlayerAdded:Connect(function()
-	if espActive then updateESP() end
-end)
-
-Players.PlayerRemoving:Connect(function()
-	if espActive then updateESP() end
-end)
-
 -------------------------------------------------------------------
 -- ЛЕВИТАЦИЯ ЧЕРЕЗ ПЛАТФОРМУ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 135, Color3.fromRGB(120, 40, 200))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 140, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -283,7 +232,7 @@ end)
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 180, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 190, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -300,82 +249,10 @@ end)
 -------------------------------------------------------------------
 -- КНОПКА KICK (локально отключает клиента)
 -------------------------------------------------------------------
-local kickBtn = createBtn("KickBtn", "KICK", 220, Color3.fromRGB(255, 50, 50))
+local kickBtn = createBtn("KickBtn", "KICK", 240, Color3.fromRGB(255, 50, 50))
 
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()
-end)
-
--------------------------------------------------------------------
--- AUTO AIM: постоянно смотреть на ближайшего чужого игрока
--------------------------------------------------------------------
-local aimBtn = createBtn("AimBtn", "AIM NEAREST: OFF", 260, Color3.fromRGB(0, 180, 255))
-
-local isAutoAim = false
-
-aimBtn.MouseButton1Click:Connect(function()
-	isAutoAim = not isAutoAim
-	aimBtn.Text = isAutoAim and "AIM NEAREST: ON" or "AIM NEAREST: OFF"
-
-	local char = speaker.Character
-	local hum = char and char:FindFirstChild("Humanoid")
-	if not hum then return end
-
-	if isAutoAim then
-		hum.AutoRotate = false
-	else
-		hum.AutoRotate = true
-	end
-end)
-
-local function findNearestPlayer()
-	local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
-	if not root then return nil end
-
-	local closestPlayer
-	local closestDist = math.huge
-
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= speaker then
-			local char = plr.Character
-			local hum = char and char:FindFirstChild("Humanoid")
-			local target = char and char:FindFirstChild("HumanoidRootPart")
-			if hum and target and hum.Health > 0 then
-				local dist = (target.Position - root.Position).Magnitude
-				if dist < closestDist then
-					closestDist = dist
-					closestPlayer = target
-				end
-			end
-		end
-	end
-
-	return closestPlayer
-end
-
--- Постоянно смотрим на ближайшего чужого игрока, пока isAutoAim = true
-RunService.Heartbeat:Connect(function()
-	local char = speaker.Character
-	local hum = char and char:FindFirstChild("Humanoid")
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not hum or not root then return end
-
-	if not isAutoAim then
-		return
-	end
-
-	local nearestHRP = findNearestPlayer()
-	if not nearestHRP then return end
-
-	local flat = Vector3.new(
-		nearestHRP.Position.X - root.Position.X,
-		0,
-		nearestHRP.Position.Z - root.Position.Z
-	)
-
-	if flat.Magnitude < 0.1 then return end
-
-	hum:Move(flat.Unit, false)
 end)
 
 -------------------------------------------------------------------
@@ -392,22 +269,30 @@ RunService.Stepped:Connect(function()
 		end
 	end
 	
-	-- Применяем настройки скорости и прыжка при каждом появлении персонажа
-	if hum then
-		if hum.WalkSpeed ~= walkSpeed then
-			hum.WalkSpeed = walkSpeed
+	-- Поддерживаем настройки буста
+	if hum and boostActive then
+		if hum.WalkSpeed ~= 30 then
+			hum.WalkSpeed = 30
 		end
-		if hum.JumpPower ~= jumpPower then
-			hum.JumpPower = jumpPower
+		if hum.JumpPower ~= 10 then
+			hum.JumpPower = 10
 		end
 	end
 end)
 
--- Обработка респавна персонажа
-speaker.CharacterAdded:Connect(function()
+-- Обработка появления персонажа
+speaker.CharacterAdded:Connect(function(character)
 	wait(0.5)
-	applyMovementSettings()
+	saveOriginalSettings()
+	if boostActive then
+		applyBoost()
+	end
 end)
+
+-- При первом запуске сохраняем настройки
+if speaker.Character then
+	saveOriginalSettings()
+end
 
 -------------------------------------------------------------------
 -- ЗАКРЫТИЕ
@@ -427,4 +312,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — левитация, ESP, Anchor, KICK, Speed, Jump")
+print("✅ EliteX Lite — Буст скорости (30) и прыжка (10), ESP, Левитация, Anchor, KICK")
