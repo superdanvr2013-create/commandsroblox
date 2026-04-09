@@ -130,6 +130,52 @@ local function teleportToNearest()
 	return false
 end
 
+-- Функция для сброса состояния персонажа
+local function resetCharacterState()
+	local char = speaker.Character
+	if not char then return end
+	
+	local humanoid = char:FindFirstChild("Humanoid")
+	local rootPart = char:FindFirstChild("HumanoidRootPart")
+	
+	if humanoid then
+		-- Сбрасываем все состояния
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		task.wait(0.1)
+		humanoid:ChangeState(Enum.HumanoidStateType.Running)
+		task.wait(0.05)
+		
+		-- Сбрасываем скорость
+		humanoid.WalkSpeed = originalSpeed
+		humanoid.JumpPower = originalJump
+		
+		-- Принудительно обновляем платформу
+		humanoid.PlatformStand = false
+		
+		-- Сбрасываем прыжок
+		humanoid.Jump = false
+	end
+	
+	if rootPart then
+		-- Сбрасываем скорость корня
+		rootPart.Velocity = Vector3.new()
+		rootPart.RotVelocity = Vector3.new()
+		rootPart.AssemblyLinearVelocity = Vector3.new()
+		rootPart.AssemblyAngularVelocity = Vector3.new()
+	end
+	
+	-- Пересоздаем движения
+	if humanoid then
+		local animator = humanoid:FindFirstChild("Animator")
+		if animator then
+			-- Останавливаем все анимации
+			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+				track:Stop()
+			end
+		end
+	end
+end
+
 -- Функция для отделения LowerTorso
 local function detachLowerTorso()
 	local char = speaker.Character
@@ -242,6 +288,8 @@ local function reattachLowerTorso()
 	-- Сбрасываем скорость и вращение отделенной части
 	lowerTorso.Velocity = Vector3.new()
 	lowerTorso.RotVelocity = Vector3.new()
+	lowerTorso.AssemblyLinearVelocity = Vector3.new()
+	lowerTorso.AssemblyAngularVelocity = Vector3.new()
 	
 	-- Удаляем свечение
 	local highlight = lowerTorso:FindFirstChild("DetachedHighlight")
@@ -287,11 +335,46 @@ local function reattachLowerTorso()
 	lowerTorso.Anchored = savedProperties.Anchored or false
 	lowerTorso.CanCollide = savedProperties.CanCollide or true
 	
-	-- Сбрасываем скорость персонажа
+	-- ПОЛНЫЙ СБРОС СОСТОЯНИЯ ПЕРСОНАЖА
 	if humanoid then
+		-- Останавливаем все анимации
+		local animator = humanoid:FindFirstChild("Animator")
+		if animator then
+			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+				track:Stop()
+			end
+		end
+		
+		-- Сбрасываем состояние несколько раз для гарантии
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		task.wait(0.1)
+		humanoid:ChangeState(Enum.HumanoidStateType.Landed)
+		task.wait(0.05)
+		humanoid:ChangeState(Enum.HumanoidStateType.Running)
+		task.wait(0.05)
+		
+		-- Сбрасываем флаги
+		humanoid.PlatformStand = false
+		humanoid.AutoRotate = true
 		humanoid.Jump = false
+		
+		-- Принудительно обновляем скорость
+		humanoid.WalkSpeed = originalSpeed
+		humanoid.JumpPower = originalJump
+	end
+	
+	-- Сбрасываем скорость корня
+	if humanoidRootPart then
+		humanoidRootPart.Velocity = Vector3.new()
+		humanoidRootPart.RotVelocity = Vector3.new()
+		humanoidRootPart.AssemblyLinearVelocity = Vector3.new()
+		humanoidRootPart.AssemblyAngularVelocity = Vector3.new()
+	end
+	
+	-- Небольшая задержка и повторный сброс для надежности
+	task.wait(0.2)
+	if humanoid then
+		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 	end
 	
 	-- Очищаем переменные
@@ -299,7 +382,7 @@ local function reattachLowerTorso()
 	savedWelds = {}
 	savedProperties = {}
 	
-	print("✅ LowerTorso восстановлен и прикреплен обратно!")
+	print("✅ LowerTorso восстановлен и прикреплен обратно! Состояние персонажа сброшено.")
 end
 
 -- Функция для обновления управления отделенной частью
@@ -1013,4 +1096,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Исправлена проблема с бесконечным полетом после восстановления LowerTorso!")
+print("✅ EliteX Lite — Полностью исправлена проблема с движением после восстановления LowerTorso!")
