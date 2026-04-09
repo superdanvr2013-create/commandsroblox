@@ -32,7 +32,35 @@ local teleportButton = nil
 local teleportFrame = nil
 local isSomeoneActive = false
 
--- Функция для телепортации к ближайшему игроку
+-- Функция для поиска ближайшего игрока (ДОЛЖНА БЫТЬ ПЕРВОЙ)
+local function findNearestPlayer()
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+	
+	local closestPlayer = nil
+	local closestDistance = math.huge
+	
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= speaker then
+			local playerChar = player.Character
+			local playerRoot = playerChar and playerChar:FindFirstChild("HumanoidRootPart")
+			local humanoid = playerChar and playerChar:FindFirstChild("Humanoid")
+			
+			if playerRoot and humanoid and humanoid.Health > 0 then
+				local distance = (playerRoot.Position - root.Position).Magnitude
+				if distance < closestDistance then
+					closestDistance = distance
+					closestPlayer = player
+				end
+			end
+		end
+	end
+	
+	return closestPlayer, closestDistance
+end
+
+-- Функция для телепортации к ближайшему игроку (ДОЛЖНА БЫТЬ ПОСЛЕ findNearestPlayer)
 local function teleportToNearest()
 	local targetPlayer = findNearestPlayer()
 	
@@ -98,34 +126,6 @@ local function teleportToNearest()
 		end
 	end
 	return false
-end
-
--- Функция для поиска ближайшего игрока
-local function findNearestPlayer()
-	local char = speaker.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then return nil end
-	
-	local closestPlayer = nil
-	local closestDistance = math.huge
-	
-	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= speaker then
-			local playerChar = player.Character
-			local playerRoot = playerChar and playerChar:FindFirstChild("HumanoidRootPart")
-			local humanoid = playerChar and playerChar:FindFirstChild("Humanoid")
-			
-			if playerRoot and humanoid and humanoid.Health > 0 then
-				local distance = (playerRoot.Position - root.Position).Magnitude
-				if distance < closestDistance then
-					closestDistance = distance
-					closestPlayer = player
-				end
-			end
-		end
-	end
-	
-	return closestPlayer, closestDistance
 end
 
 -- Функция для проверки, находится ли блок рядом с игроком (но не под ногами)
@@ -819,4 +819,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Многократная телепортация без спам-защиты, улучшенная видимость GUI")
+print("✅ EliteX Lite — Исправлена ошибка teleportToNearest, всё работает!")
