@@ -30,6 +30,75 @@ local xrayRadius = 30
 -- Переменные для телепортации
 local teleportButton = nil
 local teleportFrame = nil
+local isSomeoneActive = false
+
+-- Функция для телепортации к ближайшему игроку
+local function teleportToNearest()
+	local targetPlayer = findNearestPlayer()
+	
+	if targetPlayer and targetPlayer.Character then
+		local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+		local playerRoot = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+		
+		if targetRoot and playerRoot then
+			-- Визуальный эффект перед телепортацией
+			local oldPos = playerRoot.Position
+			
+			-- Телепортируем игрока
+			local teleportCFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
+			playerRoot.CFrame = teleportCFrame
+			
+			-- Визуальный эффект в точке телепортации
+			local beam = Instance.new("Part")
+			beam.Size = Vector3.new(2, 2, 2)
+			beam.Anchored = true
+			beam.CanCollide = false
+			beam.Transparency = 0.3
+			beam.Color = Color3.fromRGB(0, 255, 255)
+			beam.Material = Enum.Material.Neon
+			beam.Position = oldPos
+			beam.Parent = workspace
+			
+			-- Эффект в точке прибытия
+			local beam2 = Instance.new("Part")
+			beam2.Size = Vector3.new(2, 2, 2)
+			beam2.Anchored = true
+			beam2.CanCollide = false
+			beam2.Transparency = 0.3
+			beam2.Color = Color3.fromRGB(255, 0, 255)
+			beam2.Material = Enum.Material.Neon
+			beam2.Position = teleportCFrame.Position
+			beam2.Parent = workspace
+			
+			task.spawn(function()
+				for i = 0.3, 1, 0.05 do
+					if beam and beam2 then
+						beam.Transparency = i
+						beam2.Transparency = i
+						beam.Size = beam.Size + Vector3.new(0.5, 0.5, 0.5)
+						beam2.Size = beam2.Size + Vector3.new(0.5, 0.5, 0.5)
+					end
+					task.wait(0.05)
+				end
+				if beam then beam:Destroy() end
+				if beam2 then beam2:Destroy() end
+			end)
+			
+			-- Визуальное уведомление на кнопке
+			if teleportButton then
+				local originalText = teleportButton.Text
+				teleportButton.Text = "✅ ТЕЛЕПОРТИРОВАНО!"
+				task.wait(0.5)
+				if teleportButton then
+					teleportButton.Text = originalText
+				end
+			end
+			
+			return true
+		end
+	end
+	return false
+end
 
 -- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
@@ -172,6 +241,30 @@ local function hasSomeoneText()
 	return searchGUI(playerGui)
 end
 
+-- Функция для обновления информации о ближайшем игроке
+local function updateTeleportInfo()
+	if teleportFrame and teleportFrame.Parent then
+		local nearestPlayer, distance = findNearestPlayer()
+		local labels = {}
+		
+		for _, child in pairs(teleportFrame:GetChildren()) do
+			if child:IsA("TextLabel") then
+				table.insert(labels, child)
+			end
+		end
+		
+		if labels[2] then
+			if nearestPlayer then
+				labels[2].Text = "🎯 Ближайший: " .. nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)"
+				labels[2].TextColor3 = Color3.fromRGB(0, 255, 0)
+			else
+				labels[2].Text = "🎯 Ближайший: нет игроков рядом"
+				labels[2].TextColor3 = Color3.fromRGB(255, 0, 0)
+			end
+		end
+	end
+end
+
 -- Функция для создания кнопки телепортации
 local function createTeleportButton()
 	-- Удаляем старую кнопку если есть
@@ -197,7 +290,7 @@ local function createTeleportButton()
 	teleportFrame.Parent = main
 	teleportFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 	teleportFrame.Position = UDim2.new(0.02, 0, 0.45, 0)
-	teleportFrame.Size = UDim2.new(0, 240, 0, 70)
+	teleportFrame.Size = UDim2.new(0, 240, 0, 85)
 	teleportFrame.BackgroundTransparency = 0.05
 	teleportFrame.ZIndex = 10
 	Instance.new("UICorner", teleportFrame).CornerRadius = UDim.new(0, 8)
@@ -224,13 +317,24 @@ local function createTeleportButton()
 	targetText.Font = Enum.Font.Gotham
 	targetText.TextSize = 11
 	
+	-- Подсказка по хоткею
+	local hotkeyText = Instance.new("TextLabel")
+	hotkeyText.Parent = teleportFrame
+	hotkeyText.Text = "⌨️ Нажмите Q для быстрой телепортации"
+	hotkeyText.Size = UDim2.new(1, 0, 0, 15)
+	hotkeyText.Position = UDim2.new(0, 0, 0, 45)
+	hotkeyText.BackgroundTransparency = 1
+	hotkeyText.TextColor3 = Color3.fromRGB(150, 150, 150)
+	hotkeyText.Font = Enum.Font.Gotham
+	hotkeyText.TextSize = 10
+	
 	-- Кнопка телепортации
 	teleportButton = Instance.new("TextButton")
 	teleportButton.Name = "TeleportBtn"
 	teleportButton.Parent = teleportFrame
-	teleportButton.Text = "🚀 ТЕЛЕПОРТИРОВАТЬСЯ К БЛИЖАЙШЕМУ"
-	teleportButton.Position = UDim2.new(0.05, 0, 0, 45)
-	teleportButton.Size = UDim2.new(0.9, 0, 0, 25)
+	teleportButton.Text = "🚀 ТЕЛЕПОРТИРОВАТЬСЯ"
+	teleportButton.Position = UDim2.new(0.05, 0, 0, 60)
+	teleportButton.Size = UDim2.new(0.9, 0, 0, 20)
 	teleportButton.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
 	teleportButton.Font = Enum.Font.GothamSemibold
 	teleportButton.TextColor3 = Color3.new(1, 1, 1)
@@ -249,114 +353,10 @@ local function createTeleportButton()
 		end
 	end)
 	
-	-- Функция телепортации
+	-- Функция телепортации по кнопке
 	teleportButton.MouseButton1Click:Connect(function()
-		local targetPlayer = findNearestPlayer()
-		
-		if targetPlayer and targetPlayer.Character then
-			local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-			local playerRoot = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
-			
-			if targetRoot and playerRoot then
-				-- Обновляем текст кнопки
-				teleportButton.Text = "🔄 ТЕЛЕПОРТАЦИЯ..."
-				teleportButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
-				teleportButton.Visible = false
-				
-				-- Телепортируем игрока
-				local teleportCFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
-				playerRoot.CFrame = teleportCFrame
-				
-				-- Визуальный эффект в точке телепортации
-				local beam = Instance.new("Part")
-				beam.Size = Vector3.new(2, 2, 2)
-				beam.Anchored = true
-				beam.CanCollide = false
-				beam.Transparency = 0.3
-				beam.Color = Color3.fromRGB(0, 255, 255)
-				beam.Material = Enum.Material.Neon
-				beam.Position = teleportCFrame.Position
-				beam.Parent = workspace
-				
-				-- Эффект в точке прибытия
-				local beam2 = Instance.new("Part")
-				beam2.Size = Vector3.new(2, 2, 2)
-				beam2.Anchored = true
-				beam2.CanCollide = false
-				beam2.Transparency = 0.3
-				beam2.Color = Color3.fromRGB(255, 0, 255)
-				beam2.Material = Enum.Material.Neon
-				beam2.Position = playerRoot.Position
-				beam2.Parent = workspace
-				
-				task.spawn(function()
-					for i = 0.3, 1, 0.05 do
-						if beam and beam2 then
-							beam.Transparency = i
-							beam2.Transparency = i
-							beam.Size = beam.Size + Vector3.new(0.5, 0.5, 0.5)
-							beam2.Size = beam2.Size + Vector3.new(0.5, 0.5, 0.5)
-						end
-						task.wait(0.05)
-					end
-					if beam then beam:Destroy() end
-					if beam2 then beam2:Destroy() end
-				end)
-				
-				-- Уведомление
-				infoText.Text = "✅ Телепортирован к " .. targetPlayer.Name
-				infoText.TextColor3 = Color3.fromRGB(0, 255, 0)
-				targetText.Text = "Расстояние: 0 стутней"
-				
-				-- Удаляем кнопку через 2 секунды
-				task.wait(2)
-				if teleportFrame then
-					teleportFrame:Destroy()
-					teleportFrame = nil
-					teleportButton = nil
-				end
-			end
-		else
-			-- Если игрок не найден
-			infoText.Text = "❌ Нет игроков рядом для телепортации!"
-			infoText.TextColor3 = Color3.fromRGB(255, 0, 0)
-			targetText.Text = "Подождите или подойдите ближе"
-			teleportButton.Visible = false
-			
-			task.wait(2)
-			if teleportFrame then
-				teleportFrame:Destroy()
-				teleportFrame = nil
-				teleportButton = nil
-			end
-		end
+		teleportToNearest()
 	end)
-end
-
--- Функция для обновления информации о ближайшем игроке
-local function updateTeleportInfo()
-	if teleportFrame and teleportFrame.Parent then
-		local nearestPlayer, distance = findNearestPlayer()
-		local targetText = teleportFrame:FindFirstChildWhichIsA("TextLabel")
-		
-		-- Ищем текст с информацией о игроке (второй TextLabel)
-		local labels = {}
-		for _, child in pairs(teleportFrame:GetChildren()) do
-			if child:IsA("TextLabel") then
-				table.insert(labels, child)
-			end
-		end
-		
-		if labels[2] then
-			if nearestPlayer then
-				labels[2].Text = "🎯 Ближайший: " .. nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)"
-				labels[2].TextColor3 = Color3.fromRGB(0, 255, 0)
-			else
-				labels[2].Text = "🎯 Ближайший: нет игроков рядом"
-				labels[2].TextColor3 = Color3.fromRGB(255, 0, 0)
-			end
-		end
-	end
 end
 
 -- Функция для проверки GUI каждую секунду
@@ -371,6 +371,7 @@ local function checkForSomeoneGUI()
 			if hasSomeone and not wasSomeone then
 				print("✅ Обнаружен GUI с текстом 'Someone'! Создаем кнопку телепортации...")
 				createTeleportButton()
+				isSomeoneActive = true
 				wasSomeone = true
 			elseif not hasSomeone and wasSomeone then
 				print("🔴 GUI с 'Someone' исчез, удаляем кнопку")
@@ -379,6 +380,7 @@ local function checkForSomeoneGUI()
 					teleportFrame = nil
 					teleportButton = nil
 				end
+				isSomeoneActive = false
 				wasSomeone = false
 			end
 		end
@@ -407,11 +409,60 @@ local function trackNewGUI()
 				task.wait(0.2)
 				if not teleportFrame then
 					createTeleportButton()
+					isSomeoneActive = true
 				end
 			end
 		end
 	end)
 end
+
+-- Обработчик нажатия клавиши Q
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	
+	-- Проверяем нажатие клавиши Q
+	if input.KeyCode == Enum.KeyCode.Q then
+		-- Если активен режим Someone и есть кнопка
+		if isSomeoneActive and teleportFrame and teleportFrame.Parent then
+			-- Небольшая задержка для предотвращения спама
+			if not teleportCooldown then
+				teleportCooldown = true
+				
+				-- Эффект нажатия на кнопку
+				if teleportButton then
+					local originalColor = teleportButton.BackgroundColor3
+					teleportButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+					task.wait(0.1)
+					if teleportButton then
+						teleportButton.BackgroundColor3 = originalColor
+					end
+				end
+				
+				-- Телепортируемся
+				local success = teleportToNearest()
+				
+				if success then
+					print("✅ Телепортация по клавише Q выполнена!")
+				else
+					print("❌ Не удалось найти игрока для телепортации")
+					-- Визуальное уведомление об ошибке
+					if teleportButton then
+						local originalText = teleportButton.Text
+						teleportButton.Text = "❌ НЕТ ИГРОКОВ!"
+						task.wait(0.5)
+						if teleportButton then
+							teleportButton.Text = originalText
+						end
+					end
+				end
+				
+				-- Кулдаун 1 секунда
+				task.wait(1)
+				teleportCooldown = false
+			end
+		end
+	end
+end)
 
 local function createLevitatePart()
 	if levitatePart then
@@ -749,4 +800,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Телепортация к ближайшему игроку при появлении 'Someone'")
+print("✅ EliteX Lite — Многократная телепортация к ближайшему игроку (кнопка GUI и клавиша Q)")
