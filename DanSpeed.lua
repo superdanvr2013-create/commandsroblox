@@ -35,9 +35,10 @@ local isSomeoneActive = false
 
 -- Переменные для отделенного LowerTorso
 local detachedLowerTorso = nil
-local savedWelds = {} -- Сохраняем все weld соединения
-local savedProperties = {} -- Сохраняем свойства
-local controlPart = nil -- Часть для управления
+local savedWelds = {}
+local savedProperties = {}
+local gyro = nil
+local velocityCtrl = nil
 
 -- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
@@ -80,7 +81,6 @@ local function teleportToNearest()
 			local teleportCFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
 			playerRoot.CFrame = teleportCFrame
 			
-			-- Визуальный эффект
 			local beam = Instance.new("Part")
 			beam.Size = Vector3.new(2, 2, 2)
 			beam.Anchored = true
@@ -144,6 +144,13 @@ local function detachLowerTorso()
 		return 
 	end
 	
+	-- Останавливаем текущее движение персонажа
+	local humanoid = char:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		task.wait(0.1)
+	end
+	
 	-- Сохраняем все weld соединения
 	savedWelds = {}
 	for _, weld in pairs(lowerTorso:GetChildren()) do
@@ -156,7 +163,7 @@ local function detachLowerTorso()
 				c1 = weld.C1,
 				parent = weld.Parent
 			})
-			weld:Destroy() -- Удаляем weld
+			weld:Destroy()
 		end
 	end
 	
@@ -173,10 +180,14 @@ local function detachLowerTorso()
 	lowerTorso.Anchored = false
 	lowerTorso.CanCollide = true
 	
-	-- Создаем копию для управления
+	-- Сбрасываем скорость
+	lowerTorso.Velocity = Vector3.new()
+	lowerTorso.RotVelocity = Vector3.new()
+	
+	-- Сохраняем ссылку
 	detachedLowerTorso = lowerTorso
 	
-	-- Добавляем свечение для видимости
+	-- Добавляем свечение
 	local highlight = Instance.new("Highlight")
 	highlight.Name = "DetachedHighlight"
 	highlight.FillColor = Color3.fromRGB(0, 255, 255)
@@ -186,21 +197,17 @@ local function detachLowerTorso()
 	highlight.Parent = detachedLowerTorso
 	
 	-- Создаем BodyGyro для управления поворотом
-	local gyro = Instance.new("BodyGyro")
+	gyro = Instance.new("BodyGyro")
 	gyro.MaxTorque = Vector3.new(400000, 400000, 400000)
 	gyro.P = 2000
 	gyro.D = 500
 	gyro.Parent = detachedLowerTorso
 	
 	-- Создаем BodyVelocity для управления движением
-	local velocity = Instance.new("BodyVelocity")
-	velocity.MaxForce = Vector3.new(400000, 400000, 400000)
-	velocity.P = 2000
-	velocity.Parent = detachedLowerTorso
-	
-	-- Сохраняем контроллеры в часть
-	detachedLowerTorso.Gyro = gyro
-	detachedLowerTorso.VelocityCtrl = velocity
+	velocityCtrl = Instance.new("BodyVelocity")
+	velocityCtrl.MaxForce = Vector3.new(400000, 400000, 400000)
+	velocityCtrl.P = 2000
+	velocityCtrl.Parent = detachedLowerTorso
 	
 	print("✅ LowerTorso отделен! Управляйте им с помощью WASD")
 end
@@ -220,31 +227,47 @@ local function reattachLowerTorso()
 	
 	local lowerTorso = detachedLowerTorso
 	local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+	local humanoid = char:FindFirstChild("Humanoid")
 	
 	if not humanoidRootPart then
 		print("❌ HumanoidRootPart не найден!")
 		return
 	end
 	
+	-- Останавливаем движение отделенной части
+	if velocityCtrl then
+		velocityCtrl.Velocity = Vector3.new()
+	end
+	
+	-- Сбрасываем скорость и вращение отделенной части
+	lowerTorso.Velocity = Vector3.new()
+	lowerTorso.RotVelocity = Vector3.new()
+	
 	-- Удаляем свечение
 	local highlight = lowerTorso:FindFirstChild("DetachedHighlight")
 	if highlight then highlight:Destroy() end
 	
 	-- Удаляем контроллеры
-	local gyro = lowerTorso:FindFirstChild("Gyro")
-	if gyro then gyro:Destroy() end
+	if gyro then 
+		gyro:Destroy()
+		gyro = nil
+	end
 	
-	local velocity = lowerTorso:FindFirstChild("VelocityCtrl")
-	if velocity then velocity:Destroy() end
+	if velocityCtrl then 
+		velocityCtrl:Destroy()
+		velocityCtrl = nil
+	end
 	
 	-- Восстанавливаем weld соединения
 	for _, weldData in pairs(savedWelds) do
-		local newWeld = Instance.new("Weld")
-		newWeld.Part0 = weldData.part0
-		newWeld.Part1 = weldData.part1
-		newWeld.C0 = weldData.c0
-		newWeld.C1 = weldData.c1
-		newWeld.Parent = lowerTorso
+		if weldData.part0 and weldData.part1 then
+			local newWeld = Instance.new("Weld")
+			newWeld.Part0 = weldData.part0
+			newWeld.Part1 = weldData.part1
+			newWeld.C0 = weldData.c0
+			newWeld.C1 = weldData.c1
+			newWeld.Parent = lowerTorso
+		end
 	end
 	
 	-- Если нет сохраненных welds, создаем стандартный
@@ -252,19 +275,26 @@ local function reattachLowerTorso()
 		local newWeld = Instance.new("Weld")
 		newWeld.Part0 = humanoidRootPart
 		newWeld.Part1 = lowerTorso
-		newWeld.C0 = humanoidRootPart.CFrame:inverse() * lowerTorso.CFrame
+		newWeld.C0 = CFrame.new(0, -1, 0)
+		newWeld.C1 = CFrame.new(0, 0, 0)
 		newWeld.Parent = lowerTorso
 	end
 	
-	-- Восстанавливаем позицию
+	-- Возвращаем на правильную позицию
 	lowerTorso.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -1, 0)
 	
 	-- Восстанавливаем свойства
 	lowerTorso.Anchored = savedProperties.Anchored or false
 	lowerTorso.CanCollide = savedProperties.CanCollide or true
-	lowerTorso.Velocity = Vector3.new()
-	lowerTorso.RotVelocity = Vector3.new()
 	
+	-- Сбрасываем скорость персонажа
+	if humanoid then
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		task.wait(0.1)
+		humanoid.Jump = false
+	end
+	
+	-- Очищаем переменные
 	detachedLowerTorso = nil
 	savedWelds = {}
 	savedProperties = {}
@@ -279,11 +309,9 @@ local function updateDetachedControl()
 	local lowerTorso = detachedLowerTorso
 	if not lowerTorso or not lowerTorso.Parent then return end
 	
-	-- Получаем направление камеры
 	local camera = workspace.CurrentCamera
 	local cameraCFrame = camera.CFrame
 	
-	-- Получаем ввод от клавиш WASD
 	local moveDirection = Vector3.new()
 	
 	if UserInputService:IsKeyDown(Enum.KeyCode.W) then
@@ -299,20 +327,15 @@ local function updateDetachedControl()
 		moveDirection = moveDirection + cameraCFrame.RightVector
 	end
 	
-	-- Нормализуем направление
 	if moveDirection.Magnitude > 0 then
 		moveDirection = moveDirection.Unit
 	end
 	
-	-- Управление скоростью
 	local speed = 50
-	local velocityCtrl = lowerTorso:FindFirstChild("VelocityCtrl")
 	if velocityCtrl then
 		velocityCtrl.Velocity = moveDirection * speed
 	end
 	
-	-- Управление поворотом
-	local gyro = lowerTorso:FindFirstChild("Gyro")
 	if gyro and moveDirection.Magnitude > 0 then
 		gyro.CFrame = CFrame.lookAt(lowerTorso.Position, lowerTorso.Position + moveDirection)
 	elseif gyro then
@@ -990,4 +1013,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Полностью рабочая функция отделения/присоединения LowerTorso!")
+print("✅ EliteX Lite — Исправлена проблема с бесконечным полетом после восстановления LowerTorso!")
