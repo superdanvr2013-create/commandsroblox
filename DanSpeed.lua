@@ -35,8 +35,9 @@ local isSomeoneActive = false
 
 -- Переменные для отделенного LowerTorso
 local detachedLowerTorso = nil
-local originalWeld = nil
-local originalCFrame = nil
+local savedWelds = {} -- Сохраняем все weld соединения
+local savedProperties = {} -- Сохраняем свойства
+local controlPart = nil -- Часть для управления
 
 -- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
@@ -75,14 +76,11 @@ local function teleportToNearest()
 		local playerRoot = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
 		
 		if targetRoot and playerRoot then
-			-- Визуальный эффект перед телепортацией
 			local oldPos = playerRoot.Position
-			
-			-- Телепортируем игрока
 			local teleportCFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
 			playerRoot.CFrame = teleportCFrame
 			
-			-- Визуальный эффект в точке телепортации
+			-- Визуальный эффект
 			local beam = Instance.new("Part")
 			beam.Size = Vector3.new(2, 2, 2)
 			beam.Anchored = true
@@ -93,7 +91,6 @@ local function teleportToNearest()
 			beam.Position = oldPos
 			beam.Parent = workspace
 			
-			-- Эффект в точке прибытия
 			local beam2 = Instance.new("Part")
 			beam2.Size = Vector3.new(2, 2, 2)
 			beam2.Anchored = true
@@ -118,7 +115,6 @@ local function teleportToNearest()
 				if beam2 then beam2:Destroy() end
 			end)
 			
-			-- Визуальное уведомление на кнопке
 			if teleportButton then
 				local originalText = teleportButton.Text
 				teleportButton.Text = "✅ ТЕЛЕПОРТИРОВАНО!"
@@ -137,7 +133,10 @@ end
 -- Функция для отделения LowerTorso
 local function detachLowerTorso()
 	local char = speaker.Character
-	if not char then return end
+	if not char then 
+		print("❌ Персонаж не найден!")
+		return 
+	end
 	
 	local lowerTorso = char:FindFirstChild("LowerTorso")
 	if not lowerTorso then 
@@ -145,22 +144,36 @@ local function detachLowerTorso()
 		return 
 	end
 	
-	-- Сохраняем оригинальное соединение
+	-- Сохраняем все weld соединения
+	savedWelds = {}
 	for _, weld in pairs(lowerTorso:GetChildren()) do
 		if weld:IsA("Weld") or weld:IsA("Motor6D") then
-			originalWeld = weld
-			break
+			table.insert(savedWelds, {
+				weld = weld,
+				part0 = weld.Part0,
+				part1 = weld.Part1,
+				c0 = weld.C0,
+				c1 = weld.C1,
+				parent = weld.Parent
+			})
+			weld:Destroy() -- Удаляем weld
 		end
 	end
 	
-	-- Сохраняем оригинальную позицию
-	originalCFrame = lowerTorso.CFrame
+	-- Сохраняем свойства
+	savedProperties = {
+		Anchored = lowerTorso.Anchored,
+		CanCollide = lowerTorso.CanCollide,
+		CFrame = lowerTorso.CFrame,
+		Velocity = lowerTorso.Velocity,
+		RotVelocity = lowerTorso.RotVelocity
+	}
 	
 	-- Отцепляем LowerTorso
 	lowerTorso.Anchored = false
 	lowerTorso.CanCollide = true
 	
-	-- Создаем копию LowerTorso для управления
+	-- Создаем копию для управления
 	detachedLowerTorso = lowerTorso
 	
 	-- Добавляем свечение для видимости
@@ -168,7 +181,7 @@ local function detachLowerTorso()
 	highlight.Name = "DetachedHighlight"
 	highlight.FillColor = Color3.fromRGB(0, 255, 255)
 	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-	highlight.FillTransparency = 0.5
+	highlight.FillTransparency = 0.3
 	highlight.Adornee = detachedLowerTorso
 	highlight.Parent = detachedLowerTorso
 	
@@ -187,19 +200,31 @@ local function detachLowerTorso()
 	
 	-- Сохраняем контроллеры в часть
 	detachedLowerTorso.Gyro = gyro
-	detachedLowerTorso.Velocity = velocity
+	detachedLowerTorso.VelocityCtrl = velocity
 	
-	print("✅ LowerTorso отделен и готов к управлению!")
+	print("✅ LowerTorso отделен! Управляйте им с помощью WASD")
 end
 
 -- Функция для восстановления LowerTorso
 local function reattachLowerTorso()
-	if not detachedLowerTorso then return end
+	if not detachedLowerTorso then 
+		print("❌ Нет отделенной части для восстановления")
+		return 
+	end
 	
 	local char = speaker.Character
-	if not char then return end
+	if not char then 
+		print("❌ Персонаж не найден!")
+		return 
+	end
 	
 	local lowerTorso = detachedLowerTorso
+	local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+	
+	if not humanoidRootPart then
+		print("❌ HumanoidRootPart не найден!")
+		return
+	end
 	
 	-- Удаляем свечение
 	local highlight = lowerTorso:FindFirstChild("DetachedHighlight")
@@ -209,46 +234,52 @@ local function reattachLowerTorso()
 	local gyro = lowerTorso:FindFirstChild("Gyro")
 	if gyro then gyro:Destroy() end
 	
-	local velocity = lowerTorso:FindFirstChild("Velocity")
+	local velocity = lowerTorso:FindFirstChild("VelocityCtrl")
 	if velocity then velocity:Destroy() end
 	
-	-- Возвращаем на место
-	lowerTorso.Anchored = false
-	lowerTorso.CanCollide = true
-	
-	-- Пытаемся восстановить weld
-	if originalWeld and originalWeld.Parent then
-		originalWeld.Parent = lowerTorso
-	else
-		-- Если weld не сохранился, создаем новый
+	-- Восстанавливаем weld соединения
+	for _, weldData in pairs(savedWelds) do
 		local newWeld = Instance.new("Weld")
-		newWeld.Part0 = char:FindFirstChild("HumanoidRootPart")
-		newWeld.Part1 = lowerTorso
-		newWeld.C0 = newWeld.Part0.CFrame:inverse() * lowerTorso.CFrame
+		newWeld.Part0 = weldData.part0
+		newWeld.Part1 = weldData.part1
+		newWeld.C0 = weldData.c0
+		newWeld.C1 = weldData.c1
 		newWeld.Parent = lowerTorso
 	end
 	
-	detachedLowerTorso = nil
-	originalWeld = nil
-	originalCFrame = nil
+	-- Если нет сохраненных welds, создаем стандартный
+	if #savedWelds == 0 then
+		local newWeld = Instance.new("Weld")
+		newWeld.Part0 = humanoidRootPart
+		newWeld.Part1 = lowerTorso
+		newWeld.C0 = humanoidRootPart.CFrame:inverse() * lowerTorso.CFrame
+		newWeld.Parent = lowerTorso
+	end
 	
-	print("✅ LowerTorso восстановлен!")
+	-- Восстанавливаем позицию
+	lowerTorso.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -1, 0)
+	
+	-- Восстанавливаем свойства
+	lowerTorso.Anchored = savedProperties.Anchored or false
+	lowerTorso.CanCollide = savedProperties.CanCollide or true
+	lowerTorso.Velocity = Vector3.new()
+	lowerTorso.RotVelocity = Vector3.new()
+	
+	detachedLowerTorso = nil
+	savedWelds = {}
+	savedProperties = {}
+	
+	print("✅ LowerTorso восстановлен и прикреплен обратно!")
 end
 
 -- Функция для обновления управления отделенной частью
 local function updateDetachedControl()
 	if not detachedLowerTorso or not detachLowerTorsoActive then return end
 	
-	local char = speaker.Character
-	if not char then return end
-	
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChild("Humanoid")
 	local lowerTorso = detachedLowerTorso
+	if not lowerTorso or not lowerTorso.Parent then return end
 	
-	if not root or not hum or not lowerTorso then return end
-	
-	-- Получаем направление движения камеры
+	-- Получаем направление камеры
 	local camera = workspace.CurrentCamera
 	local cameraCFrame = camera.CFrame
 	
@@ -275,28 +306,21 @@ local function updateDetachedControl()
 	
 	-- Управление скоростью
 	local speed = 50
-	local velocity = lowerTorso:FindFirstChild("Velocity")
-	if velocity then
-		velocity.Velocity = moveDirection * speed
+	local velocityCtrl = lowerTorso:FindFirstChild("VelocityCtrl")
+	if velocityCtrl then
+		velocityCtrl.Velocity = moveDirection * speed
 	end
 	
 	-- Управление поворотом
 	local gyro = lowerTorso:FindFirstChild("Gyro")
-	if gyro then
-		local lookAt = root.Position + moveDirection
-		if moveDirection.Magnitude > 0 then
-			gyro.CFrame = CFrame.lookAt(lowerTorso.Position, lowerTorso.Position + moveDirection)
-		else
-			gyro.CFrame = cameraCFrame
-		end
+	if gyro and moveDirection.Magnitude > 0 then
+		gyro.CFrame = CFrame.lookAt(lowerTorso.Position, lowerTorso.Position + moveDirection)
+	elseif gyro then
+		gyro.CFrame = cameraCFrame
 	end
-	
-	-- Синхронизируем позицию с основным персонажем (но не полностью)
-	local offset = Vector3.new(0, 2, 0)
-	lowerTorso.Position = root.Position + offset
 end
 
--- Функция для проверки, находится ли блок рядом с игроком (но не под ногами)
+-- Функция для проверки, находится ли блок рядом с игроком
 local function isNearPlayerButNotUnder(part)
 	local char = speaker.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -385,7 +409,7 @@ local function updateXray()
 	end
 end
 
--- Функция для поиска всех GUI элементов с текстом "Someone"
+-- Функция для поиска GUI с "Someone"
 local function hasSomeoneText()
 	local playerGui = speaker:FindFirstChild("PlayerGui")
 	if not playerGui then return false end
@@ -435,24 +459,15 @@ end
 
 -- Функция для создания кнопки телепортации
 local function createTeleportButton()
-	-- Удаляем старую кнопку если есть
 	if teleportFrame then
 		teleportFrame:Destroy()
 		teleportFrame = nil
 		teleportButton = nil
 	end
 	
-	-- Находим ближайшего игрока для отображения
 	local nearestPlayer, distance = findNearestPlayer()
-	local playerInfo = "Неизвестно"
+	local playerInfo = nearestPlayer and (nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)") or "нет игроков рядом"
 	
-	if nearestPlayer then
-		playerInfo = nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)"
-	else
-		playerInfo = "нет игроков рядом"
-	end
-	
-	-- Создаем фрейм для кнопки
 	teleportFrame = Instance.new("Frame")
 	teleportFrame.Name = "TeleportFrame"
 	teleportFrame.Parent = main
@@ -465,7 +480,6 @@ local function createTeleportButton()
 	teleportFrame.BorderColor3 = Color3.fromRGB(255, 100, 0)
 	Instance.new("UICorner", teleportFrame).CornerRadius = UDim.new(0, 8)
 	
-	-- Тень для фрейма
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
 	shadow.Parent = teleportFrame
@@ -477,7 +491,6 @@ local function createTeleportButton()
 	shadow.BorderSizePixel = 0
 	Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 8)
 	
-	-- Текст с информацией
 	local infoText = Instance.new("TextLabel")
 	infoText.Parent = teleportFrame
 	infoText.Text = "⚠️ ОБНАРУЖЕНО 'SOMEONE'!"
@@ -491,7 +504,6 @@ local function createTeleportButton()
 	infoText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	infoText.ZIndex = 11
 	
-	-- Текст с информацией о ближайшем игроке
 	local targetText = Instance.new("TextLabel")
 	targetText.Parent = teleportFrame
 	targetText.Text = "🎯 Ближайший: " .. playerInfo
@@ -505,7 +517,6 @@ local function createTeleportButton()
 	targetText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	targetText.ZIndex = 11
 	
-	-- Подсказка по хоткею
 	local hotkeyText = Instance.new("TextLabel")
 	hotkeyText.Parent = teleportFrame
 	hotkeyText.Text = "⌨️ Нажмите Q для быстрой телепортации"
@@ -519,7 +530,6 @@ local function createTeleportButton()
 	hotkeyText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	hotkeyText.ZIndex = 11
 	
-	-- Кнопка телепортации
 	teleportButton = Instance.new("TextButton")
 	teleportButton.Name = "TeleportBtn"
 	teleportButton.Parent = teleportFrame
@@ -534,26 +544,13 @@ local function createTeleportButton()
 	teleportButton.BorderSizePixel = 0
 	Instance.new("UICorner", teleportButton).CornerRadius = UDim.new(0, 6)
 	
-	-- Анимация появления
-	teleportFrame.BackgroundTransparency = 0.5
-	task.spawn(function()
-		for i = 0.5, 0, -0.05 do
-			if teleportFrame then
-				teleportFrame.BackgroundTransparency = i
-				task.wait(0.05)
-			end
-		end
-	end)
-	
-	-- Функция телепортации по кнопке
 	teleportButton.MouseButton1Click:Connect(function()
 		teleportToNearest()
 	end)
 end
 
--- Функция для проверки GUI каждую секунду
+-- Функция для проверки GUI
 local function checkForSomeoneGUI()
-	print("🔍 Начинаем поиск GUI с текстом 'Someone'...")
 	local wasSomeone = false
 	
 	while true do
@@ -561,12 +558,10 @@ local function checkForSomeoneGUI()
 			local hasSomeone = hasSomeoneText()
 			
 			if hasSomeone and not wasSomeone then
-				print("✅ Обнаружен GUI с текстом 'Someone'! Создаем кнопку телепортации...")
 				createTeleportButton()
 				isSomeoneActive = true
 				wasSomeone = true
 			elseif not hasSomeone and wasSomeone then
-				print("🔴 GUI с 'Someone' исчез, удаляем кнопку")
 				if teleportFrame then
 					teleportFrame:Destroy()
 					teleportFrame = nil
@@ -580,24 +575,13 @@ local function checkForSomeoneGUI()
 	end
 end
 
--- Функция для обновления информации о ближайшем игроке
-local function updateNearestPlayerInfo()
-	while true do
-		if teleportFrame and teleportFrame.Parent then
-			updateTeleportInfo()
-		end
-		task.wait(0.5)
-	end
-end
-
--- Функция для отслеживания новых GUI элементов
+-- Функция для отслеживания новых GUI
 local function trackNewGUI()
 	local playerGui = speaker:WaitForChild("PlayerGui")
 	
 	playerGui.DescendantAdded:Connect(function(descendant)
 		if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) and descendant.Text then
 			if string.find(string.lower(descendant.Text), "someone") then
-				print("🔔 Обнаружен новый GUI элемент с 'Someone'!")
 				task.wait(0.2)
 				if not teleportFrame then
 					createTeleportButton()
@@ -608,15 +592,12 @@ local function trackNewGUI()
 	end)
 end
 
--- Обработчик нажатия клавиши Q
+-- Обработчик клавиши Q
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
-	-- Проверяем нажатие клавиши Q
 	if input.KeyCode == Enum.KeyCode.Q then
-		-- Если активен режим Someone и есть кнопка
 		if isSomeoneActive and teleportFrame and teleportFrame.Parent then
-			-- Эффект нажатия на кнопку
 			if teleportButton then
 				local originalColor = teleportButton.BackgroundColor3
 				teleportButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
@@ -628,23 +609,17 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 				end)
 			end
 			
-			-- Телепортируемся
 			local success = teleportToNearest()
 			
-			if success then
-				print("✅ Телепортация по клавише Q выполнена!")
-			else
-				print("❌ Не удалось найти игрока для телепортации")
-				if teleportButton then
-					local originalText = teleportButton.Text
-					teleportButton.Text = "❌ НЕТ ИГРОКОВ!"
-					task.spawn(function()
-						task.wait(0.5)
-						if teleportButton then
-							teleportButton.Text = originalText
-						end
-					end)
-				end
+			if not success and teleportButton then
+				local originalText = teleportButton.Text
+				teleportButton.Text = "❌ НЕТ ИГРОКОВ!"
+				task.spawn(function()
+					task.wait(0.5)
+					if teleportButton then
+						teleportButton.Text = originalText
+					end
+				end)
 			end
 		end
 	end
@@ -700,7 +675,6 @@ local function stopLevitation()
 	end
 end
 
--- Функция для применения буста
 local function applyBoost()
 	local char = speaker.Character
 	local hum = char and char:FindFirstChild("Humanoid")
@@ -715,7 +689,6 @@ local function applyBoost()
 	end
 end
 
--- Сохраняем оригинальные настройки при появлении персонажа
 local function saveOriginalSettings()
 	local char = speaker.Character
 	local hum = char and char:FindFirstChild("Humanoid")
@@ -736,7 +709,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 400) -- Увеличен размер
+Frame.Size = UDim2.new(0, 240, 0, 400)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -778,7 +751,7 @@ boostBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- DETACH LOWER TORSO (НОВАЯ КНОПКА)
+-- DETACH LOWER TORSO
 -------------------------------------------------------------------
 local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF", 90, Color3.fromRGB(150, 0, 150))
 
@@ -960,7 +933,6 @@ RunService.Stepped:Connect(function()
 		updateXray()
 	end
 	
-	-- Обновляем управление отделенной частью
 	if detachLowerTorsoActive then
 		updateDetachedControl()
 	end
@@ -976,15 +948,17 @@ speaker.CharacterAdded:Connect(function(character)
 	if xrayActive then
 		applyXray()
 	end
+	-- Если была активна функция отделения, отключаем её при респавне
 	if detachLowerTorsoActive then
-		detachLowerTorso()
+		detachLowerTorsoActive = false
+		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
+		detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
 	end
 end)
 
--- Запускаем проверку GUI для телепортации
+-- Запускаем проверку GUI
 task.spawn(checkForSomeoneGUI)
 task.spawn(trackNewGUI)
-task.spawn(updateNearestPlayerInfo)
 
 -- При первом запуске сохраняем настройки
 if speaker.Character then
@@ -1016,4 +990,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Добавлена функция отделения LowerTorso с управлением WASD!")
+print("✅ EliteX Lite — Полностью рабочая функция отделения/присоединения LowerTorso!")
