@@ -139,47 +139,38 @@ local function toggleAnimations(enable)
 	local humanoid = char:FindFirstChild("Humanoid")
 	if not humanoid then return end
 	
-	local animator = humanoid:FindFirstChild("Animator")
-	if not animator then return end
-	
 	if enable then
-		-- Включаем анимации - пересоздаем аниматор
-		local newAnimator = Instance.new("Animator")
-		newAnimator.Parent = humanoid
-		
-		-- Восстанавливаем анимации, если они были сохранены
-		if humanoid:FindFirstChild("SavedAnimations") then
-			local savedAnims = humanoid.SavedAnimations
-			for _, anim in pairs(savedAnims:GetChildren()) do
-				if anim:IsA("Animation") then
-					local track = newAnimator:LoadAnimation(anim)
-					track:Play()
-				end
-			end
+		-- Включаем анимации
+		local animator = humanoid:FindFirstChild("Animator")
+		if not animator then
+			-- Создаем новый аниматор
+			local newAnimator = Instance.new("Animator")
+			newAnimator.Parent = humanoid
+			
+			-- Принудительно обновляем состояние персонажа для перезагрузки анимаций
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			task.wait(0.1)
+			humanoid:ChangeState(Enum.HumanoidStateType.Running)
+			task.wait(0.05)
+			
+			-- Сбрасываем скорость для нормального движения
+			humanoid.WalkSpeed = originalSpeed
+			humanoid.JumpPower = originalJump
+			
+			print("✅ Анимации включены и перезагружены")
 		end
-		
-		print("✅ Анимации включены")
 	else
-		-- Сохраняем текущие анимации перед отключением
-		local savedAnims = Instance.new("Folder")
-		savedAnims.Name = "SavedAnimations"
-		savedAnims.Parent = humanoid
-		
-		for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-			local animCopy = Instance.new("Animation")
-			animCopy.AnimationId = track.Animation.AnimationId
-			animCopy.Parent = savedAnims
+		-- Отключаем анимации
+		local animator = humanoid:FindFirstChild("Animator")
+		if animator then
+			-- Останавливаем все текущие анимации
+			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+				track:Stop()
+			end
+			-- Удаляем аниматор
+			animator:Destroy()
+			print("❌ Анимации отключены")
 		end
-		
-		-- Останавливаем все анимации
-		for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-			track:Stop()
-		end
-		
-		-- Удаляем аниматор
-		animator:Destroy()
-		
-		print("❌ Анимации отключены")
 	end
 end
 
@@ -751,10 +742,11 @@ local function trackNewGUI()
 	end)
 end
 
--- Обработчик клавиши Q (телепорт)
+-- Обработчик клавиш
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
+	-- Клавиша Q для телепорта
 	if input.KeyCode == Enum.KeyCode.Q then
 		if isSomeoneActive and teleportFrame and teleportFrame.Parent then
 			if teleportButton then
@@ -783,7 +775,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 	end
 	
-	-- Горячая клавиша R для отделения/прикрепления LowerTorso
+	-- Клавиша R для отделения/прикрепления LowerTorso
 	if input.KeyCode == Enum.KeyCode.R then
 		detachLowerTorsoActive = not detachLowerTorsoActive
 		
@@ -1135,7 +1127,11 @@ speaker.CharacterAdded:Connect(function(character)
 		applyXray()
 	end
 	if animationsActive then
+		-- Небольшая задержка перед включением анимаций
+		task.wait(0.3)
 		toggleAnimations(true)
+	else
+		toggleAnimations(false)
 	end
 	-- Если была активна функция отделения, отключаем её при респавне
 	if detachLowerTorsoActive then
@@ -1182,4 +1178,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Добавлены: управление анимациями и горячая клавиша R для отделения LowerTorso!")
+print("✅ EliteX Lite — Исправлены проблемы с анимациями и горячей клавишей R!")
