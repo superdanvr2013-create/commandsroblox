@@ -26,49 +26,45 @@ local originalJump = 50
 local originalTransparencies = {}
 local xrayParts = {}
 
--- Список путей к блокам, которые нужно сделать прозрачными
-local targetPaths = {
-	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > Decorations > Side 1 > structure base home",
-	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > Laser > Model > structure base home",
-	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > AnimalPodiums > 10 > Base > Spawn",
-	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > AnimalPodiums > 10 > Base > Decorations > Part",
-	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > AnimalPodiums > 10 > Base > Decorations > Decoration",
-	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > Decorations > Model > structure base home"
-}
-
--- Функция для получения полного пути к части
-local function getPartPath(part)
-	local path = {}
-	local current = part
-	while current and current ~= workspace do
-		table.insert(path, 1, current.Name)
-		current = current.Parent
-	end
-	return table.concat(path, " > ")
+-- Функция для проверки, является ли цвет серым или похожим на серый
+local function isGrayColor(color)
+	-- Получаем RGB компоненты (значения от 0 до 1)
+	local r = color.R
+	local g = color.G
+	local b = color.B
+	
+	-- Серый цвет имеет примерно равные компоненты RGB
+	local average = (r + g + b) / 3
+	local tolerance = 0.15 -- Допустимое отклонение (чем меньше, тем точнее серый)
+	
+	-- Проверяем, близки ли все компоненты к среднему значению
+	local isGray = math.abs(r - average) <= tolerance and 
+	              math.abs(g - average) <= tolerance and 
+	              math.abs(b - average) <= tolerance
+	
+	-- Дополнительно проверяем, что цвет не слишком яркий (белый) и не слишком темный (черный)
+	-- Серые оттенки: от темно-серого до светло-серого
+	local isNotWhite = average < 0.95
+	local isNotBlack = average > 0.05
+	
+	return isGray and isNotWhite and isNotBlack
 end
 
--- Функция для проверки, нужно ли сделать блок прозрачным
-local function shouldBeTransparent(part)
-	local partPath = getPartPath(part)
-	for _, targetPath in pairs(targetPaths) do
-		if partPath:find(targetPath) or targetPath:find(partPath) then
-			return true
-		end
-	end
-	return false
-end
-
--- Функция для Xray (только конкретные блоки)
+-- Функция для Xray (только серые блоки)
 local function applyXray()
 	if xrayActive then
-		-- Ищем все блоки по указанным путям
+		-- Ищем все блоки серого цвета
 		for _, part in pairs(workspace:GetDescendants()) do
-			if part:IsA("BasePart") and shouldBeTransparent(part) then
-				if not originalTransparencies[part] then
-					originalTransparencies[part] = part.Transparency
+			if part:IsA("BasePart") and part.Color then
+				local isGray = isGrayColor(part.Color)
+				
+				if isGray then
+					if not originalTransparencies[part] then
+						originalTransparencies[part] = part.Transparency
+					end
+					part.Transparency = 0.95
+					table.insert(xrayParts, part)
 				end
-				part.Transparency = 0.95
-				table.insert(xrayParts, part)
 			end
 		end
 	else
@@ -89,8 +85,10 @@ local function updateXray()
 	
 	-- Проверяем новые блоки
 	for _, part in pairs(workspace:GetDescendants()) do
-		if part:IsA("BasePart") and shouldBeTransparent(part) then
-			if not originalTransparencies[part] then
+		if part:IsA("BasePart") and part.Color then
+			local isGray = isGrayColor(part.Color)
+			
+			if isGray and not originalTransparencies[part] then
 				originalTransparencies[part] = part.Transparency
 				part.Transparency = 0.95
 				table.insert(xrayParts, part)
@@ -409,8 +407,9 @@ end)
 
 -- Обработка добавления новых блоков в workspace
 workspace.DescendantAdded:Connect(function(descendant)
-	if xrayActive and descendant:IsA("BasePart") and shouldBeTransparent(descendant) then
-		if not originalTransparencies[descendant] then
+	if xrayActive and descendant:IsA("BasePart") and descendant.Color then
+		local isGray = isGrayColor(descendant.Color)
+		if isGray and not originalTransparencies[descendant] then
 			originalTransparencies[descendant] = descendant.Transparency
 			descendant.Transparency = 0.95
 			table.insert(xrayParts, descendant)
@@ -445,4 +444,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Xray (только указанные блоки), Буст, ESP, Левитация, Anchor, KICK")
+print("✅ EliteX Lite — Xray (только серые блоки), Буст, ESP, Левитация, Anchor, KICK")
