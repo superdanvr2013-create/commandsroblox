@@ -88,7 +88,7 @@ local function teleportToNearest()
 			if teleportButton then
 				local originalText = teleportButton.Text
 				teleportButton.Text = "✅ ТЕЛЕПОРТИРОВАНО!"
-				task.wait(0.5)
+				task.wait(0.3)
 				if teleportButton then
 					teleportButton.Text = originalText
 				end
@@ -284,27 +284,44 @@ local function createTeleportButton()
 		playerInfo = "нет игроков рядом"
 	end
 	
-	-- Создаем фрейм для кнопки
+	-- Создаем фрейм для кнопки (делаем его полностью непрозрачным)
 	teleportFrame = Instance.new("Frame")
 	teleportFrame.Name = "TeleportFrame"
 	teleportFrame.Parent = main
-	teleportFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	teleportFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 	teleportFrame.Position = UDim2.new(0.02, 0, 0.45, 0)
 	teleportFrame.Size = UDim2.new(0, 240, 0, 85)
-	teleportFrame.BackgroundTransparency = 0.05
+	teleportFrame.BackgroundTransparency = 0 -- Полностью непрозрачный
 	teleportFrame.ZIndex = 10
+	teleportFrame.BorderSizePixel = 1
+	teleportFrame.BorderColor3 = Color3.fromRGB(255, 100, 0)
 	Instance.new("UICorner", teleportFrame).CornerRadius = UDim.new(0, 8)
 	
-	-- Текст с информацией
+	-- Тень для фрейма
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Parent = teleportFrame
+	shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	shadow.BackgroundTransparency = 0.5
+	shadow.Position = UDim2.new(0, 2, 0, 2)
+	shadow.Size = UDim2.new(1, 0, 1, 0)
+	shadow.ZIndex = 9
+	shadow.BorderSizePixel = 0
+	Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 8)
+	
+	-- Текст с информацией (делаем ярким и видимым)
 	local infoText = Instance.new("TextLabel")
 	infoText.Parent = teleportFrame
 	infoText.Text = "⚠️ ОБНАРУЖЕНО 'SOMEONE'!"
 	infoText.Size = UDim2.new(1, 0, 0, 20)
 	infoText.Position = UDim2.new(0, 0, 0, 5)
 	infoText.BackgroundTransparency = 1
-	infoText.TextColor3 = Color3.fromRGB(255, 200, 0)
+	infoText.TextColor3 = Color3.fromRGB(255, 100, 0)
 	infoText.Font = Enum.Font.GothamBold
-	infoText.TextSize = 12
+	infoText.TextSize = 14
+	infoText.TextStrokeTransparency = 0.5
+	infoText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	infoText.ZIndex = 11
 	
 	-- Текст с информацией о ближайшем игроке
 	local targetText = Instance.new("TextLabel")
@@ -313,9 +330,12 @@ local function createTeleportButton()
 	targetText.Size = UDim2.new(1, 0, 0, 20)
 	targetText.Position = UDim2.new(0, 0, 0, 25)
 	targetText.BackgroundTransparency = 1
-	targetText.TextColor3 = Color3.fromRGB(200, 200, 200)
-	targetText.Font = Enum.Font.Gotham
-	targetText.TextSize = 11
+	targetText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	targetText.Font = Enum.Font.GothamSemibold
+	targetText.TextSize = 12
+	targetText.TextStrokeTransparency = 0.5
+	targetText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	targetText.ZIndex = 11
 	
 	-- Подсказка по хоткею
 	local hotkeyText = Instance.new("TextLabel")
@@ -324,9 +344,12 @@ local function createTeleportButton()
 	hotkeyText.Size = UDim2.new(1, 0, 0, 15)
 	hotkeyText.Position = UDim2.new(0, 0, 0, 45)
 	hotkeyText.BackgroundTransparency = 1
-	hotkeyText.TextColor3 = Color3.fromRGB(150, 150, 150)
+	hotkeyText.TextColor3 = Color3.fromRGB(200, 200, 200)
 	hotkeyText.Font = Enum.Font.Gotham
-	hotkeyText.TextSize = 10
+	hotkeyText.TextSize = 11
+	hotkeyText.TextStrokeTransparency = 0.3
+	hotkeyText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	hotkeyText.ZIndex = 11
 	
 	-- Кнопка телепортации
 	teleportButton = Instance.new("TextButton")
@@ -338,14 +361,15 @@ local function createTeleportButton()
 	teleportButton.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
 	teleportButton.Font = Enum.Font.GothamSemibold
 	teleportButton.TextColor3 = Color3.new(1, 1, 1)
-	teleportButton.TextSize = 11
+	teleportButton.TextSize = 12
 	teleportButton.ZIndex = 11
+	teleportButton.BorderSizePixel = 0
 	Instance.new("UICorner", teleportButton).CornerRadius = UDim.new(0, 6)
 	
 	-- Анимация появления
 	teleportFrame.BackgroundTransparency = 0.5
 	task.spawn(function()
-		for i = 0.5, 0.05, -0.05 do
+		for i = 0.5, 0, -0.05 do
 			if teleportFrame then
 				teleportFrame.BackgroundTransparency = i
 				task.wait(0.05)
@@ -394,7 +418,7 @@ local function updateNearestPlayerInfo()
 		if teleportFrame and teleportFrame.Parent then
 			updateTeleportInfo()
 		end
-		task.wait(1)
+		task.wait(0.5)
 	end
 end
 
@@ -416,7 +440,7 @@ local function trackNewGUI()
 	end)
 end
 
--- Обработчик нажатия клавиши Q
+-- Обработчик нажатия клавиши Q (без защиты от спама)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
@@ -424,41 +448,36 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.KeyCode == Enum.KeyCode.Q then
 		-- Если активен режим Someone и есть кнопка
 		if isSomeoneActive and teleportFrame and teleportFrame.Parent then
-			-- Небольшая задержка для предотвращения спама
-			if not teleportCooldown then
-				teleportCooldown = true
-				
-				-- Эффект нажатия на кнопку
-				if teleportButton then
-					local originalColor = teleportButton.BackgroundColor3
-					teleportButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+			-- Эффект нажатия на кнопку
+			if teleportButton then
+				local originalColor = teleportButton.BackgroundColor3
+				teleportButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+				task.spawn(function()
 					task.wait(0.1)
 					if teleportButton then
 						teleportButton.BackgroundColor3 = originalColor
 					end
-				end
-				
-				-- Телепортируемся
-				local success = teleportToNearest()
-				
-				if success then
-					print("✅ Телепортация по клавише Q выполнена!")
-				else
-					print("❌ Не удалось найти игрока для телепортации")
-					-- Визуальное уведомление об ошибке
-					if teleportButton then
-						local originalText = teleportButton.Text
-						teleportButton.Text = "❌ НЕТ ИГРОКОВ!"
+				end)
+			end
+			
+			-- Телепортируемся без задержки
+			local success = teleportToNearest()
+			
+			if success then
+				print("✅ Телепортация по клавише Q выполнена!")
+			else
+				print("❌ Не удалось найти игрока для телепортации")
+				-- Визуальное уведомление об ошибке
+				if teleportButton then
+					local originalText = teleportButton.Text
+					teleportButton.Text = "❌ НЕТ ИГРОКОВ!"
+					task.spawn(function()
 						task.wait(0.5)
 						if teleportButton then
 							teleportButton.Text = originalText
 						end
-					end
+					end)
 				end
-				
-				-- Кулдаун 1 секунда
-				task.wait(1)
-				teleportCooldown = false
 			end
 		end
 	end
@@ -800,4 +819,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Многократная телепортация к ближайшему игроку (кнопка GUI и клавиша Q)")
+print("✅ EliteX Lite — Многократная телепортация без спам-защиты, улучшенная видимость GUI")
