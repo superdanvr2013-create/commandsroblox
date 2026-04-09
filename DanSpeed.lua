@@ -15,6 +15,8 @@ local boostActive = false
 local xrayActive = false
 local detachLowerTorsoActive = false
 local animationsActive = true
+local proximityPromptActive = false -- Статус увеличения радиуса ProximityPrompt
+local originalPromptRadius = {} -- Словарь для хранения оригинальных радиусов
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -40,6 +42,62 @@ local savedWelds = {}
 local savedProperties = {}
 local gyro = nil
 local velocityCtrl = nil
+
+-- Функция для увеличения радиуса всех ProximityPrompt
+local function setProximityPromptRadius(enable)
+    if enable then
+        -- Сохраняем оригинальные радиусы и увеличиваем
+        local prompts = {}
+        
+        -- Функция для рекурсивного поиска ProximityPrompt
+        local function findPromptsRecursive(parent)
+            for _, descendant in pairs(parent:GetChildren()) do
+                if descendant:IsA("ProximityPrompt") then
+                    table.insert(prompts, descendant)
+                end
+                if #descendant:GetChildren() > 0 then
+                    findPromptsRecursive(descendant)
+                end
+            end
+        end
+        
+        -- Ищем во всем workspace
+        findPromptsRecursive(workspace)
+        
+        for _, prompt in pairs(prompts) do
+            if not originalPromptRadius[prompt] then
+                originalPromptRadius[prompt] = prompt.MaxActivationDistance
+            end
+            -- Увеличиваем радиус до 50 (можно настроить)
+            prompt.MaxActivationDistance = 50
+        end
+        
+        print("✅ Радиус ProximityPrompt увеличен до 50! Найдено: " .. #prompts)
+        
+    else
+        -- Восстанавливаем оригинальные радиусы
+        for prompt, originalRadius in pairs(originalPromptRadius) do
+            if prompt and prompt.Parent then
+                prompt.MaxActivationDistance = originalRadius
+            end
+        end
+        
+        print("❌ Радиус ProximityPrompt восстановлен")
+    end
+end
+
+-- Функция для отслеживания новых ProximityPrompt
+local function trackNewPrompts()
+    workspace.DescendantAdded:Connect(function(descendant)
+        if proximityPromptActive and descendant:IsA("ProximityPrompt") then
+            if not originalPromptRadius[descendant] then
+                originalPromptRadius[descendant] = descendant.MaxActivationDistance
+            end
+            descendant.MaxActivationDistance = 50
+            print("✅ Новый ProximityPrompt найден и увеличен!")
+        end
+    end)
+end
 
 -- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
@@ -824,7 +882,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 440)
+Frame.Size = UDim2.new(0, 240, 0, 490) -- Увеличил высоту для новой кнопки
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -854,9 +912,21 @@ local function createBtn(name, text, y, color)
 end
 
 -------------------------------------------------------------------
+-- PROXIMITY PROMPT RADIUS BOOST
+-------------------------------------------------------------------
+local promptBtn = createBtn("PromptBtn", "📢 PROXIMITY RADIUS: OFF", 40, Color3.fromRGB(100, 100, 100))
+
+promptBtn.MouseButton1Click:Connect(function()
+	proximityPromptActive = not proximityPromptActive
+	promptBtn.Text = proximityPromptActive and "📢 PROXIMITY RADIUS: ON" or "📢 PROXIMITY RADIUS: OFF"
+	promptBtn.BackgroundColor3 = proximityPromptActive and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(100, 100, 100)
+	setProximityPromptRadius(proximityPromptActive)
+end)
+
+-------------------------------------------------------------------
 -- SPEED AND JUMP BOOST
 -------------------------------------------------------------------
-local boostBtn = createBtn("BoostBtn", "SPEED & JUMP BOOST: OFF", 40, Color3.fromRGB(0, 150, 0))
+local boostBtn = createBtn("BoostBtn", "SPEED & JUMP BOOST: OFF", 90, Color3.fromRGB(0, 150, 0))
 
 boostBtn.MouseButton1Click:Connect(function()
 	boostActive = not boostActive
@@ -868,7 +938,7 @@ end)
 -------------------------------------------------------------------
 -- ANIMATIONS TOGGLE
 -------------------------------------------------------------------
-local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 90, Color3.fromRGB(100, 100, 255))
+local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 140, Color3.fromRGB(100, 100, 255))
 
 animBtn.MouseButton1Click:Connect(function()
 	animationsActive = not animationsActive
@@ -880,7 +950,7 @@ end)
 -------------------------------------------------------------------
 -- DETACH LOWER TORSO
 -------------------------------------------------------------------
-local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 140, Color3.fromRGB(150, 0, 150))
+local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 190, Color3.fromRGB(150, 0, 150))
 
 detachBtn.MouseButton1Click:Connect(function()
 	detachLowerTorsoActive = not detachLowerTorsoActive
@@ -899,7 +969,7 @@ end)
 -------------------------------------------------------------------
 -- XRAY
 -------------------------------------------------------------------
-local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 190, Color3.fromRGB(0, 100, 200))
+local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 240, Color3.fromRGB(0, 100, 200))
 
 xrayBtn.MouseButton1Click:Connect(function()
 	xrayActive = not xrayActive
@@ -916,7 +986,7 @@ end)
 -------------------------------------------------------------------
 -- ESP
 -------------------------------------------------------------------
-local espBtn = createBtn("EspBtn", "ESP: OFF", 240, Color3.fromRGB(80, 80, 80))
+local espBtn = createBtn("EspBtn", "ESP: OFF", 290, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
@@ -970,7 +1040,7 @@ end)
 -------------------------------------------------------------------
 -- ЛЕВИТАЦИЯ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 290, Color3.fromRGB(120, 40, 200))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 340, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -1010,7 +1080,7 @@ end)
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 340, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 390, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -1027,7 +1097,7 @@ end)
 -------------------------------------------------------------------
 -- KICK
 -------------------------------------------------------------------
-local kickBtn = createBtn("KickBtn", "KICK", 390, Color3.fromRGB(255, 50, 50))
+local kickBtn = createBtn("KickBtn", "KICK", 440, Color3.fromRGB(255, 50, 50))
 
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()
@@ -1093,6 +1163,9 @@ end)
 task.spawn(checkForSomeoneGUI)
 task.spawn(trackNewGUI)
 
+-- Запускаем отслеживание новых ProximityPrompt
+task.spawn(trackNewPrompts)
+
 -- При первом запуске сохраняем настройки
 if speaker.Character then
 	saveOriginalSettings()
@@ -1123,7 +1196,10 @@ closeBtn.MouseButton1Click:Connect(function()
 	if not animationsActive then
 		toggleAnimations(true)
 	end
+	if proximityPromptActive then
+		setProximityPromptRadius(false)
+	end
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Исправлено: клавиша Q работает, anchored отключен для нормального движения!")
+print("✅ EliteX Lite — Добавлена функция увеличения радиуса ProximityPrompt!")
