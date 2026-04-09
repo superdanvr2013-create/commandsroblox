@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local speaker = Players.LocalPlayer
 local main = Instance.new("ScreenGui")
@@ -12,6 +13,7 @@ local levitatingCtrl = false
 local levitatingToggle = false
 local isAnchored = false
 local boostActive = false
+local xrayActive = false
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -20,6 +22,109 @@ local levitateSpeed = 10
 -- Оригинальные настройки персонажа
 local originalSpeed = 16
 local originalJump = 50
+
+-- Xray переменные
+local originalMaterials = {}
+local originalTransparencies = {}
+local xrayParts = {}
+
+-- Функция для Xray
+local function applyXray()
+	if xrayActive then
+		-- Делаем все блоки прозрачными, кроме тех, что под ногами
+		for _, part in pairs(workspace:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
+				local char = speaker.Character
+				local isUnderFeet = false
+				
+				if char then
+					local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+					if humanoidRootPart then
+						-- Проверяем, находится ли блок под ногами игрока
+						local partPos = part.Position
+						local playerPos = humanoidRootPart.Position
+						local distanceY = playerPos.Y - partPos.Y
+						
+						-- Блок считается под ногами, если он находится ниже игрока и в радиусе 5 стутней
+						if distanceY > 0 and distanceY < 5 and (partPos - playerPos).Magnitude < 10 then
+							isUnderFeet = true
+						end
+					end
+				end
+				
+				if not isUnderFeet then
+					-- Сохраняем оригинальные свойства
+					if not originalMaterials[part] then
+						originalMaterials[part] = part.Material
+						originalTransparencies[part] = part.Transparency
+					end
+					
+					-- Делаем прозрачным
+					part.Material = Enum.Material.SmoothPlastic
+					part.Transparency = 0.95
+					part.CanCollide = false
+					table.insert(xrayParts, part)
+				end
+			end
+		end
+	else
+		-- Восстанавливаем все блоки
+		for part, material in pairs(originalMaterials) do
+			if part and part.Parent then
+				part.Material = material
+				part.Transparency = originalTransparencies[part] or 0
+				part.CanCollide = true
+			end
+		end
+		table.clear(originalMaterials)
+		table.clear(originalTransparencies)
+		table.clear(xrayParts)
+	end
+end
+
+-- Функция для обновления Xray (нужно вызывать при движении)
+local function updateXray()
+	if not xrayActive then return end
+	
+	-- Обновляем блоки под ногами
+	for _, part in pairs(xrayParts) do
+		if part and part.Parent then
+			local char = speaker.Character
+			local isUnderFeet = false
+			
+			if char then
+				local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+				if humanoidRootPart then
+					local partPos = part.Position
+					local playerPos = humanoidRootPart.Position
+					local distanceY = playerPos.Y - partPos.Y
+					
+					if distanceY > 0 and distanceY < 5 and (partPos - playerPos).Magnitude < 10 then
+						isUnderFeet = true
+					end
+				end
+			end
+			
+			if isUnderFeet then
+				-- Восстанавливаем блок под ногами
+				if originalMaterials[part] then
+					part.Material = originalMaterials[part]
+					part.Transparency = originalTransparencies[part] or 0
+					part.CanCollide = true
+				end
+			else
+				-- Делаем прозрачным
+				if not originalMaterials[part] then
+					originalMaterials[part] = part.Material
+					originalTransparencies[part] = part.Transparency
+				end
+				part.Material = Enum.Material.SmoothPlastic
+				part.Transparency = 0.95
+				part.CanCollide = false
+			end
+		end
+	end
+end
 
 local function createLevitatePart()
 	if levitatePart then
@@ -107,7 +212,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 310)
+Frame.Size = UDim2.new(0, 240, 0, 350)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -149,9 +254,26 @@ boostBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
+-- XRAY
+-------------------------------------------------------------------
+local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 90, Color3.fromRGB(0, 100, 200))
+
+xrayBtn.MouseButton1Click:Connect(function()
+	xrayActive = not xrayActive
+	xrayBtn.Text = xrayActive and "XRAY: ON" or "XRAY: OFF"
+	xrayBtn.BackgroundColor3 = xrayActive and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(0, 100, 200)
+	
+	if xrayActive then
+		applyXray()
+	else
+		applyXray() -- Это вызовет восстановление всех блоков
+	end
+end)
+
+-------------------------------------------------------------------
 -- ESP
 -------------------------------------------------------------------
-local espBtn = createBtn("EspBtn", "ESP: OFF", 90, Color3.fromRGB(80, 80, 80))
+local espBtn = createBtn("EspBtn", "ESP: OFF", 140, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
@@ -192,7 +314,7 @@ end)
 -------------------------------------------------------------------
 -- ЛЕВИТАЦИЯ ЧЕРЕЗ ПЛАТФОРМУ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 140, Color3.fromRGB(120, 40, 200))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 190, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -232,7 +354,7 @@ end)
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 190, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 240, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -249,7 +371,7 @@ end)
 -------------------------------------------------------------------
 -- КНОПКА KICK (локально отключает клиента)
 -------------------------------------------------------------------
-local kickBtn = createBtn("KickBtn", "KICK", 240, Color3.fromRGB(255, 50, 50))
+local kickBtn = createBtn("KickBtn", "KICK", 290, Color3.fromRGB(255, 50, 50))
 
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()
@@ -278,6 +400,11 @@ RunService.Stepped:Connect(function()
 			hum.JumpPower = 10
 		end
 	end
+	
+	-- Обновляем Xray при движении
+	if xrayActive then
+		updateXray()
+	end
 end)
 
 -- Обработка появления персонажа
@@ -286,6 +413,17 @@ speaker.CharacterAdded:Connect(function(character)
 	saveOriginalSettings()
 	if boostActive then
 		applyBoost()
+	end
+	if xrayActive then
+		applyXray()
+	end
+end)
+
+-- Обработка добавления новых блоков в workspace
+workspace.DescendantAdded:Connect(function(descendant)
+	if xrayActive and descendant:IsA("BasePart") and descendant.Name ~= "HumanoidRootPart" then
+		wait(0.1)
+		applyXray()
 	end
 end)
 
@@ -309,7 +447,11 @@ closeBtn.Parent = Frame
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 closeBtn.MouseButton1Click:Connect(function()
 	stopLevitation()
+	if xrayActive then
+		xrayActive = false
+		applyXray()
+	end
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Буст скорости (30) и прыжка (10), ESP, Левитация, Anchor, KICK")
+print("✅ EliteX Lite — Xray, Буст скорости/прыжка, ESP, Левитация, Anchor, KICK")
