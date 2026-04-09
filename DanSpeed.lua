@@ -14,6 +14,7 @@ local isAnchored = false
 local boostActive = false
 local xrayActive = false
 local detachLowerTorsoActive = false
+local animationsActive = true -- Новая настройка для анимаций
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -128,6 +129,58 @@ local function teleportToNearest()
 		end
 	end
 	return false
+end
+
+-- Функция для управления анимациями персонажа
+local function toggleAnimations(enable)
+	local char = speaker.Character
+	if not char then return end
+	
+	local humanoid = char:FindFirstChild("Humanoid")
+	if not humanoid then return end
+	
+	local animator = humanoid:FindFirstChild("Animator")
+	if not animator then return end
+	
+	if enable then
+		-- Включаем анимации - пересоздаем аниматор
+		local newAnimator = Instance.new("Animator")
+		newAnimator.Parent = humanoid
+		
+		-- Восстанавливаем анимации, если они были сохранены
+		if humanoid:FindFirstChild("SavedAnimations") then
+			local savedAnims = humanoid.SavedAnimations
+			for _, anim in pairs(savedAnims:GetChildren()) do
+				if anim:IsA("Animation") then
+					local track = newAnimator:LoadAnimation(anim)
+					track:Play()
+				end
+			end
+		end
+		
+		print("✅ Анимации включены")
+	else
+		-- Сохраняем текущие анимации перед отключением
+		local savedAnims = Instance.new("Folder")
+		savedAnims.Name = "SavedAnimations"
+		savedAnims.Parent = humanoid
+		
+		for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+			local animCopy = Instance.new("Animation")
+			animCopy.AnimationId = track.Animation.AnimationId
+			animCopy.Parent = savedAnims
+		end
+		
+		-- Останавливаем все анимации
+		for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+			track:Stop()
+		end
+		
+		-- Удаляем аниматор
+		animator:Destroy()
+		
+		print("❌ Анимации отключены")
+	end
 end
 
 -- Функция для сброса состояния персонажа
@@ -698,7 +751,7 @@ local function trackNewGUI()
 	end)
 end
 
--- Обработчик клавиши Q
+-- Обработчик клавиши Q (телепорт)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
@@ -727,6 +780,21 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 					end
 				end)
 			end
+		end
+	end
+	
+	-- Горячая клавиша R для отделения/прикрепления LowerTorso
+	if input.KeyCode == Enum.KeyCode.R then
+		detachLowerTorsoActive = not detachLowerTorsoActive
+		
+		if detachLowerTorsoActive then
+			detachBtn.Text = "🦿 DETACH LOWER TORSO: ON"
+			detachBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+			detachLowerTorso()
+		else
+			detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
+			detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+			reattachLowerTorso()
 		end
 	end
 end)
@@ -815,7 +883,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 400)
+Frame.Size = UDim2.new(0, 240, 0, 440)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -857,9 +925,21 @@ boostBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
+-- ANIMATIONS TOGGLE (НОВАЯ КНОПКА)
+-------------------------------------------------------------------
+local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 90, Color3.fromRGB(100, 100, 255))
+
+animBtn.MouseButton1Click:Connect(function()
+	animationsActive = not animationsActive
+	animBtn.Text = animationsActive and "🎭 АНИМАЦИИ: ON" or "🎭 АНИМАЦИИ: OFF"
+	animBtn.BackgroundColor3 = animationsActive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
+	toggleAnimations(animationsActive)
+end)
+
+-------------------------------------------------------------------
 -- DETACH LOWER TORSO
 -------------------------------------------------------------------
-local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF", 90, Color3.fromRGB(150, 0, 150))
+local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF", 140, Color3.fromRGB(150, 0, 150))
 
 detachBtn.MouseButton1Click:Connect(function()
 	detachLowerTorsoActive = not detachLowerTorsoActive
@@ -878,7 +958,7 @@ end)
 -------------------------------------------------------------------
 -- XRAY
 -------------------------------------------------------------------
-local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 140, Color3.fromRGB(0, 100, 200))
+local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 190, Color3.fromRGB(0, 100, 200))
 
 xrayBtn.MouseButton1Click:Connect(function()
 	xrayActive = not xrayActive
@@ -895,7 +975,7 @@ end)
 -------------------------------------------------------------------
 -- ESP
 -------------------------------------------------------------------
-local espBtn = createBtn("EspBtn", "ESP: OFF", 190, Color3.fromRGB(80, 80, 80))
+local espBtn = createBtn("EspBtn", "ESP: OFF", 240, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
@@ -949,7 +1029,7 @@ end)
 -------------------------------------------------------------------
 -- ЛЕВИТАЦИЯ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 240, Color3.fromRGB(120, 40, 200))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 290, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -989,7 +1069,7 @@ end)
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 290, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 340, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -1006,7 +1086,7 @@ end)
 -------------------------------------------------------------------
 -- KICK
 -------------------------------------------------------------------
-local kickBtn = createBtn("KickBtn", "KICK", 340, Color3.fromRGB(255, 50, 50))
+local kickBtn = createBtn("KickBtn", "KICK", 390, Color3.fromRGB(255, 50, 50))
 
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()
@@ -1054,6 +1134,9 @@ speaker.CharacterAdded:Connect(function(character)
 	if xrayActive then
 		applyXray()
 	end
+	if animationsActive then
+		toggleAnimations(true)
+	end
 	-- Если была активна функция отделения, отключаем её при респавне
 	if detachLowerTorsoActive then
 		detachLowerTorsoActive = false
@@ -1093,7 +1176,10 @@ closeBtn.MouseButton1Click:Connect(function()
 	if detachLowerTorsoActive then
 		reattachLowerTorso()
 	end
+	if not animationsActive then
+		toggleAnimations(true)
+	end
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Полностью исправлена проблема с движением после восстановления LowerTorso!")
+print("✅ EliteX Lite — Добавлены: управление анимациями и горячая клавиша R для отделения LowerTorso!")
