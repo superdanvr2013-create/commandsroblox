@@ -14,6 +14,7 @@ local isAnchored = false
 local boostActive = false
 local xrayActive = false
 local detachLowerTorsoActive = false
+local autoDetachOnRagdoll = true -- Автоматическое отделение при ragdoll
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -39,6 +40,7 @@ local savedWelds = {}
 local savedProperties = {}
 local gyro = nil
 local velocityCtrl = nil
+local wasRagdoll = false
 
 -- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
@@ -130,6 +132,52 @@ local function teleportToNearest()
 	return false
 end
 
+-- Функция для проверки ragdoll режима
+local function isRagdollActive()
+	local char = speaker.Character
+	if not char then return false end
+	
+	local humanoid = char:FindFirstChild("Humanoid")
+	if not humanoid then return false end
+	
+	-- Проверяем состояние humanoid
+	local currentState = humanoid:GetState()
+	
+	-- Ragdoll состояния: Ragdoll, Physics, Stunned, Dead
+	if currentState == Enum.HumanoidStateType.Ragdoll or
+	   currentState == Enum.HumanoidStateType.Physics or
+	   currentState == Enum.HumanoidStateType.Stunned or
+	   currentState == Enum.HumanoidStateType.Dead then
+		return true
+	end
+	
+	-- Проверяем наличие эффекта ragdoll через BreakJointsOnDeath
+	if humanoid.BreakJointsOnDeath then
+		-- Проверяем, разъединены ли суставы
+		local torso = char:FindFirstChild("UpperTorso")
+		local lowerTorso = char:FindFirstChild("LowerTorso")
+		if torso and lowerTorso then
+			local hasWeld = false
+			for _, weld in pairs(lowerTorso:GetChildren()) do
+				if weld:IsA("Weld") or weld:IsA("Motor6D") then
+					hasWeld = true
+					break
+				end
+			end
+			if not hasWeld then
+				return true
+			end
+		end
+	end
+	
+	-- Проверяем платформенную стойку (часто используется в ragdoll)
+	if humanoid.PlatformStand then
+		return true
+	end
+	
+	return false
+end
+
 -- Функция для сброса состояния персонажа
 local function resetCharacterState()
 	local char = speaker.Character
@@ -139,36 +187,30 @@ local function resetCharacterState()
 	local rootPart = char:FindFirstChild("HumanoidRootPart")
 	
 	if humanoid then
-		-- Сбрасываем все состояния
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		task.wait(0.1)
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 		task.wait(0.05)
 		
-		-- Сбрасываем скорость
 		humanoid.WalkSpeed = originalSpeed
 		humanoid.JumpPower = originalJump
-		
-		-- Принудительно обновляем платформу
 		humanoid.PlatformStand = false
-		
-		-- Сбрасываем прыжок
 		humanoid.Jump = false
+		
+		-- Сбрасываем BreakJointsOnDeath
+		humanoid.BreakJointsOnDeath = false
 	end
 	
 	if rootPart then
-		-- Сбрасываем скорость корня
 		rootPart.Velocity = Vector3.new()
 		rootPart.RotVelocity = Vector3.new()
 		rootPart.AssemblyLinearVelocity = Vector3.new()
 		rootPart.AssemblyAngularVelocity = Vector3.new()
 	end
 	
-	-- Пересоздаем движения
 	if humanoid then
 		local animator = humanoid:FindFirstChild("Animator")
 		if animator then
-			-- Останавливаем все анимации
 			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
 				track:Stop()
 			end
@@ -188,6 +230,11 @@ local function detachLowerTorso()
 	if not lowerTorso then 
 		print("❌ LowerTorso не найден!")
 		return 
+	end
+	
+	-- Если уже отделен, не делаем ничего
+	if detachedLowerTorso then
+		return
 	end
 	
 	-- Останавливаем текущее движение персонажа
@@ -261,13 +308,11 @@ end
 -- Функция для восстановления LowerTorso
 local function reattachLowerTorso()
 	if not detachedLowerTorso then 
-		print("❌ Нет отделенной части для восстановления")
 		return 
 	end
 	
 	local char = speaker.Character
 	if not char then 
-		print("❌ Персонаж не найден!")
 		return 
 	end
 	
@@ -276,7 +321,6 @@ local function reattachLowerTorso()
 	local humanoid = char:FindFirstChild("Humanoid")
 	
 	if not humanoidRootPart then
-		print("❌ HumanoidRootPart не найден!")
 		return
 	end
 	
@@ -335,9 +379,8 @@ local function reattachLowerTorso()
 	lowerTorso.Anchored = savedProperties.Anchored or false
 	lowerTorso.CanCollide = savedProperties.CanCollide or true
 	
-	-- ПОЛНЫЙ СБРОС СОСТОЯНИЯ ПЕРСОНАЖА
+	-- Полный сброс состояния персонажа
 	if humanoid then
-		-- Останавливаем все анимации
 		local animator = humanoid:FindFirstChild("Animator")
 		if animator then
 			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
@@ -345,7 +388,6 @@ local function reattachLowerTorso()
 			end
 		end
 		
-		-- Сбрасываем состояние несколько раз для гарантии
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		task.wait(0.1)
 		humanoid:ChangeState(Enum.HumanoidStateType.Landed)
@@ -353,17 +395,15 @@ local function reattachLowerTorso()
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 		task.wait(0.05)
 		
-		-- Сбрасываем флаги
 		humanoid.PlatformStand = false
 		humanoid.AutoRotate = true
 		humanoid.Jump = false
+		humanoid.BreakJointsOnDeath = false
 		
-		-- Принудительно обновляем скорость
 		humanoid.WalkSpeed = originalSpeed
 		humanoid.JumpPower = originalJump
 	end
 	
-	-- Сбрасываем скорость корня
 	if humanoidRootPart then
 		humanoidRootPart.Velocity = Vector3.new()
 		humanoidRootPart.RotVelocity = Vector3.new()
@@ -371,18 +411,16 @@ local function reattachLowerTorso()
 		humanoidRootPart.AssemblyAngularVelocity = Vector3.new()
 	end
 	
-	-- Небольшая задержка и повторный сброс для надежности
 	task.wait(0.2)
 	if humanoid then
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 	end
 	
-	-- Очищаем переменные
 	detachedLowerTorso = nil
 	savedWelds = {}
 	savedProperties = {}
 	
-	print("✅ LowerTorso восстановлен и прикреплен обратно! Состояние персонажа сброшено.")
+	print("✅ LowerTorso восстановлен и прикреплен обратно!")
 end
 
 -- Функция для обновления управления отделенной частью
@@ -423,6 +461,36 @@ local function updateDetachedControl()
 		gyro.CFrame = CFrame.lookAt(lowerTorso.Position, lowerTorso.Position + moveDirection)
 	elseif gyro then
 		gyro.CFrame = cameraCFrame
+	end
+end
+
+-- Функция для автоматического отслеживания ragdoll
+local function checkRagdollAndDetach()
+	while true do
+		if autoDetachOnRagdoll and speaker.Character then
+			local ragdollActive = isRagdollActive()
+			
+			if ragdollActive and not detachLowerTorsoActive and not detachedLowerTorso then
+				print("🦿 Обнаружен ragdoll! Автоматически отделяем LowerTorso...")
+				detachLowerTorsoActive = true
+				if detachBtn then
+					detachBtn.Text = "🦿 DETACH LOWER TORSO: ON (AUTO)"
+					detachBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+				end
+				detachLowerTorso()
+				wasRagdoll = true
+			elseif not ragdollActive and detachLowerTorsoActive and wasRagdoll then
+				print("🦿 Ragdoll закончился! Автоматически восстанавливаем LowerTorso...")
+				reattachLowerTorso()
+				detachLowerTorsoActive = false
+				if detachBtn then
+					detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
+					detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+				end
+				wasRagdoll = false
+			end
+		end
+		task.wait(0.2) -- Проверяем каждые 0.2 секунды для быстрой реакции
 	end
 end
 
@@ -815,7 +883,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 400)
+Frame.Size = UDim2.new(0, 240, 0, 440) -- Увеличен размер
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -857,7 +925,7 @@ boostBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- DETACH LOWER TORSO
+-- DETACH LOWER TORSO (Ручное управление)
 -------------------------------------------------------------------
 local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF", 90, Color3.fromRGB(150, 0, 150))
 
@@ -876,9 +944,31 @@ detachBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
+-- AUTO DETACH ON RAGDOLL (НОВАЯ КНОПКА)
+-------------------------------------------------------------------
+local autoDetachBtn = createBtn("AutoDetachBtn", "🤖 AUTO-DETACH ON RAGDOLL: ON", 130, Color3.fromRGB(0, 150, 150))
+
+autoDetachBtn.MouseButton1Click:Connect(function()
+	autoDetachOnRagdoll = not autoDetachOnRagdoll
+	autoDetachBtn.Text = autoDetachOnRagdoll and "🤖 AUTO-DETACH ON RAGDOLL: ON" or "🤖 AUTO-DETACH ON RAGDOLL: OFF"
+	autoDetachBtn.BackgroundColor3 = autoDetachOnRagdoll and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(150, 0, 0)
+	
+	if not autoDetachOnRagdoll and detachLowerTorsoActive and wasRagdoll then
+		-- Если выключаем авто-детект и сейчас отделено из-за ragdoll, восстанавливаем
+		reattachLowerTorso()
+		detachLowerTorsoActive = false
+		wasRagdoll = false
+		if detachBtn then
+			detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
+			detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+		end
+	end
+end)
+
+-------------------------------------------------------------------
 -- XRAY
 -------------------------------------------------------------------
-local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 140, Color3.fromRGB(0, 100, 200))
+local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 180, Color3.fromRGB(0, 100, 200))
 
 xrayBtn.MouseButton1Click:Connect(function()
 	xrayActive = not xrayActive
@@ -895,7 +985,7 @@ end)
 -------------------------------------------------------------------
 -- ESP
 -------------------------------------------------------------------
-local espBtn = createBtn("EspBtn", "ESP: OFF", 190, Color3.fromRGB(80, 80, 80))
+local espBtn = createBtn("EspBtn", "ESP: OFF", 230, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
@@ -949,7 +1039,7 @@ end)
 -------------------------------------------------------------------
 -- ЛЕВИТАЦИЯ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 240, Color3.fromRGB(120, 40, 200))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 280, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -989,7 +1079,7 @@ end)
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 290, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 330, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -1006,7 +1096,7 @@ end)
 -------------------------------------------------------------------
 -- KICK
 -------------------------------------------------------------------
-local kickBtn = createBtn("KickBtn", "KICK", 340, Color3.fromRGB(255, 50, 50))
+local kickBtn = createBtn("KickBtn", "KICK", 380, Color3.fromRGB(255, 50, 50))
 
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()
@@ -1059,12 +1149,14 @@ speaker.CharacterAdded:Connect(function(character)
 		detachLowerTorsoActive = false
 		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
 		detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+		wasRagdoll = false
 	end
 end)
 
 -- Запускаем проверку GUI
 task.spawn(checkForSomeoneGUI)
 task.spawn(trackNewGUI)
+task.spawn(checkRagdollAndDetach) -- Запускаем авто-детект ragdoll
 
 -- При первом запуске сохраняем настройки
 if speaker.Character then
@@ -1096,4 +1188,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Полностью исправлена проблема с движением после восстановления LowerTorso!")
+print("✅ EliteX Lite — Автоматическое отделение LowerTorso при ragdoll режиме!")
