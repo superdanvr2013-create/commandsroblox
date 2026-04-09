@@ -13,6 +13,7 @@ local levitatingToggle = false
 local isAnchored = false
 local boostActive = false
 local xrayActive = false
+local detachLowerTorsoActive = false
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -32,7 +33,12 @@ local teleportButton = nil
 local teleportFrame = nil
 local isSomeoneActive = false
 
--- Функция для поиска ближайшего игрока (ДОЛЖНА БЫТЬ ПЕРВОЙ)
+-- Переменные для отделенного LowerTorso
+local detachedLowerTorso = nil
+local originalWeld = nil
+local originalCFrame = nil
+
+-- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
 	local char = speaker.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -60,7 +66,7 @@ local function findNearestPlayer()
 	return closestPlayer, closestDistance
 end
 
--- Функция для телепортации к ближайшему игроку (ДОЛЖНА БЫТЬ ПОСЛЕ findNearestPlayer)
+-- Функция для телепортации к ближайшему игроку
 local function teleportToNearest()
 	local targetPlayer = findNearestPlayer()
 	
@@ -126,6 +132,168 @@ local function teleportToNearest()
 		end
 	end
 	return false
+end
+
+-- Функция для отделения LowerTorso
+local function detachLowerTorso()
+	local char = speaker.Character
+	if not char then return end
+	
+	local lowerTorso = char:FindFirstChild("LowerTorso")
+	if not lowerTorso then 
+		print("❌ LowerTorso не найден!")
+		return 
+	end
+	
+	-- Сохраняем оригинальное соединение
+	for _, weld in pairs(lowerTorso:GetChildren()) do
+		if weld:IsA("Weld") or weld:IsA("Motor6D") then
+			originalWeld = weld
+			break
+		end
+	end
+	
+	-- Сохраняем оригинальную позицию
+	originalCFrame = lowerTorso.CFrame
+	
+	-- Отцепляем LowerTorso
+	lowerTorso.Anchored = false
+	lowerTorso.CanCollide = true
+	
+	-- Создаем копию LowerTorso для управления
+	detachedLowerTorso = lowerTorso
+	
+	-- Добавляем свечение для видимости
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "DetachedHighlight"
+	highlight.FillColor = Color3.fromRGB(0, 255, 255)
+	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+	highlight.FillTransparency = 0.5
+	highlight.Adornee = detachedLowerTorso
+	highlight.Parent = detachedLowerTorso
+	
+	-- Создаем BodyGyro для управления поворотом
+	local gyro = Instance.new("BodyGyro")
+	gyro.MaxTorque = Vector3.new(400000, 400000, 400000)
+	gyro.P = 2000
+	gyro.D = 500
+	gyro.Parent = detachedLowerTorso
+	
+	-- Создаем BodyVelocity для управления движением
+	local velocity = Instance.new("BodyVelocity")
+	velocity.MaxForce = Vector3.new(400000, 400000, 400000)
+	velocity.P = 2000
+	velocity.Parent = detachedLowerTorso
+	
+	-- Сохраняем контроллеры в часть
+	detachedLowerTorso.Gyro = gyro
+	detachedLowerTorso.Velocity = velocity
+	
+	print("✅ LowerTorso отделен и готов к управлению!")
+end
+
+-- Функция для восстановления LowerTorso
+local function reattachLowerTorso()
+	if not detachedLowerTorso then return end
+	
+	local char = speaker.Character
+	if not char then return end
+	
+	local lowerTorso = detachedLowerTorso
+	
+	-- Удаляем свечение
+	local highlight = lowerTorso:FindFirstChild("DetachedHighlight")
+	if highlight then highlight:Destroy() end
+	
+	-- Удаляем контроллеры
+	local gyro = lowerTorso:FindFirstChild("Gyro")
+	if gyro then gyro:Destroy() end
+	
+	local velocity = lowerTorso:FindFirstChild("Velocity")
+	if velocity then velocity:Destroy() end
+	
+	-- Возвращаем на место
+	lowerTorso.Anchored = false
+	lowerTorso.CanCollide = true
+	
+	-- Пытаемся восстановить weld
+	if originalWeld and originalWeld.Parent then
+		originalWeld.Parent = lowerTorso
+	else
+		-- Если weld не сохранился, создаем новый
+		local newWeld = Instance.new("Weld")
+		newWeld.Part0 = char:FindFirstChild("HumanoidRootPart")
+		newWeld.Part1 = lowerTorso
+		newWeld.C0 = newWeld.Part0.CFrame:inverse() * lowerTorso.CFrame
+		newWeld.Parent = lowerTorso
+	end
+	
+	detachedLowerTorso = nil
+	originalWeld = nil
+	originalCFrame = nil
+	
+	print("✅ LowerTorso восстановлен!")
+end
+
+-- Функция для обновления управления отделенной частью
+local function updateDetachedControl()
+	if not detachedLowerTorso or not detachLowerTorsoActive then return end
+	
+	local char = speaker.Character
+	if not char then return end
+	
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChild("Humanoid")
+	local lowerTorso = detachedLowerTorso
+	
+	if not root or not hum or not lowerTorso then return end
+	
+	-- Получаем направление движения камеры
+	local camera = workspace.CurrentCamera
+	local cameraCFrame = camera.CFrame
+	
+	-- Получаем ввод от клавиш WASD
+	local moveDirection = Vector3.new()
+	
+	if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+		moveDirection = moveDirection + cameraCFrame.LookVector
+	end
+	if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+		moveDirection = moveDirection - cameraCFrame.LookVector
+	end
+	if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+		moveDirection = moveDirection - cameraCFrame.RightVector
+	end
+	if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+		moveDirection = moveDirection + cameraCFrame.RightVector
+	end
+	
+	-- Нормализуем направление
+	if moveDirection.Magnitude > 0 then
+		moveDirection = moveDirection.Unit
+	end
+	
+	-- Управление скоростью
+	local speed = 50
+	local velocity = lowerTorso:FindFirstChild("Velocity")
+	if velocity then
+		velocity.Velocity = moveDirection * speed
+	end
+	
+	-- Управление поворотом
+	local gyro = lowerTorso:FindFirstChild("Gyro")
+	if gyro then
+		local lookAt = root.Position + moveDirection
+		if moveDirection.Magnitude > 0 then
+			gyro.CFrame = CFrame.lookAt(lowerTorso.Position, lowerTorso.Position + moveDirection)
+		else
+			gyro.CFrame = cameraCFrame
+		end
+	end
+	
+	-- Синхронизируем позицию с основным персонажем (но не полностью)
+	local offset = Vector3.new(0, 2, 0)
+	lowerTorso.Position = root.Position + offset
 end
 
 -- Функция для проверки, находится ли блок рядом с игроком (но не под ногами)
@@ -284,14 +452,14 @@ local function createTeleportButton()
 		playerInfo = "нет игроков рядом"
 	end
 	
-	-- Создаем фрейм для кнопки (делаем его полностью непрозрачным)
+	-- Создаем фрейм для кнопки
 	teleportFrame = Instance.new("Frame")
 	teleportFrame.Name = "TeleportFrame"
 	teleportFrame.Parent = main
 	teleportFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 	teleportFrame.Position = UDim2.new(0.02, 0, 0.45, 0)
 	teleportFrame.Size = UDim2.new(0, 240, 0, 85)
-	teleportFrame.BackgroundTransparency = 0 -- Полностью непрозрачный
+	teleportFrame.BackgroundTransparency = 0
 	teleportFrame.ZIndex = 10
 	teleportFrame.BorderSizePixel = 1
 	teleportFrame.BorderColor3 = Color3.fromRGB(255, 100, 0)
@@ -309,7 +477,7 @@ local function createTeleportButton()
 	shadow.BorderSizePixel = 0
 	Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 8)
 	
-	-- Текст с информацией (делаем ярким и видимым)
+	-- Текст с информацией
 	local infoText = Instance.new("TextLabel")
 	infoText.Parent = teleportFrame
 	infoText.Text = "⚠️ ОБНАРУЖЕНО 'SOMEONE'!"
@@ -440,7 +608,7 @@ local function trackNewGUI()
 	end)
 end
 
--- Обработчик нажатия клавиши Q (без защиты от спама)
+-- Обработчик нажатия клавиши Q
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
@@ -460,14 +628,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 				end)
 			end
 			
-			-- Телепортируемся без задержки
+			-- Телепортируемся
 			local success = teleportToNearest()
 			
 			if success then
 				print("✅ Телепортация по клавише Q выполнена!")
 			else
 				print("❌ Не удалось найти игрока для телепортации")
-				-- Визуальное уведомление об ошибке
 				if teleportButton then
 					local originalText = teleportButton.Text
 					teleportButton.Text = "❌ НЕТ ИГРОКОВ!"
@@ -569,7 +736,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 350)
+Frame.Size = UDim2.new(0, 240, 0, 400) -- Увеличен размер
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -611,9 +778,28 @@ boostBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
+-- DETACH LOWER TORSO (НОВАЯ КНОПКА)
+-------------------------------------------------------------------
+local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF", 90, Color3.fromRGB(150, 0, 150))
+
+detachBtn.MouseButton1Click:Connect(function()
+	detachLowerTorsoActive = not detachLowerTorsoActive
+	
+	if detachLowerTorsoActive then
+		detachBtn.Text = "🦿 DETACH LOWER TORSO: ON"
+		detachBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+		detachLowerTorso()
+	else
+		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF"
+		detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+		reattachLowerTorso()
+	end
+end)
+
+-------------------------------------------------------------------
 -- XRAY
 -------------------------------------------------------------------
-local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 90, Color3.fromRGB(0, 100, 200))
+local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 140, Color3.fromRGB(0, 100, 200))
 
 xrayBtn.MouseButton1Click:Connect(function()
 	xrayActive = not xrayActive
@@ -630,7 +816,7 @@ end)
 -------------------------------------------------------------------
 -- ESP
 -------------------------------------------------------------------
-local espBtn = createBtn("EspBtn", "ESP: OFF", 140, Color3.fromRGB(80, 80, 80))
+local espBtn = createBtn("EspBtn", "ESP: OFF", 190, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
@@ -684,7 +870,7 @@ end)
 -------------------------------------------------------------------
 -- ЛЕВИТАЦИЯ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 190, Color3.fromRGB(120, 40, 200))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 240, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -724,7 +910,7 @@ end)
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 240, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 290, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -741,7 +927,7 @@ end)
 -------------------------------------------------------------------
 -- KICK
 -------------------------------------------------------------------
-local kickBtn = createBtn("KickBtn", "KICK", 290, Color3.fromRGB(255, 50, 50))
+local kickBtn = createBtn("KickBtn", "KICK", 340, Color3.fromRGB(255, 50, 50))
 
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()
@@ -773,6 +959,11 @@ RunService.Stepped:Connect(function()
 	if xrayActive then
 		updateXray()
 	end
+	
+	-- Обновляем управление отделенной частью
+	if detachLowerTorsoActive then
+		updateDetachedControl()
+	end
 end)
 
 -- Обработка появления персонажа
@@ -784,6 +975,9 @@ speaker.CharacterAdded:Connect(function(character)
 	end
 	if xrayActive then
 		applyXray()
+	end
+	if detachLowerTorsoActive then
+		detachLowerTorso()
 	end
 end)
 
@@ -816,7 +1010,10 @@ closeBtn.MouseButton1Click:Connect(function()
 		xrayActive = false
 		applyXray()
 	end
+	if detachLowerTorsoActive then
+		reattachLowerTorso()
+	end
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Исправлена ошибка teleportToNearest, всё работает!")
+print("✅ EliteX Lite — Добавлена функция отделения LowerTorso с управлением WASD!")
