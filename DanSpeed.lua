@@ -26,12 +26,44 @@ local originalJump = 50
 local originalTransparencies = {}
 local xrayParts = {}
 
--- Функция для Xray (только блоки со словом Wall)
+-- Список путей к блокам, которые нужно сделать прозрачными
+local targetPaths = {
+	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > Decorations > Side 1 > structure base home",
+	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > Laser > Model > structure base home",
+	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > AnimalPodiums > 10 > Base > Spawn",
+	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > AnimalPodiums > 10 > Base > Decorations > Part",
+	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > AnimalPodiums > 10 > Base > Decorations > Decoration",
+	"Plots > 95571641-db54-435c-9bea-2b084dfe9b35 > Decorations > Model > structure base home"
+}
+
+-- Функция для получения полного пути к части
+local function getPartPath(part)
+	local path = {}
+	local current = part
+	while current and current ~= workspace do
+		table.insert(path, 1, current.Name)
+		current = current.Parent
+	end
+	return table.concat(path, " > ")
+end
+
+-- Функция для проверки, нужно ли сделать блок прозрачным
+local function shouldBeTransparent(part)
+	local partPath = getPartPath(part)
+	for _, targetPath in pairs(targetPaths) do
+		if partPath:find(targetPath) or targetPath:find(partPath) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Функция для Xray (только конкретные блоки)
 local function applyXray()
 	if xrayActive then
-		-- Ищем все блоки с названием содержащим "Wall"
+		-- Ищем все блоки по указанным путям
 		for _, part in pairs(workspace:GetDescendants()) do
-			if part:IsA("BasePart") and string.find(part.Name:lower(), "wall") then
+			if part:IsA("BasePart") and shouldBeTransparent(part) then
 				if not originalTransparencies[part] then
 					originalTransparencies[part] = part.Transparency
 				end
@@ -57,7 +89,7 @@ local function updateXray()
 	
 	-- Проверяем новые блоки
 	for _, part in pairs(workspace:GetDescendants()) do
-		if part:IsA("BasePart") and string.find(part.Name:lower(), "wall") then
+		if part:IsA("BasePart") and shouldBeTransparent(part) then
 			if not originalTransparencies[part] then
 				originalTransparencies[part] = part.Transparency
 				part.Transparency = 0.95
@@ -377,7 +409,7 @@ end)
 
 -- Обработка добавления новых блоков в workspace
 workspace.DescendantAdded:Connect(function(descendant)
-	if xrayActive and descendant:IsA("BasePart") and string.find(descendant.Name:lower(), "wall") then
+	if xrayActive and descendant:IsA("BasePart") and shouldBeTransparent(descendant) then
 		if not originalTransparencies[descendant] then
 			originalTransparencies[descendant] = descendant.Transparency
 			descendant.Transparency = 0.95
@@ -413,4 +445,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Xray (только блоки со словом Wall), Буст, ESP, Левитация, Anchor, KICK")
+print("✅ EliteX Lite — Xray (только указанные блоки), Буст, ESP, Левитация, Anchor, KICK")
