@@ -15,7 +15,6 @@ local boostActive = false
 local xrayActive = false
 local detachLowerTorsoActive = false
 local animationsActive = true
-local proximityBoostActive = false -- Настройка для увеличения радиуса ProximityPrompt
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -41,165 +40,6 @@ local savedWelds = {}
 local savedProperties = {}
 local gyro = nil
 local velocityCtrl = nil
-local originalHumanoidState = nil
-
--- Переменные для ProximityPrompt
-local modifiedPrompts = {} -- Таблица для хранения оригинальных радиусов
-local promptsFolder = nil -- Папка для отслеживания новых Prompt'ов
-
--- Функция для увеличения радиуса ProximityPrompt
-local function boostProximityPrompt(prompt, multiplier)
-	if not prompt or not prompt:IsA("ProximityPrompt") then return end
-	
-	-- Сохраняем оригинальный радиус если еще не сохранили
-	if not modifiedPrompts[prompt] then
-		modifiedPrompts[prompt] = {
-			originalRadius = prompt.Radius,
-			originalHoldDuration = prompt.HoldDuration
-		}
-		
-		-- Увеличиваем радиус в 2 раза
-		prompt.Radius = prompt.Radius * multiplier
-		
-		-- Опционально: уменьшаем время удержания для более быстрого взаимодействия
-		prompt.HoldDuration = math.max(0.1, prompt.HoldDuration * 0.5)
-		
-		print($"✅ Увеличен радиус ProximityPrompt: {modifiedPrompts[prompt].originalRadius} -> {prompt.Radius}")
-	end
-end
-
--- Функция для восстановления оригинальных радиусов
-local function restoreProximityPrompts()
-	for prompt, data in pairs(modifiedPrompts) do
-		if prompt and prompt.Parent then
-			prompt.Radius = data.originalRadius
-			prompt.HoldDuration = data.originalHoldDuration
-		end
-	end
-	modifiedPrompts = {}
-	print("✅ Все ProximityPrompt восстановлены до оригинальных значений")
-end
-
--- Функция для поиска и обработки всех ProximityPrompt в workspace
-local function scanAndBoostProximityPrompts(multiplier)
-	local count = 0
-	
-	-- Функция для рекурсивного поиска
-	local function scanDescendants(parent)
-		for _, descendant in pairs(parent:GetChildren()) do
-			if descendant:IsA("ProximityPrompt") then
-				boostProximityPrompt(descendant, multiplier)
-				count = count + 1
-			else
-				-- Рекурсивно ищем в дочерних объектах
-				scanDescendants(descendant)
-			end
-		end
-	end
-	
-	-- Сканируем workspace
-	scanDescendants(workspace)
-	
-	-- Также сканируем Players (могут быть Prompt'ы в инвентаре)
-	for _, player in pairs(Players:GetPlayers()) do
-		if player.Character then
-			scanDescendants(player.Character)
-		end
-		if player.PlayerGui then
-			scanDescendants(player.PlayerGui)
-		end
-	end
-	
-	if count > 0 then
-		print($"✅ Обработано {count} ProximityPrompt, радиус увеличен в {multiplier} раз")
-	else
-		print("⚠️ ProximityPrompt не найдены в workspace")
-	end
-	
-	return count
-end
-
--- Функция для отслеживания новых ProximityPrompt
-local function trackNewProximityPrompts()
-	-- Создаем папку для отслеживания если её нет
-	if not promptsFolder then
-		promptsFolder = Instance.new("Folder")
-		promptsFolder.Name = "ProximityTracker"
-		promptsFolder.Parent = workspace
-	end
-	
-	-- Отслеживаем добавление новых объектов в workspace
-	local function onDescendantAdded(descendant)
-		if proximityBoostActive then
-			if descendant:IsA("ProximityPrompt") then
-				task.wait(0.1) -- Небольшая задержка чтобы объект полностью загрузился
-				boostProximityPrompt(descendant, 2)
-			else
-				-- Проверяем дочерние объекты у добавленного объекта
-				task.wait(0.05)
-				for _, child in pairs(descendant:GetChildren()) do
-					if child:IsA("ProximityPrompt") then
-						boostProximityPrompt(child, 2)
-					end
-				end
-			end
-		end
-	end
-	
-	-- Подключаем событие для workspace
-	workspace.DescendantAdded:Connect(onDescendantAdded)
-	
-	-- Также отслеживаем в Character игрока
-	local function onCharacterAdded(character)
-		if proximityBoostActive then
-			character.DescendantAdded:Connect(onDescendantAdded)
-			-- Сканируем персонажа сразу
-			for _, child in pairs(character:GetDescendants()) do
-				if child:IsA("ProximityPrompt") then
-					boostProximityPrompt(child, 2)
-				end
-			end
-		end
-	end
-	
-	-- Подключаем для текущего персонажа
-	if speaker.Character then
-		speaker.Character.DescendantAdded:Connect(onDescendantAdded)
-	end
-	
-	-- Подключаем для будущих персонажей
-	speaker.CharacterAdded:Connect(function(character)
-		task.wait(0.5)
-		if proximityBoostActive then
-			character.DescendantAdded:Connect(onDescendantAdded)
-			-- Сканируем нового персонажа
-			for _, child in pairs(character:GetDescendants()) do
-				if child:IsA("ProximityPrompt") then
-					boostProximityPrompt(child, 2)
-				end
-			end
-		end
-	end)
-	
-	print("✅ Настройка отслеживания новых ProximityPrompt завершена")
-end
-
--- Функция для включения/выключения увеличения радиуса
-local function toggleProximityBoost(enable)
-	proximityBoostActive = enable
-	
-	if enable then
-		-- Сканируем и увеличиваем все существующие Prompt'ы
-		scanAndBoostProximityPrompts(2)
-		-- Запускаем отслеживание новых
-		trackNewProximityPrompts()
-		print("✅ Режим увеличения радиуса ProximityPrompt ВКЛЮЧЕН")
-	else
-		-- Восстанавливаем оригинальные радиусы
-		restoreProximityPrompts()
-		print("❌ Режим увеличения радиуса ProximityPrompt ВЫКЛЮЧЕН")
-	end
-end
 
 -- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
@@ -343,7 +183,6 @@ local function detachLowerTorso()
 	
 	local humanoid = char:FindFirstChild("Humanoid")
 	if humanoid then
-		originalHumanoidState = humanoid:GetState()
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		task.wait(0.1)
 	end
@@ -373,7 +212,7 @@ local function detachLowerTorso()
 		RotVelocity = lowerTorso.RotVelocity
 	}
 	
-	-- Отцепляем LowerTorso
+	-- Отцепляем LowerTorso (НЕ делаем anchored!)
 	lowerTorso.Anchored = false
 	lowerTorso.CanCollide = true
 	
@@ -433,13 +272,6 @@ local function reattachLowerTorso()
 	-- Останавливаем движение отделенной части
 	if velocityCtrl then
 		velocityCtrl.Velocity = Vector3.new()
-		velocityCtrl:Destroy()
-		velocityCtrl = nil
-	end
-	
-	if gyro then 
-		gyro:Destroy()
-		gyro = nil
 	end
 	
 	-- Сбрасываем скорость и вращение отделенной части
@@ -452,30 +284,49 @@ local function reattachLowerTorso()
 	local highlight = lowerTorso:FindFirstChild("DetachedHighlight")
 	if highlight then highlight:Destroy() end
 	
-	-- Очищаем все существующие соединения
-	for _, weld in pairs(lowerTorso:GetChildren()) do
-		if weld:IsA("Weld") or weld:IsA("Motor6D") then
-			weld:Destroy()
+	-- Удаляем контроллеры
+	if gyro then 
+		gyro:Destroy()
+		gyro = nil
+	end
+	
+	if velocityCtrl then 
+		velocityCtrl:Destroy()
+		velocityCtrl = nil
+	end
+	
+	-- Восстанавливаем weld соединения
+	for _, weldData in pairs(savedWelds) do
+		if weldData.part0 and weldData.part1 then
+			local newWeld = Instance.new("Weld")
+			newWeld.Part0 = weldData.part0
+			newWeld.Part1 = weldData.part1
+			newWeld.C0 = weldData.c0
+			newWeld.C1 = weldData.c1
+			newWeld.Parent = lowerTorso
 		end
 	end
 	
-	-- Создаем новое weld соединение
-	local newWeld = Instance.new("Weld")
-	newWeld.Part0 = humanoidRootPart
-	newWeld.Part1 = lowerTorso
-	newWeld.C0 = CFrame.new(0, -1.5, 0)
-	newWeld.C1 = CFrame.new(0, 0, 0)
-	newWeld.Parent = lowerTorso
+	-- Если нет сохраненных welds, создаем стандартный
+	if #savedWelds == 0 then
+		local newWeld = Instance.new("Weld")
+		newWeld.Part0 = humanoidRootPart
+		newWeld.Part1 = lowerTorso
+		newWeld.C0 = CFrame.new(0, -1, 0)
+		newWeld.C1 = CFrame.new(0, 0, 0)
+		newWeld.Parent = lowerTorso
+	end
 	
 	-- Возвращаем на правильную позицию
-	lowerTorso.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -1.5, 0)
+	lowerTorso.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -1, 0)
 	
-	-- Сбрасываем свойства
-	lowerTorso.Anchored = false
-	lowerTorso.CanCollide = true
+	-- Восстанавливаем свойства (НО НЕ ДЕЛАЕМ ANCHORED!)
+	lowerTorso.Anchored = false -- ВСЕГДА false для нормального движения
+	lowerTorso.CanCollide = savedProperties.CanCollide or true
 	
-	-- Полный сброс персонажа
+	-- ПОЛНЫЙ СБРОС СОСТОЯНИЯ ПЕРСОНАЖА
 	if humanoid then
+		-- Останавливаем все анимации
 		local animator = humanoid:FindFirstChild("Animator")
 		if animator then
 			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
@@ -483,19 +334,25 @@ local function reattachLowerTorso()
 			end
 		end
 		
+		-- Сбрасываем состояние несколько раз для гарантии
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		task.wait(0.1)
+		humanoid:ChangeState(Enum.HumanoidStateType.Landed)
+		task.wait(0.05)
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 		task.wait(0.05)
 		
+		-- Сбрасываем флаги
 		humanoid.PlatformStand = false
 		humanoid.AutoRotate = true
-		humanoid.Sit = false
 		humanoid.Jump = false
+		
+		-- Принудительно обновляем скорость
 		humanoid.WalkSpeed = originalSpeed
 		humanoid.JumpPower = originalJump
 	end
 	
+	-- Сбрасываем скорость корня
 	if humanoidRootPart then
 		humanoidRootPart.Velocity = Vector3.new()
 		humanoidRootPart.RotVelocity = Vector3.new()
@@ -503,17 +360,18 @@ local function reattachLowerTorso()
 		humanoidRootPart.AssemblyAngularVelocity = Vector3.new()
 	end
 	
-	task.wait(0.15)
+	-- Небольшая задержка и повторный сброс для надежности
+	task.wait(0.2)
 	if humanoid then
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 	end
 	
+	-- Очищаем переменные
 	detachedLowerTorso = nil
 	savedWelds = {}
 	savedProperties = {}
-	originalHumanoidState = nil
 	
-	print("✅ LowerTorso восстановлен!")
+	print("✅ LowerTorso восстановлен и прикреплен обратно! Anchored отключен для нормального движения.")
 end
 
 -- Функция для обновления управления отделенной частью
@@ -966,7 +824,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 490) -- Увеличил высоту для новой кнопки
+Frame.Size = UDim2.new(0, 240, 0, 440)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -1008,21 +866,9 @@ boostBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
--- PROXIMITY PROMPT BOOST (НОВАЯ КНОПКА)
--------------------------------------------------------------------
-local proximityBtn = createBtn("ProximityBtn", "📡 PROXIMITY BOOST: OFF", 90, Color3.fromRGB(200, 100, 0))
-
-proximityBtn.MouseButton1Click:Connect(function()
-	proximityBoostActive = not proximityBoostActive
-	proximityBtn.Text = proximityBoostActive and "📡 PROXIMITY BOOST: ON" or "📡 PROXIMITY BOOST: OFF"
-	proximityBtn.BackgroundColor3 = proximityBoostActive and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(200, 100, 0)
-	toggleProximityBoost(proximityBoostActive)
-end)
-
--------------------------------------------------------------------
 -- ANIMATIONS TOGGLE
 -------------------------------------------------------------------
-local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 140, Color3.fromRGB(100, 100, 255))
+local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 90, Color3.fromRGB(100, 100, 255))
 
 animBtn.MouseButton1Click:Connect(function()
 	animationsActive = not animationsActive
@@ -1034,7 +880,7 @@ end)
 -------------------------------------------------------------------
 -- DETACH LOWER TORSO
 -------------------------------------------------------------------
-local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 190, Color3.fromRGB(150, 0, 150))
+local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 140, Color3.fromRGB(150, 0, 150))
 
 detachBtn.MouseButton1Click:Connect(function()
 	detachLowerTorsoActive = not detachLowerTorsoActive
@@ -1053,7 +899,7 @@ end)
 -------------------------------------------------------------------
 -- XRAY
 -------------------------------------------------------------------
-local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 240, Color3.fromRGB(0, 100, 200))
+local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 190, Color3.fromRGB(0, 100, 200))
 
 xrayBtn.MouseButton1Click:Connect(function()
 	xrayActive = not xrayActive
@@ -1070,7 +916,7 @@ end)
 -------------------------------------------------------------------
 -- ESP
 -------------------------------------------------------------------
-local espBtn = createBtn("EspBtn", "ESP: OFF", 290, Color3.fromRGB(80, 80, 80))
+local espBtn = createBtn("EspBtn", "ESP: OFF", 240, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
@@ -1124,7 +970,7 @@ end)
 -------------------------------------------------------------------
 -- ЛЕВИТАЦИЯ
 -------------------------------------------------------------------
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 340, Color3.fromRGB(120, 40, 200))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 290, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -1164,7 +1010,7 @@ end)
 -------------------------------------------------------------------
 -- ANCHORED
 -------------------------------------------------------------------
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 390, Color3.fromRGB(40, 40, 45))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 340, Color3.fromRGB(40, 40, 45))
 
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
@@ -1181,7 +1027,7 @@ end)
 -------------------------------------------------------------------
 -- KICK
 -------------------------------------------------------------------
-local kickBtn = createBtn("KickBtn", "KICK", 440, Color3.fromRGB(255, 50, 50))
+local kickBtn = createBtn("KickBtn", "KICK", 390, Color3.fromRGB(255, 50, 50))
 
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()
@@ -1235,10 +1081,6 @@ speaker.CharacterAdded:Connect(function(character)
 	else
 		toggleAnimations(false)
 	end
-	if proximityBoostActive then
-		task.wait(0.2)
-		scanAndBoostProximityPrompts(2)
-	end
 	-- Если была активна функция отделения, отключаем её при респавне
 	if detachLowerTorsoActive then
 		detachLowerTorsoActive = false
@@ -1281,10 +1123,7 @@ closeBtn.MouseButton1Click:Connect(function()
 	if not animationsActive then
 		toggleAnimations(true)
 	end
-	if proximityBoostActive then
-		restoreProximityPrompts()
-	end
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Добавлено: увеличение радиуса ProximityPrompt в 2 раза!")
+print("✅ EliteX Lite — Исправлено: клавиша Q работает, anchored отключен для нормального движения!")
