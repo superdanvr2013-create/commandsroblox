@@ -15,8 +15,6 @@ local boostActive = false
 local xrayActive = false
 local detachLowerTorsoActive = false
 local animationsActive = true
-local proximityPromptActive = false
-local originalInteractionData = {} -- Словарь для хранения оригинальных данных
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -42,238 +40,6 @@ local savedWelds = {}
 local savedProperties = {}
 local gyro = nil
 local velocityCtrl = nil
-
--- Функция для поиска всех интерактивных объектов с текстом
-local function findAllInteractiveObjects()
-    local objects = {}
-    
-    -- Рекурсивная функция поиска
-    local function searchForInteractiveObjects(parent)
-        for _, descendant in pairs(parent:GetChildren()) do
-            -- Ищем ProximityPrompt
-            if descendant:IsA("ProximityPrompt") then
-                table.insert(objects, {
-                    type = "ProximityPrompt",
-                    object = descendant,
-                    originalValue = descendant.MaxActivationDistance,
-                    valueName = "MaxActivationDistance"
-                })
-            end
-            
-            -- Ищем ClickDetector
-            if descendant:IsA("ClickDetector") then
-                table.insert(objects, {
-                    type = "ClickDetector",
-                    object = descendant,
-                    originalValue = descendant.MaxActivationDistance,
-                    valueName = "MaxActivationDistance"
-                })
-            end
-            
-            -- Ищем объекты с текстом (самодельные интерактивные элементы)
-            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
-                if descendant.Text and descendant.Text ~= "" then
-                    table.insert(objects, {
-                        type = "TextObject",
-                        object = descendant,
-                        originalValue = nil,
-                        valueName = nil,
-                        hasText = true
-                    })
-                end
-            end
-            
-            -- Продолжаем поиск в дочерних элементах
-            if #descendant:GetChildren() > 0 then
-                searchForInteractiveObjects(descendant)
-            end
-        end
-    end
-    
-    -- Начинаем поиск с workspace
-    searchForInteractiveObjects(workspace)
-    
-    -- Также ищем в PlayerGui (могут быть GUI элементы)
-    local playerGui = speaker:FindFirstChild("PlayerGui")
-    if playerGui then
-        searchForInteractiveObjects(playerGui)
-    end
-    
-    return objects
-end
-
--- Функция для увеличения радиуса/размера интерактивных объектов
-local function increaseInteractionRadius(enable)
-    if enable then
-        local objects = findAllInteractiveObjects()
-        local modifiedCount = 0
-        
-        for _, data in pairs(objects) do
-            local obj = data.object
-            if obj and obj.Parent then
-                -- Сохраняем оригинальные данные
-                if not originalInteractionData[obj] then
-                    originalInteractionData[obj] = {
-                        type = data.type,
-                        originalValue = data.originalValue,
-                        originalSize = obj:IsA("TextLabel") and obj.TextSize or nil,
-                        originalPosition = obj:IsA("TextLabel") and obj.Position or nil,
-                        originalSize2D = obj:IsA("TextLabel") and obj.Size or nil
-                    }
-                end
-                
-                -- Увеличиваем в зависимости от типа
-                if data.type == "ProximityPrompt" then
-                    obj.MaxActivationDistance = 50
-                    modifiedCount = modifiedCount + 1
-                elseif data.type == "ClickDetector" then
-                    obj.MaxActivationDistance = 50
-                    modifiedCount = modifiedCount + 1
-                elseif data.type == "TextObject" then
-                    -- Для текстовых объектов увеличиваем размер и делаем более заметными
-                    if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                        -- Увеличиваем размер текста
-                        obj.TextSize = math.max(obj.TextSize, 24)
-                        -- Делаем фон более заметным
-                        obj.BackgroundTransparency = math.min(obj.BackgroundTransparency, 0.3)
-                        -- Увеличиваем размер самого объекта
-                        local currentSize = obj.Size
-                        obj.Size = UDim2.new(currentSize.X.Scale, currentSize.X.Offset * 1.5, 
-                                            currentSize.Y.Scale, currentSize.Y.Offset * 1.5)
-                        modifiedCount = modifiedCount + 1
-                    end
-                end
-            end
-        end
-        
-        print("✅ Найдено и модифицировано интерактивных объектов: " .. modifiedCount)
-        
-        -- Дополнительный поиск по конкретному пути, если он существует
-        local specificPath = workspace:FindFirstChild("Plots")
-        if specificPath then
-            specificPath = specificPath:FindFirstChild("c7fe30d7-e7f1-4e5f-85f6-fb89199176b3")
-            if specificPath then
-                specificPath = specificPath:FindFirstChild("AnimalPodiums")
-                if specificPath then
-                    specificPath = specificPath:FindFirstChild("1")
-                    if specificPath then
-                        specificPath = specificPath:FindFirstChild("Base")
-                        if specificPath then
-                            specificPath = specificPath:FindFirstChild("Spawn")
-                            if specificPath then
-                                print("🔍 Найден конкретный путь к Spawn!")
-                                -- Ищем все объекты с текстом в Spawn
-                                local function searchInSpawn(parent)
-                                    for _, child in pairs(parent:GetChildren()) do
-                                        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
-                                            if child.Text and child.Text ~= "" then
-                                                if not originalInteractionData[child] then
-                                                    originalInteractionData[child] = {
-                                                        type = "TextObject",
-                                                        originalValue = nil,
-                                                        originalSize = child.TextSize,
-                                                        originalPosition = child.Position,
-                                                        originalSize2D = child.Size
-                                                    }
-                                                end
-                                                child.TextSize = math.max(child.TextSize, 30)
-                                                child.BackgroundTransparency = math.min(child.BackgroundTransparency, 0.2)
-                                                child.Size = UDim2.new(0, 200, 0, 50)
-                                                print("  ✅ Модифицирован текст: " .. child.Text)
-                                            end
-                                        end
-                                        if #child:GetChildren() > 0 then
-                                            searchInSpawn(child)
-                                        end
-                                    end
-                                end
-                                searchInSpawn(specificPath)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        
-    else
-        -- Восстанавливаем оригинальные значения
-        local restoredCount = 0
-        for obj, data in pairs(originalInteractionData) do
-            if obj and obj.Parent then
-                if data.type == "ProximityPrompt" and data.originalValue then
-                    obj.MaxActivationDistance = data.originalValue
-                    restoredCount = restoredCount + 1
-                elseif data.type == "ClickDetector" and data.originalValue then
-                    obj.MaxActivationDistance = data.originalValue
-                    restoredCount = restoredCount + 1
-                elseif data.type == "TextObject" then
-                    if data.originalSize then
-                        obj.TextSize = data.originalSize
-                    end
-                    if data.originalPosition then
-                        obj.Position = data.originalPosition
-                    end
-                    if data.originalSize2D then
-                        obj.Size = data.originalSize2D
-                    end
-                    restoredCount = restoredCount + 1
-                end
-            end
-        end
-        table.clear(originalInteractionData)
-        print("❌ Восстановлено объектов: " .. restoredCount)
-    end
-end
-
--- Функция для отслеживания новых интерактивных объектов
-local function trackNewInteractiveObjects()
-    workspace.DescendantAdded:Connect(function(descendant)
-        if proximityPromptActive then
-            local modified = false
-            
-            if descendant:IsA("ProximityPrompt") then
-                if not originalInteractionData[descendant] then
-                    originalInteractionData[descendant] = {
-                        type = "ProximityPrompt",
-                        originalValue = descendant.MaxActivationDistance
-                    }
-                end
-                descendant.MaxActivationDistance = 50
-                modified = true
-            elseif descendant:IsA("ClickDetector") then
-                if not originalInteractionData[descendant] then
-                    originalInteractionData[descendant] = {
-                        type = "ClickDetector",
-                        originalValue = descendant.MaxActivationDistance
-                    }
-                end
-                descendant.MaxActivationDistance = 50
-                modified = true
-            elseif descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
-                if descendant.Text and descendant.Text ~= "" then
-                    if not originalInteractionData[descendant] then
-                        originalInteractionData[descendant] = {
-                            type = "TextObject",
-                            originalSize = descendant.TextSize,
-                            originalPosition = descendant.Position,
-                            originalSize2D = descendant.Size
-                        }
-                    end
-                    descendant.TextSize = math.max(descendant.TextSize, 24)
-                    descendant.BackgroundTransparency = math.min(descendant.BackgroundTransparency, 0.3)
-                    modified = true
-                end
-            end
-            
-            if modified then
-                print("✅ Новый интерактивный объект найден и увеличен!")
-            end
-        end
-    end)
-end
-
--- Остальные функции остаются без изменений (findNearestPlayer, teleportToNearest, toggleAnimations и т.д.)
--- ... (все остальные функции из предыдущего скрипта остаются такими же)
 
 -- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
@@ -555,11 +321,12 @@ local function reattachLowerTorso()
 	lowerTorso.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -1, 0)
 	
 	-- Восстанавливаем свойства (НО НЕ ДЕЛАЕМ ANCHORED!)
-	lowerTorso.Anchored = false
+	lowerTorso.Anchored = false -- ВСЕГДА false для нормального движения
 	lowerTorso.CanCollide = savedProperties.CanCollide or true
 	
 	-- ПОЛНЫЙ СБРОС СОСТОЯНИЯ ПЕРСОНАЖА
 	if humanoid then
+		-- Останавливаем все анимации
 		local animator = humanoid:FindFirstChild("Animator")
 		if animator then
 			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
@@ -567,6 +334,7 @@ local function reattachLowerTorso()
 			end
 		end
 		
+		-- Сбрасываем состояние несколько раз для гарантии
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		task.wait(0.1)
 		humanoid:ChangeState(Enum.HumanoidStateType.Landed)
@@ -574,14 +342,17 @@ local function reattachLowerTorso()
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 		task.wait(0.05)
 		
+		-- Сбрасываем флаги
 		humanoid.PlatformStand = false
 		humanoid.AutoRotate = true
 		humanoid.Jump = false
 		
+		-- Принудительно обновляем скорость
 		humanoid.WalkSpeed = originalSpeed
 		humanoid.JumpPower = originalJump
 	end
 	
+	-- Сбрасываем скорость корня
 	if humanoidRootPart then
 		humanoidRootPart.Velocity = Vector3.new()
 		humanoidRootPart.RotVelocity = Vector3.new()
@@ -589,16 +360,18 @@ local function reattachLowerTorso()
 		humanoidRootPart.AssemblyAngularVelocity = Vector3.new()
 	end
 	
+	-- Небольшая задержка и повторный сброс для надежности
 	task.wait(0.2)
 	if humanoid then
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 	end
 	
+	-- Очищаем переменные
 	detachedLowerTorso = nil
 	savedWelds = {}
 	savedProperties = {}
 	
-	print("✅ LowerTorso восстановлен и прикреплен обратно!")
+	print("✅ LowerTorso восстановлен и прикреплен обратно! Anchored отключен для нормального движения.")
 end
 
 -- Функция для обновления управления отделенной частью
@@ -642,30 +415,312 @@ local function updateDetachedControl()
 	end
 end
 
--- Функция для Xray (упрощенная версия)
-local function updateXray()
-	if not xrayActive then return end
+-- Функция для проверки, находится ли блок рядом с игроком
+local function isNearPlayerButNotUnder(part)
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return false end
+	
+	local partPos = part.Position
+	local playerPos = root.Position
+	local distance = (partPos - playerPos).Magnitude
+	local distanceY = playerPos.Y - partPos.Y
+	
+	local isUnderFeet = distanceY > 0 and distanceY < 5 and math.abs(partPos.X - playerPos.X) < 5 and math.abs(partPos.Z - playerPos.Z) < 5
+	
+	return distance <= xrayRadius and not isUnderFeet
 end
 
+-- Функция для Xray
 local function applyXray()
 	if xrayActive then
-		-- Xray логика
+		for part, transparency in pairs(originalTransparencies) do
+			if part and part.Parent then
+				part.Transparency = transparency
+			end
+		end
+		table.clear(originalTransparencies)
+		table.clear(xrayParts)
+		
+		for _, part in pairs(workspace:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
+				local isNear = isNearPlayerButNotUnder(part)
+				
+				if isNear then
+					if not originalTransparencies[part] then
+						originalTransparencies[part] = part.Transparency
+					end
+					part.Transparency = 0.95
+					table.insert(xrayParts, part)
+				end
+			end
+		end
+	else
+		for part, transparency in pairs(originalTransparencies) do
+			if part and part.Parent then
+				part.Transparency = transparency
+			end
+		end
+		table.clear(originalTransparencies)
+		table.clear(xrayParts)
 	end
 end
 
--- Функции для GUI с "Someone" (упрощенные)
-local function hasSomeoneText() return false end
-local function checkForSomeoneGUI() end
-local function trackNewGUI() end
+-- Функция для обновления Xray
+local function updateXray()
+	if not xrayActive then return end
+	
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	
+	for _, part in pairs(workspace:GetDescendants()) do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
+			local distance = (part.Position - root.Position).Magnitude
+			local isUnderFeet = false
+			
+			local distanceY = root.Position.Y - part.Position.Y
+			if distanceY > 0 and distanceY < 5 and math.abs(part.Position.X - root.Position.X) < 5 and math.abs(part.Position.Z - root.Position.Z) < 5 then
+				isUnderFeet = true
+			end
+			
+			if distance <= xrayRadius and not isUnderFeet then
+				if not originalTransparencies[part] then
+					originalTransparencies[part] = part.Transparency
+					part.Transparency = 0.95
+					table.insert(xrayParts, part)
+				end
+			elseif originalTransparencies[part] then
+				part.Transparency = originalTransparencies[part]
+				originalTransparencies[part] = nil
+				for i, p in pairs(xrayParts) do
+					if p == part then
+						table.remove(xrayParts, i)
+						break
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Функция для поиска GUI с "Someone"
+local function hasSomeoneText()
+	local playerGui = speaker:FindFirstChild("PlayerGui")
+	if not playerGui then return false end
+	
+	local function searchGUI(parent)
+		for _, child in pairs(parent:GetChildren()) do
+			if (child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox")) and child.Text then
+				if string.find(string.lower(child.Text), "someone") then
+					return true
+				end
+			end
+			if child:IsA("ScreenGui") or child:IsA("Frame") or child:IsA("ScrollingFrame") then
+				if searchGUI(child) then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	
+	return searchGUI(playerGui)
+end
+
+-- Функция для обновления информации о ближайшем игроке
+local function updateTeleportInfo()
+	if teleportFrame and teleportFrame.Parent then
+		local nearestPlayer, distance = findNearestPlayer()
+		local labels = {}
+		
+		for _, child in pairs(teleportFrame:GetChildren()) do
+			if child:IsA("TextLabel") then
+				table.insert(labels, child)
+			end
+		end
+		
+		if labels[2] then
+			if nearestPlayer then
+				labels[2].Text = "🎯 Ближайший: " .. nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)"
+				labels[2].TextColor3 = Color3.fromRGB(0, 255, 0)
+			else
+				labels[2].Text = "🎯 Ближайший: нет игроков рядом"
+				labels[2].TextColor3 = Color3.fromRGB(255, 0, 0)
+			end
+		end
+	end
+end
+
+-- Функция для создания кнопки телепортации
+local function createTeleportButton()
+	if teleportFrame then
+		teleportFrame:Destroy()
+		teleportFrame = nil
+		teleportButton = nil
+	end
+	
+	local nearestPlayer, distance = findNearestPlayer()
+	local playerInfo = nearestPlayer and (nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)") or "нет игроков рядом"
+	
+	teleportFrame = Instance.new("Frame")
+	teleportFrame.Name = "TeleportFrame"
+	teleportFrame.Parent = main
+	teleportFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	teleportFrame.Position = UDim2.new(0.02, 0, 0.45, 0)
+	teleportFrame.Size = UDim2.new(0, 240, 0, 85)
+	teleportFrame.BackgroundTransparency = 0
+	teleportFrame.ZIndex = 10
+	teleportFrame.BorderSizePixel = 1
+	teleportFrame.BorderColor3 = Color3.fromRGB(255, 100, 0)
+	Instance.new("UICorner", teleportFrame).CornerRadius = UDim.new(0, 8)
+	
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Parent = teleportFrame
+	shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	shadow.BackgroundTransparency = 0.5
+	shadow.Position = UDim2.new(0, 2, 0, 2)
+	shadow.Size = UDim2.new(1, 0, 1, 0)
+	shadow.ZIndex = 9
+	shadow.BorderSizePixel = 0
+	Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 8)
+	
+	local infoText = Instance.new("TextLabel")
+	infoText.Parent = teleportFrame
+	infoText.Text = "⚠️ ОБНАРУЖЕНО 'SOMEONE'!"
+	infoText.Size = UDim2.new(1, 0, 0, 20)
+	infoText.Position = UDim2.new(0, 0, 0, 5)
+	infoText.BackgroundTransparency = 1
+	infoText.TextColor3 = Color3.fromRGB(255, 100, 0)
+	infoText.Font = Enum.Font.GothamBold
+	infoText.TextSize = 14
+	infoText.TextStrokeTransparency = 0.5
+	infoText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	infoText.ZIndex = 11
+	
+	local targetText = Instance.new("TextLabel")
+	targetText.Parent = teleportFrame
+	targetText.Text = "🎯 Ближайший: " .. playerInfo
+	targetText.Size = UDim2.new(1, 0, 0, 20)
+	targetText.Position = UDim2.new(0, 0, 0, 25)
+	targetText.BackgroundTransparency = 1
+	targetText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	targetText.Font = Enum.Font.GothamSemibold
+	targetText.TextSize = 12
+	targetText.TextStrokeTransparency = 0.5
+	targetText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	targetText.ZIndex = 11
+	
+	local hotkeyText = Instance.new("TextLabel")
+	hotkeyText.Parent = teleportFrame
+	hotkeyText.Text = "⌨️ Нажмите Z для быстрой телепортации"
+	hotkeyText.Size = UDim2.new(1, 0, 0, 15)
+	hotkeyText.Position = UDim2.new(0, 0, 0, 45)
+	hotkeyText.BackgroundTransparency = 1
+	hotkeyText.TextColor3 = Color3.fromRGB(200, 200, 200)
+	hotkeyText.Font = Enum.Font.Gotham
+	hotkeyText.TextSize = 11
+	hotkeyText.TextStrokeTransparency = 0.3
+	hotkeyText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	hotkeyText.ZIndex = 11
+	
+	teleportButton = Instance.new("TextButton")
+	teleportButton.Name = "TeleportBtn"
+	teleportButton.Parent = teleportFrame
+	teleportButton.Text = "🚀 ТЕЛЕПОРТИРОВАТЬСЯ"
+	teleportButton.Position = UDim2.new(0.05, 0, 0, 60)
+	teleportButton.Size = UDim2.new(0.9, 0, 0, 20)
+	teleportButton.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+	teleportButton.Font = Enum.Font.GothamSemibold
+	teleportButton.TextColor3 = Color3.new(1, 1, 1)
+	teleportButton.TextSize = 12
+	teleportButton.ZIndex = 11
+	teleportButton.BorderSizePixel = 0
+	Instance.new("UICorner", teleportButton).CornerRadius = UDim.new(0, 6)
+	
+	teleportButton.MouseButton1Click:Connect(function()
+		teleportToNearest()
+	end)
+end
+
+-- Функция для проверки GUI
+local function checkForSomeoneGUI()
+	local wasSomeone = false
+	
+	while true do
+		if main and main.Parent then
+			local hasSomeone = hasSomeoneText()
+			
+			if hasSomeone and not wasSomeone then
+				createTeleportButton()
+				isSomeoneActive = true
+				wasSomeone = true
+			elseif not hasSomeone and wasSomeone then
+				if teleportFrame then
+					teleportFrame:Destroy()
+					teleportFrame = nil
+					teleportButton = nil
+				end
+				isSomeoneActive = false
+				wasSomeone = false
+			end
+		end
+		task.wait(0.5)
+	end
+end
+
+-- Функция для отслеживания новых GUI
+local function trackNewGUI()
+	local playerGui = speaker:WaitForChild("PlayerGui")
+	
+	playerGui.DescendantAdded:Connect(function(descendant)
+		if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) and descendant.Text then
+			if string.find(string.lower(descendant.Text), "someone") then
+				task.wait(0.2)
+				if not teleportFrame then
+					createTeleportButton()
+					isSomeoneActive = true
+				end
+			end
+		end
+	end)
+end
 
 -- Обработчик клавиш
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
+	-- Клавиша Z для телепортации
 	if input.KeyCode == Enum.KeyCode.Z then
-		teleportToNearest()
+		if isSomeoneActive and teleportFrame and teleportFrame.Parent then
+			if teleportButton then
+				local originalColor = teleportButton.BackgroundColor3
+				teleportButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+				task.spawn(function()
+					task.wait(0.1)
+					if teleportButton then
+						teleportButton.BackgroundColor3 = originalColor
+					end
+				end)
+			end
+			
+			local success = teleportToNearest()
+			
+			if not success and teleportButton then
+				local originalText = teleportButton.Text
+				teleportButton.Text = "❌ НЕТ ИГРОКОВ!"
+				task.spawn(function()
+					task.wait(0.5)
+					if teleportButton then
+						teleportButton.Text = originalText
+					end
+				end)
+			end
+		end
 	end
 	
+	-- Клавиша Q для отделения/прикрепления LowerTorso
 	if input.KeyCode == Enum.KeyCode.Q then
 		detachLowerTorsoActive = not detachLowerTorsoActive
 		
@@ -685,7 +740,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Функции левитации
 local function createLevitatePart()
 	if levitatePart then
 		levitatePart:Destroy()
@@ -770,7 +824,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 490)
+Frame.Size = UDim2.new(0, 240, 0, 440)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -799,18 +853,11 @@ local function createBtn(name, text, y, color)
 	return btn
 end
 
--- Кнопка для увеличения радиуса интерактивных объектов
-local promptBtn = createBtn("PromptBtn", "🔍 INTERACT RADIUS: OFF", 40, Color3.fromRGB(100, 100, 100))
+-------------------------------------------------------------------
+-- SPEED AND JUMP BOOST
+-------------------------------------------------------------------
+local boostBtn = createBtn("BoostBtn", "SPEED & JUMP BOOST: OFF", 40, Color3.fromRGB(0, 150, 0))
 
-promptBtn.MouseButton1Click:Connect(function()
-	proximityPromptActive = not proximityPromptActive
-	promptBtn.Text = proximityPromptActive and "🔍 INTERACT RADIUS: ON" or "🔍 INTERACT RADIUS: OFF"
-	promptBtn.BackgroundColor3 = proximityPromptActive and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(100, 100, 100)
-	increaseInteractionRadius(proximityPromptActive)
-end)
-
--- Остальные кнопки
-local boostBtn = createBtn("BoostBtn", "SPEED & JUMP BOOST: OFF", 90, Color3.fromRGB(0, 150, 0))
 boostBtn.MouseButton1Click:Connect(function()
 	boostActive = not boostActive
 	boostBtn.Text = boostActive and "SPEED & JUMP BOOST: ON" or "SPEED & JUMP BOOST: OFF"
@@ -818,7 +865,11 @@ boostBtn.MouseButton1Click:Connect(function()
 	applyBoost()
 end)
 
-local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 140, Color3.fromRGB(100, 100, 255))
+-------------------------------------------------------------------
+-- ANIMATIONS TOGGLE
+-------------------------------------------------------------------
+local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 90, Color3.fromRGB(100, 100, 255))
+
 animBtn.MouseButton1Click:Connect(function()
 	animationsActive = not animationsActive
 	animBtn.Text = animationsActive and "🎭 АНИМАЦИИ: ON" or "🎭 АНИМАЦИИ: OFF"
@@ -826,7 +877,11 @@ animBtn.MouseButton1Click:Connect(function()
 	toggleAnimations(animationsActive)
 end)
 
-local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 190, Color3.fromRGB(150, 0, 150))
+-------------------------------------------------------------------
+-- DETACH LOWER TORSO
+-------------------------------------------------------------------
+local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 140, Color3.fromRGB(150, 0, 150))
+
 detachBtn.MouseButton1Click:Connect(function()
 	detachLowerTorsoActive = not detachLowerTorsoActive
 	
@@ -841,11 +896,16 @@ detachBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
-local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 240, Color3.fromRGB(0, 100, 200))
+-------------------------------------------------------------------
+-- XRAY
+-------------------------------------------------------------------
+local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 190, Color3.fromRGB(0, 100, 200))
+
 xrayBtn.MouseButton1Click:Connect(function()
 	xrayActive = not xrayActive
 	xrayBtn.Text = xrayActive and "XRAY: ON" or "XRAY: OFF"
 	xrayBtn.BackgroundColor3 = xrayActive and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(0, 100, 200)
+	
 	if xrayActive then
 		applyXray()
 	else
@@ -853,7 +913,10 @@ xrayBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
-local espBtn = createBtn("EspBtn", "ESP: OFF", 290, Color3.fromRGB(80, 80, 80))
+-------------------------------------------------------------------
+-- ESP
+-------------------------------------------------------------------
+local espBtn = createBtn("EspBtn", "ESP: OFF", 240, Color3.fromRGB(80, 80, 80))
 local ESPParts = {}
 
 local function updateESP()
@@ -904,7 +967,10 @@ Players.PlayerRemoving:Connect(function()
 	if espActive then updateESP() end
 end)
 
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 340, Color3.fromRGB(120, 40, 200))
+-------------------------------------------------------------------
+-- ЛЕВИТАЦИЯ
+-------------------------------------------------------------------
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 290, Color3.fromRGB(120, 40, 200))
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -941,7 +1007,11 @@ levitationBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 390, Color3.fromRGB(40, 40, 45))
+-------------------------------------------------------------------
+-- ANCHORED
+-------------------------------------------------------------------
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 340, Color3.fromRGB(40, 40, 45))
+
 anchorBtn.MouseButton1Click:Connect(function()
 	isAnchored = not isAnchored
 	anchorBtn.Text = isAnchored and "ANCHORED: ON" or "ANCHORED: OFF"
@@ -954,7 +1024,11 @@ anchorBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
-local kickBtn = createBtn("KickBtn", "KICK", 440, Color3.fromRGB(255, 50, 50))
+-------------------------------------------------------------------
+-- KICK
+-------------------------------------------------------------------
+local kickBtn = createBtn("KickBtn", "KICK", 390, Color3.fromRGB(255, 50, 50))
+
 kickBtn.MouseButton1Click:Connect(function()
 	game:Shutdown()
 end)
@@ -982,16 +1056,24 @@ RunService.Stepped:Connect(function()
 		end
 	end
 	
+	if xrayActive then
+		updateXray()
+	end
+	
 	if detachLowerTorsoActive then
 		updateDetachedControl()
 	end
 end)
 
+-- Обработка появления персонажа
 speaker.CharacterAdded:Connect(function(character)
 	wait(0.5)
 	saveOriginalSettings()
 	if boostActive then
 		applyBoost()
+	end
+	if xrayActive then
+		applyXray()
 	end
 	if animationsActive then
 		task.wait(0.3)
@@ -999,6 +1081,7 @@ speaker.CharacterAdded:Connect(function(character)
 	else
 		toggleAnimations(false)
 	end
+	-- Если была активна функция отделения, отключаем её при респавне
 	if detachLowerTorsoActive then
 		detachLowerTorsoActive = false
 		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF (Q)"
@@ -1006,9 +1089,11 @@ speaker.CharacterAdded:Connect(function(character)
 	end
 end)
 
--- Запускаем отслеживание новых объектов
-task.spawn(trackNewInteractiveObjects)
+-- Запускаем проверку GUI
+task.spawn(checkForSomeoneGUI)
+task.spawn(trackNewGUI)
 
+-- При первом запуске сохраняем настройки
 if speaker.Character then
 	saveOriginalSettings()
 end
@@ -1028,16 +1113,17 @@ closeBtn.Parent = Frame
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 closeBtn.MouseButton1Click:Connect(function()
 	stopLevitation()
+	if xrayActive then
+		xrayActive = false
+		applyXray()
+	end
 	if detachLowerTorsoActive then
 		reattachLowerTorso()
 	end
 	if not animationsActive then
 		toggleAnimations(true)
 	end
-	if proximityPromptActive then
-		increaseInteractionRadius(false)
-	end
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Готова! Ищет любые объекты с текстом и увеличивает радиус взаимодействия!")
+print("✅ EliteX Lite — Исправлено: клавиша Q работает, anchored отключен для нормального движения!")
