@@ -187,17 +187,18 @@ local function detachLowerTorso()
 		task.wait(0.1)
 	end
 	
-	-- Сохраняем все weld соединения
+	-- Сохраняем все weld/Motor6D соединения (ВАЖНО: сохраняем ClassName и Name!)
 	savedWelds = {}
 	for _, weld in pairs(lowerTorso:GetChildren()) do
 		if weld:IsA("Weld") or weld:IsA("Motor6D") then
 			table.insert(savedWelds, {
-				weld = weld,
 				part0 = weld.Part0,
 				part1 = weld.Part1,
 				c0 = weld.C0,
 				c1 = weld.C1,
-				parent = weld.Parent
+				parent = weld.Parent,
+				className = weld.ClassName,  -- <-- ИСПРАВЛЕНИЕ: сохраняем тип (Motor6D или Weld)
+				name = weld.Name             -- <-- сохраняем имя для корректной работы Humanoid
 			})
 			weld:Destroy()
 		end
@@ -212,7 +213,7 @@ local function detachLowerTorso()
 		RotVelocity = lowerTorso.RotVelocity
 	}
 	
-	-- Отцепляем LowerTorso (НЕ делаем anchored!)
+	-- Отцепляем LowerTorso
 	lowerTorso.Anchored = false
 	lowerTorso.CanCollide = true
 	
@@ -247,7 +248,7 @@ local function detachLowerTorso()
 	print("✅ LowerTorso отделен! Управляйте им с помощью WASD")
 end
 
--- Функция для восстановления LowerTorso
+-- Функция для восстановления LowerTorso (ИСПРАВЛЕНА основная причина шатания)
 local function reattachLowerTorso()
 	if not detachedLowerTorso then 
 		print("❌ Нет отделенной части для восстановления")
@@ -274,7 +275,7 @@ local function reattachLowerTorso()
 		velocityCtrl.Velocity = Vector3.new()
 	end
 	
-	-- Сбрасываем скорость и вращение отделенной части
+	-- Полный сброс скоростей
 	lowerTorso.Velocity = Vector3.new()
 	lowerTorso.RotVelocity = Vector3.new()
 	lowerTorso.AssemblyLinearVelocity = Vector3.new()
@@ -295,38 +296,41 @@ local function reattachLowerTorso()
 		velocityCtrl = nil
 	end
 	
-	-- Восстанавливаем weld соединения
+	-- Восстанавливаем соединения (ГЛАВНОЕ ИСПРАВЛЕНИЕ: используем оригинальный ClassName!)
 	for _, weldData in pairs(savedWelds) do
 		if weldData.part0 and weldData.part1 then
-			local newWeld = Instance.new("Weld")
-			newWeld.Part0 = weldData.part0
-			newWeld.Part1 = weldData.part1
-			newWeld.C0 = weldData.c0
-			newWeld.C1 = weldData.c1
-			newWeld.Parent = lowerTorso
+			local newJoint = Instance.new(weldData.className)  -- Motor6D или Weld — как было изначально
+			newJoint.Part0 = weldData.part0
+			newJoint.Part1 = weldData.part1
+			newJoint.C0 = weldData.c0
+			newJoint.C1 = weldData.c1
+			if weldData.name then
+				newJoint.Name = weldData.name
+			end
+			newJoint.Parent = lowerTorso
 		end
 	end
 	
-	-- Если нет сохраненных welds, создаем стандартный
+	-- Если welds не сохранились — создаём правильный Motor6D (а не Weld)
 	if #savedWelds == 0 then
-		local newWeld = Instance.new("Weld")
-		newWeld.Part0 = humanoidRootPart
-		newWeld.Part1 = lowerTorso
-		newWeld.C0 = CFrame.new(0, -1, 0)
-		newWeld.C1 = CFrame.new(0, 0, 0)
-		newWeld.Parent = lowerTorso
+		local newJoint = Instance.new("Motor6D")
+		newJoint.Name = "RootJoint"
+		newJoint.Part0 = humanoidRootPart
+		newJoint.Part1 = lowerTorso
+		newJoint.C0 = CFrame.new(0, -1, 0)
+		newJoint.C1 = CFrame.new(0, 0, 0)
+		newJoint.Parent = lowerTorso
 	end
 	
 	-- Возвращаем на правильную позицию
 	lowerTorso.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -1, 0)
 	
-	-- Восстанавливаем свойства (НО НЕ ДЕЛАЕМ ANCHORED!)
-	lowerTorso.Anchored = false -- ВСЕГДА false для нормального движения
-	lowerTorso.CanCollide = savedProperties.CanCollide or true
+	-- Восстанавливаем свойства
+	lowerTorso.Anchored = false
+	lowerTorso.CanCollide = savedProperties.CanCollide or false
 	
-	-- ПОЛНЫЙ СБРОС СОСТОЯНИЯ ПЕРСОНАЖА
+	-- ПОЛНЫЙ СБРОС СОСТОЯНИЯ ПЕРСОНАЖА + дополнительная стабилизация
 	if humanoid then
-		-- Останавливаем все анимации
 		local animator = humanoid:FindFirstChild("Animator")
 		if animator then
 			for _, track in pairs(animator:GetPlayingAnimationTracks()) do
@@ -334,7 +338,6 @@ local function reattachLowerTorso()
 			end
 		end
 		
-		-- Сбрасываем состояние несколько раз для гарантии
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		task.wait(0.1)
 		humanoid:ChangeState(Enum.HumanoidStateType.Landed)
@@ -342,12 +345,10 @@ local function reattachLowerTorso()
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 		task.wait(0.05)
 		
-		-- Сбрасываем флаги
 		humanoid.PlatformStand = false
 		humanoid.AutoRotate = true
 		humanoid.Jump = false
 		
-		-- Принудительно обновляем скорость
 		humanoid.WalkSpeed = originalSpeed
 		humanoid.JumpPower = originalJump
 	end
@@ -360,9 +361,24 @@ local function reattachLowerTorso()
 		humanoidRootPart.AssemblyAngularVelocity = Vector3.new()
 	end
 	
-	-- Небольшая задержка и повторный сброс для надежности
-	task.wait(0.2)
+	-- Дополнительный сброс физики ВСЕХ частей (убирает остаточное шатание)
+	task.wait(0.1)
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Velocity = Vector3.new()
+			part.RotVelocity = Vector3.new()
+			part.AssemblyLinearVelocity = Vector3.new()
+			part.AssemblyAngularVelocity = Vector3.new()
+		end
+	end
+	
+	-- Финальный сброс Humanoid (самый надёжный способ убрать шатание)
 	if humanoid then
+		humanoid.PlatformStand = true
+		task.wait(0.05)
+		humanoid.PlatformStand = false
+		humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+		task.wait(0.05)
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 	end
 	
@@ -371,7 +387,7 @@ local function reattachLowerTorso()
 	savedWelds = {}
 	savedProperties = {}
 	
-	print("✅ LowerTorso восстановлен и прикреплен обратно! Anchored отключен для нормального движения.")
+	print("✅ LowerTorso успешно восстановлен! Шатание исправлено.")
 end
 
 -- Функция для обновления управления отделенной частью
@@ -768,6 +784,7 @@ local function createLevitatePart()
 			if root then
 				local targetCFrame = root.CFrame * CFrame.new(0, -1.5, 0)
 				levitatePart.CFrame = targetCFrame
+				-- Velocity на anchored part не нужен, но оставляем для совместимости
 				levitatePart.Velocity = Vector3.new(0, levitateSpeed, 0)
 			else
 				break
@@ -1067,7 +1084,7 @@ end)
 
 -- Обработка появления персонажа
 speaker.CharacterAdded:Connect(function(character)
-	wait(0.5)
+	task.wait(0.5)
 	saveOriginalSettings()
 	if boostActive then
 		applyBoost()
@@ -1084,8 +1101,10 @@ speaker.CharacterAdded:Connect(function(character)
 	-- Если была активна функция отделения, отключаем её при респавне
 	if detachLowerTorsoActive then
 		detachLowerTorsoActive = false
-		detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF (Q)"
-		detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+		if detachBtn then
+			detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF (Q)"
+			detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+		end
 	end
 end)
 
@@ -1126,4 +1145,4 @@ closeBtn.MouseButton1Click:Connect(function()
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Исправлено: клавиша Q работает, anchored отключен для нормального движения!")
+print("✅ EliteX Lite — ИСПРАВЛЕНО: шатание после реаттача LowerTorso устранено (Motor6D + полный сброс физики)!")
