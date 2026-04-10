@@ -41,6 +41,15 @@ local savedProperties = {}
 local gyro = nil
 local velocityCtrl = nil
 
+local function clearPhysics(part)
+    if part and part:IsA("BasePart") then
+        part.Velocity = Vector3.new()
+        part.RotVelocity = Vector3.new()
+        part.AssemblyLinearVelocity = Vector3.new()
+        part.AssemblyAngularVelocity = Vector3.new()
+    end
+end
+
 -- Функция для поиска ближайшего игрока
 local function findNearestPlayer()
 	local char = speaker.Character
@@ -276,100 +285,54 @@ end
 
 -- Функция для восстановления LowerTorso
 local function reattachLowerTorso()
-	if not detachedLowerTorso then
-		print("❌ Нет отделенной части для восстановления")
-		return
-	end
+    if not detachedLowerTorso then return end
+    
+    local char = speaker.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+    
+    if not root or not hum then return end
 
-	local char = speaker.Character
-	if not char then
-		print("❌ Персонаж не найден!")
-		return
-	end
-
-	local lowerTorso = detachedLowerTorso
-	local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-	local humanoid = char:FindFirstChild("Humanoid")
-
-	if not humanoidRootPart or not humanoid then
-		print("❌ HumanoidRootPart / Humanoid не найдены!")
-		return
-	end
-
-	-- Останавливаем все движения и физику у LowerTorso
-	if gyro then
-		gyro:Destroy()
-		gyro = nil
-	end
-
-	if velocityCtrl then
-		velocityCtrl:Destroy()
-		velocityCtrl = nil
-	end
-
-	lowerTorso.Velocity = Vector3.new()
-	lowerTorso.RotVelocity = Vector3.new()
-	lowerTorso.AssemblyLinearVelocity = Vector3.new()
-	lowerTorso.AssemblyAngularVelocity = Vector3.new()
-
-	-- Удаляем подсветку
-	local highlight = lowerTorso:FindFirstChild("DetachedHighlight")
-	if highlight then
-		highlight:Destroy()
-	end
-
-	-- Удаляем старые Motor6D/Weld
-	for _, child in pairs(lowerTorso:GetChildren()) do
-		if child:IsA("Weld") or child:IsA("Motor6D") then
-			child:Destroy()
-		end
-	end
-
-	-- Восстанавливаем стандартный Motor6D к HumanoidRootPart
-	local weld = Instance.new("Motor6D")
-	weld.Part0 = humanoidRootPart
-	weld.Part1 = lowerTorso
-	weld.C0 = CFrame.new(0, -1, 0)  -- стандартно: 1 блок ниже
-	weld.C1 = CFrame.new()
-	weld.Parent = lowerTorso
-
-	-- Возвращаем нормальные физические свойства
-	lowerTorso.Anchored = false
-	lowerTorso.CanCollide = true
-
-	-- Сбрасываем скорость корня и немного "перезагружаем" персонажа
-	humanoidRootPart.Velocity = Vector3.new()
-	humanoidRootPart.RotVelocity = Vector3.new()
-	humanoidRootPart.AssemblyLinearVelocity = Vector3.new()
-	humanoidRootPart.AssemblyAngularVelocity = Vector3.new()
-
-	-- Останавливаем анимации, немного ждём, потом ставим нормальный стейт
-	local animator = humanoid:FindFirstChild("Animator")
-	if animator then
-		for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-			track:Stop()
-		end
-	end
-
-	humanoid.PlatformStand = false
-	humanoid.AutoRotate = true
-	humanoid.Jump = false
-
-	humanoid.WalkSpeed = originalSpeed
-	humanoid.JumpPower = originalJump
-
-	-- Важно: дать обработаться шаговым стейтмашинам
-	humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-	task.wait(0.1)
-	humanoid:ChangeState(Enum.HumanoidStateType.Running)
-	task.wait(0.05)
-
-	-- Очищаем состояние
-	detachedLowerTorso = nil
-	savedWelds = {}
-	savedProperties = {}
-
-	print("✅ LowerTorso восстановлен и прикреплен обратно. Шатание должно исчезнуть.")
+    -- 1. Удаляем контроллеры полета торса
+    if gyro then gyro:Destroy(); gyro = nil end
+    if velocityCtrl then velocityCtrl:Destroy(); velocityCtrl = nil end
+    
+    -- 2. СБРОС ФИЗИКИ (Решает проблему шатания)
+    clearPhysics(detachedLowerTorso)
+    clearPhysics(root)
+    
+    -- 3. Возвращаем детали на место до сварки
+    detachedLowerTorso.CFrame = root.CFrame * CFrame.new(0, -1, 0)
+    detachedLowerTorso.CanCollide = false -- Временно отключаем коллизию
+    
+    -- 4. Восстанавливаем оригинальные соединения (Welds/Motor6D)
+    for _, data in pairs(savedWelds) do
+        if data.part0 and data.part1 then
+            local w = Instance.new(data.weld.ClassName)
+            w.Name = data.weld.Name
+            w.Part0 = data.part0
+            w.Part1 = data.part1
+            w.C0 = data.c0
+            w.C1 = data.c1
+            w.Parent = data.parent
+        end
+    end
+    
+    -- 5. Стабилизация
+    task.wait(0.1) -- Даем движку один такт на обновление соединений
+    
+    detachedLowerTorso.Anchored = false
+    hum.PlatformStand = false
+    
+    -- Принудительно ставим игрока на ноги
+    hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+    
+    -- Убираем подсветку
+    local hl = detachedLowerTorso:FindFirstChild("DetachedHighlight")
+    if hl then hl:Destroy() end
+    
+    detachedLowerTorso = nil
+    savedWelds = {}
 end
 
 -- Функция для обновления управления отделенной частью
