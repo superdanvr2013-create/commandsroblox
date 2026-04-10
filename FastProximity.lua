@@ -4,7 +4,7 @@ local speaker = Players.LocalPlayer
 
 -- Создание GUI
 local main = Instance.new("ScreenGui")
-main.Name = "EliteX_Scanner_Teleporter"
+main.Name = "Radius_Changer"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
 
@@ -12,8 +12,8 @@ local Frame = Instance.new("Frame")
 Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-Frame.Position = UDim2.new(0.5, -150, 0.5, -325) 
-Frame.Size = UDim2.new(0, 300, 0, 650) -- Увеличили высоту
+Frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+Frame.Size = UDim2.new(0, 300, 0, 200)
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -21,7 +21,7 @@ Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
 -- Заголовок
 local title = Instance.new("TextLabel")
 title.Parent = Frame
-title.Text = "ELITEX SCAN & TP + UTILS"
+title.Text = "RADIUS CHANGER"
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
@@ -29,138 +29,30 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 Instance.new("UICorner", title)
 
--------------------------------------------------------------------
--- СЕКЦИЯ 1: СКАНЕР
--------------------------------------------------------------------
-local scanLabel = Instance.new("TextLabel", Frame)
-scanLabel.Text = "-- SCANNER --"
-scanLabel.Position = UDim2.new(0, 0, 0.05, 0)
-scanLabel.Size = UDim2.new(1, 0, 0, 20)
-scanLabel.BackgroundTransparency = 1
-scanLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-scanLabel.Font = Enum.Font.Code
-scanLabel.TextSize = 12
-
+-- Поле для радиуса
 local radiusBox = Instance.new("TextBox", Frame)
-radiusBox.PlaceholderText = "Radius (10)"
-radiusBox.Text = "10"
-radiusBox.Position = UDim2.new(0.05, 0, 0.09, 0)
-radiusBox.Size = UDim2.new(0.9, 0, 0, 25)
+radiusBox.PlaceholderText = "Radius (0.1 - 50)"
+radiusBox.Text = "5"
+radiusBox.Position = UDim2.new(0.05, 0, 0.15, 0)
+radiusBox.Size = UDim2.new(0.9, 0, 0, 35)
 radiusBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 radiusBox.TextColor3 = Color3.fromRGB(0, 200, 255)
 radiusBox.Font = Enum.Font.Code
-radiusBox.TextSize = 12
+radiusBox.TextSize = 14
 Instance.new("UICorner", radiusBox)
 
-local scanBtn = Instance.new("TextButton", Frame)
-scanBtn.Text = "SCAN AREA"
-scanBtn.Position = UDim2.new(0.05, 0, 0.14, 0)
-scanBtn.Size = UDim2.new(0.9, 0, 0, 30)
-scanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-scanBtn.TextColor3 = Color3.new(1, 1, 1)
-scanBtn.Font = Enum.Font.GothamBold
-scanBtn.TextSize = 12
-Instance.new("UICorner", scanBtn)
+-- Кнопка активации
+local radiusBtn = Instance.new("TextButton", Frame)
+radiusBtn.Text = "CHANGE RADIUS"
+radiusBtn.Position = UDim2.new(0.05, 0, 0.35, 0)
+radiusBtn.Size = UDim2.new(0.9, 0, 0, 40)
+radiusBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+radiusBtn.TextColor3 = Color3.new(1, 1, 1)
+radiusBtn.Font = Enum.Font.GothamBold
+radiusBtn.TextSize = 14
+Instance.new("UICorner", radiusBtn)
 
--------------------------------------------------------------------
--- СЕКЦИЯ 2: ТЕЛЕПОРТЕР
--------------------------------------------------------------------
-local tpLabel = Instance.new("TextLabel", Frame)
-tpLabel.Text = "-- TELEPORTER --"
-tpLabel.Position = UDim2.new(0, 0, 0.20, 0)
-tpLabel.Size = UDim2.new(1, 0, 0, 20)
-tpLabel.BackgroundTransparency = 1
-tpLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-tpLabel.Font = Enum.Font.Code
-tpLabel.TextSize = 12
-
-local objectPathBox = Instance.new("TextBox", Frame)
-objectPathBox.PlaceholderText = "Paste path here..."
-objectPathBox.Text = ""
-objectPathBox.Position = UDim2.new(0.05, 0, 0.24, 0)
-objectPathBox.Size = UDim2.new(0.9, 0, 0, 30)
-objectPathBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-objectPathBox.TextColor3 = Color3.fromRGB(255, 255, 0)
-objectPathBox.Font = Enum.Font.Code
-objectPathBox.TextSize = 10
-Instance.new("UICorner", objectPathBox)
-
-local targetPosBox = Instance.new("TextBox", Frame)
-targetPosBox.PlaceholderText = "X, Y, Z"
-targetPosBox.Text = ""
-targetPosBox.Position = UDim2.new(0.05, 0, 0.30, 0)
-targetPosBox.Size = UDim2.new(0.55, 0, 0, 30)
-targetPosBox.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-targetPosBox.TextColor3 = Color3.fromRGB(0, 255, 0)
-targetPosBox.Font = Enum.Font.Code
-targetPosBox.TextSize = 11
-Instance.new("UICorner", targetPosBox)
-
-local getPosBtn = Instance.new("TextButton", Frame)
-getPosBtn.Text = "GET MY POS"
-getPosBtn.Position = UDim2.new(0.65, 0, 0.30, 0)
-getPosBtn.Size = UDim2.new(0.3, 0, 0, 30)
-getPosBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-getPosBtn.TextColor3 = Color3.new(1, 1, 1)
-getPosBtn.Font = Enum.Font.GothamBold
-getPosBtn.TextSize = 9
-Instance.new("UICorner", getPosBtn)
-
-local tpBtn = Instance.new("TextButton", Frame)
-tpBtn.Text = "TELEPORT OBJECT"
-tpBtn.Position = UDim2.new(0.05, 0, 0.36, 0)
-tpBtn.Size = UDim2.new(0.9, 0, 0, 35)
-tpBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-tpBtn.TextColor3 = Color3.new(1, 1, 1)
-tpBtn.Font = Enum.Font.GothamBold
-tpBtn.TextSize = 12
-Instance.new("UICorner", tpBtn)
-
--------------------------------------------------------------------
--- НОВАЯ СЕКЦИЯ 3: UTILITIES (FAST PROXIMITY)
--------------------------------------------------------------------
-local utilLabel = Instance.new("TextLabel", Frame)
-utilLabel.Text = "-- UTILITIES --"
-utilLabel.Position = UDim2.new(0, 0, 0.43, 0)
-utilLabel.Size = UDim2.new(1, 0, 0, 20)
-utilLabel.BackgroundTransparency = 1
-utilLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-utilLabel.Font = Enum.Font.Code
-utilLabel.TextSize = 12
-
-local fastProxBtn = Instance.new("TextButton", Frame)
-fastProxBtn.Text = "FAST PROXIMITY (E/F)"
-fastProxBtn.Position = UDim2.new(0.05, 0, 0.47, 0)
-fastProxBtn.Size = UDim2.new(0.9, 0, 0, 35)
-fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
-fastProxBtn.TextColor3 = Color3.new(1, 1, 1)
-fastProxBtn.Font = Enum.Font.GothamBold
-fastProxBtn.TextSize = 12
-Instance.new("UICorner", fastProxBtn)
-
--------------------------------------------------------------------
--- ОКНО ВЫВОДА (LOGS)
--------------------------------------------------------------------
-local scroll = Instance.new("ScrollingFrame", Frame)
-scroll.Position = UDim2.new(0.05, 0, 0.55, 0)
-scroll.Size = UDim2.new(0.9, 0, 0.43, 0)
-scroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-scroll.ScrollBarThickness = 6
-Instance.new("UICorner", scroll)
-
-local outputBox = Instance.new("TextBox", scroll)
-outputBox.Size = UDim2.new(1, 0, 1, 0)
-outputBox.BackgroundTransparency = 1
-outputBox.TextColor3 = Color3.new(1, 1, 1)
-outputBox.TextSize = 10
-outputBox.Font = Enum.Font.Code
-outputBox.TextXAlignment = Enum.TextXAlignment.Left
-outputBox.TextYAlignment = Enum.TextYAlignment.Top
-outputBox.MultiLine = true
-outputBox.TextEditable = false
-outputBox.Text = "System Ready..."
-outputBox.TextWrapped = false
-
+-- Кнопка закрытия
 local closeBtn = Instance.new("TextButton", Frame)
 closeBtn.Text = "X"
 closeBtn.Position = UDim2.new(0.9, 0, 0, 0)
@@ -169,257 +61,54 @@ closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 closeBtn.TextColor3 = Color3.new(1, 1, 1)
 closeBtn.MouseButton1Click:Connect(function() main:Destroy() end)
 
--------------------------------------------------------------------
--- ФУНКЦИИ
--------------------------------------------------------------------
+-- Статус
+local statusLabel = Instance.new("TextLabel", Frame)
+statusLabel.Text = "Ready"
+statusLabel.Position = UDim2.new(0.05, 0, 0.6, 0)
+statusLabel.Size = UDim2.new(0.9, 0, 0, 25)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+statusLabel.Font = Enum.Font.Code
+statusLabel.TextSize = 11
 
-local function log(text)
-	outputBox.Text = text .. "\n" .. outputBox.Text
-end
-
-local fastProxActive = false
-local targetPrompts = {}
-
--- Вспомогательная функция для поиска объекта по частичному пути (напр. "Base > Spawn")
-local function findByPartialPath(pathStr)
-	local segments = {}
-	for segment in string.gmatch(pathStr, "[^>]+") do
-		table.insert(segments, segment:match("^%s*(.-)%s*$"))
+-- Логика изменения радиуса
+local function changeRadius()
+	local newRadius = tonumber(radiusBox.Text)
+	
+	if not newRadius then
+		statusLabel.Text = "Error: Invalid number!"
+		statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+		return
 	end
-
-	if #segments == 0 then return nil end
-
-	-- Ищем во всем Workspace объект, имя которого совпадает с ПОСЛЕДНИМ сегментом
-	-- А затем проверяем, совпадают ли его родители с остальными сегментами
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj.Name == segments[#segments] then
-			local match = true
-			local current = obj
-			for i = #segments - 1, 1, -1 do
-				if not current.Parent or current.Parent.Name ~= segments[i] then
-					match = false
-					break
-				end
-				current = current.Parent
-			end
-
-			if match then return obj end
+	
+	newRadius = math.clamp(newRadius, 0.1, 50)
+	
+	local count = 0
+	
+	-- Ищем все ProximityPrompt в игре
+	for _, prompt in pairs(workspace:GetDescendants()) do
+		if prompt:IsA("ProximityPrompt") then
+			prompt.MaxActivationDistance = newRadius
+			count = count + 1
 		end
 	end
-	return nil
-end
-
--- Улучшенная функция: ищет объект, который "заканчивается" на введенный путь
-local function findSmartPath(pathStr)
-	local segments = {}
-	for segment in string.gmatch(pathStr, "[^>]+") do
-		table.insert(segments, segment:match("^%s*(.-)%s*$"):lower())
-	end
-
-	if #segments == 0 then return nil end
-
-	-- Перебор всех объектов в Workspace
-	for _, obj in pairs(workspace:GetDescendants()) do
-		-- Сверяем имя последнего сегмента
-		if obj.Name:lower() == segments[#segments] then
-			local current = obj
-			local matchCount = 1
-
-			-- Проверяем родителей вверх по иерархии
-			for i = #segments - 1, 1, -1 do
-				if current.Parent and current.Parent.Name:lower() == segments[i] then
-					matchCount = matchCount + 1
-					current = current.Parent
-				else
-					break
-				end
-			end
-
-			-- Если совпали все сегменты пути
-			if matchCount == #segments then
-				return obj
-			end
-		end
-	end
-	return nil
-end
-
--- Добавляем элементы в GUI (размести их под кнопкой FastProximity)
-local durationInput = Instance.new("TextBox", Frame)
-durationInput.PlaceholderText = "Dur: 1"
-durationInput.Text = "1"
-durationInput.Position = UDim2.new(0.05, 0, 0.52, 0)
-durationInput.Size = UDim2.new(0.4, 0, 0, 25)
-durationInput.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-durationInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-durationInput.Font = Enum.Font.Code
-durationInput.TextSize = 12
-Instance.new("UICorner", durationInput)
-
-local loopToggle = Instance.new("TextButton", Frame)
-loopToggle.Text = "LOOP: OFF"
-loopToggle.Position = UDim2.new(0.55, 0, 0.52, 0)
-loopToggle.Size = UDim2.new(0.4, 0, 0, 25)
-loopToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-loopToggle.TextColor3 = Color3.new(1, 1, 1)
-loopToggle.Font = Enum.Font.GothamBold
-loopToggle.TextSize = 10
-Instance.new("UICorner", loopToggle)
-
-local isLooped = false
-loopToggle.MouseButton1Click:Connect(function()
-	isLooped = not isLooped
-	loopToggle.Text = isLooped and "LOOP: ON" or "LOOP: OFF"
-	loopToggle.BackgroundColor3 = isLooped and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(50, 50, 50)
-end)
-
--------------------------------------------------------------------
--- ОБНОВЛЕННАЯ ЛОГИКА FASTPROXIMITY
--------------------------------------------------------------------
-local fastProxActive = false
-
-local function patchHoldProperties(obj, targetValue)
-	if not obj then return end
-
-	-- Стандартные промпты
-	if obj:IsA("ProximityPrompt") then
-		obj.HoldDuration = targetValue
-	end
-
-	-- Атрибуты (HoldTime, Duration и т.д.)
-	for name, value in pairs(obj:GetAttributes()) do
-		local ln = name:lower()
-		if ln:find("dur") or ln:find("hold") or ln:find("time") then
-			if type(value) == "number" then
-				obj:SetAttribute(name, targetValue)
-			end
-		end
-	end
-
-	-- Value-объекты
-	if obj:IsA("NumberValue") or obj:IsA("IntValue") then
-		local ln = obj.Name:lower()
-		if ln:find("dur") or ln:find("hold") or ln:find("time") then
-			obj.Value = targetValue
-		end
+	
+	statusLabel.Text = string.format("Changed %d prompts to radius: %.1f", count, newRadius)
+	statusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+	
+	-- Сброс цвета через 2 секунды
+	task.wait(2)
+	if statusLabel then
+		statusLabel.Text = "Ready"
+		statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
 	end
 end
 
-fastProxBtn.MouseButton1Click:Connect(function()
-	fastProxActive = not fastProxActive
+radiusBtn.MouseButton1Click:Connect(changeRadius)
 
-	-- Читаем значение из поля (от 0 до 3)
-	local targetValue = tonumber(durationInput.Text) or 1
-	targetValue = math.clamp(targetValue, 0, 3) 
-
-	if fastProxActive then
-		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-		log("FastProx START (Val: " .. targetValue .. ")")
-
-		local targets = {}
-		local pathText = objectPathBox.Text:gsub("%s+", "")
-
-		-- Сбор целей
-		if pathText ~= "" then
-			local t = findSmartPath(pathText)
-			if t then
-				table.insert(targets, t)
-				for _, d in pairs(t:GetDescendants()) do table.insert(targets, d) end
-			end
-		else
-			-- Стандартный поиск по ключевым словам
-			for _, obj in pairs(workspace:GetDescendants()) do
-				if obj:IsA("ProximityPrompt") or obj.Name:lower():find("spawn") or obj.Name:lower():find("base") then
-					table.insert(targets, obj)
-				end
-			end
-		end
-
-		-- Выполнение
-		task.spawn(function()
-			if isLooped then
-				-- Режим цикла
-				while fastProxActive do
-					for i = #targets, 1, -1 do
-						if targets[i] and targets[i].Parent then
-							patchHoldProperties(targets[i], targetValue)
-						else
-							table.remove(targets, i)
-						end
-					end
-					task.wait(0.3)
-				end
-			else
-				-- Одноразовый режим
-				for _, obj in pairs(targets) do
-					patchHoldProperties(obj, targetValue)
-				end
-				log("FastProx: One-time patch done.")
-				fastProxActive = false
-				fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
-			end
-		end)
-	else
-		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
-		log("FastProx: STOPPED")
-	end
-end)
-
--- Остальная логика (Scan/TP) остается как была
-local function getPathToWorkspace(obj)
-	local path = obj.Name
-	local current = obj.Parent
-	while current and current ~= game and current ~= workspace do
-		path = current.Name .. " > " .. path
-		current = current.Parent
-	end
-	return path
-end
-
-scanBtn.MouseButton1Click:Connect(function()
-	local char = speaker.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-	local radius = tonumber(radiusBox.Text) or 10
-	local found = {}
-	for _, part in pairs(workspace:GetDescendants()) do
-		if part:IsA("BasePart") and part ~= root then
-			local dist = (part.Position - root.Position).Magnitude
-			if dist <= radius then
-				table.insert(found, string.format("[%.1f] %s", dist, getPathToWorkspace(part)))
-			end
-		end
-	end
-	outputBox.Text = #found > 0 and table.concat(found, "\n") or "Nothing found."
-	print(outputBox.Text)
-end)
-
-getPosBtn.MouseButton1Click:Connect(function()
-	local char = speaker.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if root then
-		targetPosBox.Text = string.format("%.1f, %.1f, %.1f", root.Position.X, root.Position.Y, root.Position.Z)
-	end
-end)
-
-tpBtn.MouseButton1Click:Connect(function()
-	local x, y, z = targetPosBox.Text:match("([%d%.%-]+)%s*,%s*([%d%.%-]+)%s*,%s*([%d%.%-]+)")
-	if not (x and y and z) then log("Error: Bad Pos") return end
-
-	local path = objectPathBox.Text
-	local current = workspace
-	for seg in path:gmatch("[^>]+") do
-		local name = seg:match("^%s*(.-)%s*$")
-		if name:lower() ~= "workspace" then
-			current = current and current:FindFirstChild(name)
-		end
-	end
-
-	if current then
-		local cf = CFrame.new(tonumber(x), tonumber(y), tonumber(z))
-		if current:IsA("Model") then current:PivotTo(cf) else current.CFrame = cf end
-		log("Teleported: " .. current.Name)
-	else
-		log("Object not found!")
+-- Опционально: Enter в поле радиуса тоже применяет
+radiusBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		changeRadius()
 	end
 end)
