@@ -13,7 +13,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.5, -150, 0.5, -325) 
-Frame.Size = UDim2.new(0, 300, 0, 650)
+Frame.Size = UDim2.new(0, 300, 0, 700) -- Увеличили высоту
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -117,7 +117,7 @@ tpBtn.TextSize = 12
 Instance.new("UICorner", tpBtn)
 
 -------------------------------------------------------------------
--- СЕКЦИЯ 3: UTILITIES (FAST MAXDISTANCE)
+-- СЕКЦИЯ 3: UTILITIES (FAST PROXIMITY + MAXDISTANCE)
 -------------------------------------------------------------------
 local utilLabel = Instance.new("TextLabel", Frame)
 utilLabel.Text = "-- UTILITIES --"
@@ -129,22 +129,43 @@ utilLabel.Font = Enum.Font.Code
 utilLabel.TextSize = 12
 
 local fastProxBtn = Instance.new("TextButton", Frame)
-fastProxBtn.Text = "FAST MAXDISTANCE (E/F)"
+fastProxBtn.Text = "FAST PROXIMITY (E/F)"
 fastProxBtn.Position = UDim2.new(0.05, 0, 0.47, 0)
-fastProxBtn.Size = UDim2.new(0.9, 0, 0, 35)
+fastProxBtn.Size = UDim2.new(0.9, 0, 0, 30)
 fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
 fastProxBtn.TextColor3 = Color3.new(1, 1, 1)
 fastProxBtn.Font = Enum.Font.GothamBold
 fastProxBtn.TextSize = 12
 Instance.new("UICorner", fastProxBtn)
 
+local fastDistBtn = Instance.new("TextButton", Frame)
+fastDistBtn.Text = "FAST MAXDISTANCE"
+fastDistBtn.Position = UDim2.new(0.05, 0, 0.52, 0)
+fastDistBtn.Size = UDim2.new(0.9, 0, 0, 30)
+fastDistBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
+fastDistBtn.TextColor3 = Color3.new(1, 1, 1)
+fastDistBtn.Font = Enum.Font.GothamBold
+fastDistBtn.TextSize = 12
+Instance.new("UICorner", fastDistBtn)
+
 -------------------------------------------------------------------
--- ПОЛЯ ДЛЯ MAXDISTANCE
+-- ПОЛЯ ВВОДА
 -------------------------------------------------------------------
+local durationInput = Instance.new("TextBox", Frame)
+durationInput.PlaceholderText = "Dur: 0"
+durationInput.Text = "0"
+durationInput.Position = UDim2.new(0.05, 0, 0.57, 0)
+durationInput.Size = UDim2.new(0.4, 0, 0, 25)
+durationInput.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+durationInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+durationInput.Font = Enum.Font.Code
+durationInput.TextSize = 12
+Instance.new("UICorner", durationInput)
+
 local distanceInput = Instance.new("TextBox", Frame)
-distanceInput.PlaceholderText = "Distance: 50"
+distanceInput.PlaceholderText = "Dist: 50"
 distanceInput.Text = "50"
-distanceInput.Position = UDim2.new(0.05, 0, 0.52, 0)
+distanceInput.Position = UDim2.new(0.55, 0, 0.57, 0)
 distanceInput.Size = UDim2.new(0.4, 0, 0, 25)
 distanceInput.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 distanceInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -154,8 +175,8 @@ Instance.new("UICorner", distanceInput)
 
 local loopToggle = Instance.new("TextButton", Frame)
 loopToggle.Text = "LOOP: OFF"
-loopToggle.Position = UDim2.new(0.55, 0, 0.52, 0)
-loopToggle.Size = UDim2.new(0.4, 0, 0, 25)
+loopToggle.Position = UDim2.new(0.05, 0, 0.62, 0)
+loopToggle.Size = UDim2.new(0.9, 0, 0, 25)
 loopToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 loopToggle.TextColor3 = Color3.new(1, 1, 1)
 loopToggle.Font = Enum.Font.GothamBold
@@ -173,8 +194,8 @@ end)
 -- ОКНО ВЫВОДА (LOGS)
 -------------------------------------------------------------------
 local scroll = Instance.new("ScrollingFrame", Frame)
-scroll.Position = UDim2.new(0.05, 0, 0.55, 0)
-scroll.Size = UDim2.new(0.9, 0, 0.43, 0)
+scroll.Position = UDim2.new(0.05, 0, 0.68, 0)
+scroll.Size = UDim2.new(0.9, 0, 0.31, 0)
 scroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 scroll.ScrollBarThickness = 6
 Instance.new("UICorner", scroll)
@@ -210,17 +231,41 @@ local function log(text)
 end
 
 local fastProxActive = false
+local fastDistActive = false
 
--- НОВАЯ ФУНКЦИЯ: изменяет MaxDistance вместо Duration
+-- ФУНКЦИЯ DURATION (как было)
+local function patchHoldProperties(obj, targetValue)
+	if not obj then return end
+
+	if obj:IsA("ProximityPrompt") then
+		obj.HoldDuration = targetValue
+	end
+
+	for name, value in pairs(obj:GetAttributes()) do
+		local ln = name:lower()
+		if ln:find("dur") or ln:find("hold") or ln:find("time") then
+			if type(value) == "number" then
+				obj:SetAttribute(name, targetValue)
+			end
+		end
+	end
+
+	if obj:IsA("NumberValue") or obj:IsA("IntValue") then
+		local ln = obj.Name:lower()
+		if ln:find("dur") or ln:find("hold") or ln:find("time") then
+			obj.Value = targetValue
+		end
+	end
+end
+
+-- ФУНКЦИЯ MAXDISTANCE
 local function patchMaxDistance(obj, targetValue)
 	if not obj then return end
 
-	-- Для ProximityPrompt - изменяем MaxActivationDistance
 	if obj:IsA("ProximityPrompt") then
 		obj.MaxActivationDistance = targetValue
 	end
 
-	-- Атрибуты (MaxDistance, Distance и т.д.)
 	for name, value in pairs(obj:GetAttributes()) do
 		local ln = name:lower()
 		if ln:find("maxdist") or ln:find("distance") or ln:find("dist") then
@@ -230,38 +275,12 @@ local function patchMaxDistance(obj, targetValue)
 		end
 	end
 
-	-- Value-объекты с именами, содержащими distance
 	if obj:IsA("NumberValue") or obj:IsA("IntValue") then
 		local ln = obj.Name:lower()
 		if ln:find("maxdist") or ln:find("distance") or ln:find("dist") then
 			obj.Value = targetValue
 		end
 	end
-end
-
-local function findByPartialPath(pathStr)
-	local segments = {}
-	for segment in string.gmatch(pathStr, "[^>]+") do
-		table.insert(segments, segment:match("^%s*(.-)%s*$"))
-	end
-
-	if #segments == 0 then return nil end
-
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj.Name == segments[#segments] then
-			local match = true
-			local current = obj
-			for i = #segments - 1, 1, -1 do
-				if not current.Parent or current.Parent.Name ~= segments[i] then
-					match = false
-					break
-				end
-				current = current.Parent
-			end
-			if match then return obj end
-		end
-	end
-	return nil
 end
 
 local function findSmartPath(pathStr)
@@ -293,17 +312,17 @@ local function findSmartPath(pathStr)
 end
 
 -------------------------------------------------------------------
--- ЛОГИКА FAST MAXDISTANCE
+-- ЛОГИКА FAST PROXIMITY (DURATION)
 -------------------------------------------------------------------
 fastProxBtn.MouseButton1Click:Connect(function()
 	fastProxActive = not fastProxActive
 
-	local targetValue = tonumber(distanceInput.Text) or 50
-	targetValue = math.clamp(targetValue, 0, 500)
+	local targetValue = tonumber(durationInput.Text) or 0
+	targetValue = math.clamp(targetValue, 0, 3)
 
 	if fastProxActive then
 		fastProxBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-		log("FastMaxDistance START (Dist: " .. targetValue .. ")")
+		log("FastProx START (Dur: " .. targetValue .. ")")
 
 		local targets = {}
 		local pathText = objectPathBox.Text:gsub("%s+", "")
@@ -312,9 +331,7 @@ fastProxBtn.MouseButton1Click:Connect(function()
 			local t = findSmartPath(pathText)
 			if t then
 				table.insert(targets, t)
-				for _, d in pairs(t:GetDescendants()) do 
-					table.insert(targets, d) 
-				end
+				for _, d in pairs(t:GetDescendants()) do table.insert(targets, d) end
 			end
 		else
 			for _, obj in pairs(workspace:GetDescendants()) do
@@ -329,6 +346,63 @@ fastProxBtn.MouseButton1Click:Connect(function()
 				while fastProxActive do
 					for i = #targets, 1, -1 do
 						if targets[i] and targets[i].Parent then
+							patchHoldProperties(targets[i], targetValue)
+						else
+							table.remove(targets, i)
+						end
+					end
+					task.wait(0.3)
+				end
+			else
+				for _, obj in pairs(targets) do
+					patchHoldProperties(obj, targetValue)
+				end
+				log("FastProx: One-time patch done.")
+				fastProxActive = false
+				fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
+			end
+		end)
+	else
+		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
+		log("FastProx: STOPPED")
+	end
+end)
+
+-------------------------------------------------------------------
+-- ЛОГИКА FAST MAXDISTANCE
+-------------------------------------------------------------------
+fastDistBtn.MouseButton1Click:Connect(function()
+	fastDistActive = not fastDistActive
+
+	local targetValue = tonumber(distanceInput.Text) or 50
+	targetValue = math.clamp(targetValue, 0, 500)
+
+	if fastDistActive then
+		fastDistBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+		log("FastMaxDist START (Dist: " .. targetValue .. ")")
+
+		local targets = {}
+		local pathText = objectPathBox.Text:gsub("%s+", "")
+
+		if pathText ~= "" then
+			local t = findSmartPath(pathText)
+			if t then
+				table.insert(targets, t)
+				for _, d in pairs(t:GetDescendants()) do table.insert(targets, d) end
+			end
+		else
+			for _, obj in pairs(workspace:GetDescendants()) do
+				if obj:IsA("ProximityPrompt") or obj.Name:lower():find("spawn") or obj.Name:lower():find("base") then
+					table.insert(targets, obj)
+				end
+			end
+		end
+
+		task.spawn(function()
+			if isLooped then
+				while fastDistActive do
+					for i = #targets, 1, -1 do
+						if targets[i] and targets[i].Parent then
 							patchMaxDistance(targets[i], targetValue)
 						else
 							table.remove(targets, i)
@@ -340,19 +414,19 @@ fastProxBtn.MouseButton1Click:Connect(function()
 				for _, obj in pairs(targets) do
 					patchMaxDistance(obj, targetValue)
 				end
-				log("FastMaxDistance: One-time patch done.")
-				fastProxActive = false
-				fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
+				log("FastMaxDist: One-time patch done.")
+				fastDistActive = false
+				fastDistBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
 			end
 		end)
 	else
-		fastProxBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
-		log("FastMaxDistance: STOPPED")
+		fastDistBtn.BackgroundColor3 = Color3.fromRGB(75, 0, 130)
+		log("FastMaxDist: STOPPED")
 	end
 end)
 
 -------------------------------------------------------------------
--- TELEPORTER И СКАНЕР (остаются без изменений)
+-- TELEPORTER И СКАНЕР
 -------------------------------------------------------------------
 local function getPathToWorkspace(obj)
 	local path = obj.Name
