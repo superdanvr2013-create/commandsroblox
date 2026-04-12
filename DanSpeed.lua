@@ -1,6 +1,8 @@
+-- === EliteX Lite — Full Original + Instant Purchase (Оптимизировано) ===
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local speaker = Players.LocalPlayer
 local main = Instance.new("ScreenGui")
@@ -15,6 +17,8 @@ local boostActive = false
 local xrayActive = false
 local detachLowerTorsoActive = false
 local animationsActive = true
+local camAimEnabled = false
+local instantPurchaseActive = false
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -38,7 +42,6 @@ local detachedLowerClone = nil
 local detachedControlPart = nil
 local gyro = nil
 local velocityCtrl = nil
-
 local LOWER_PARTS = {
 	"LowerTorso",
 	"LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
@@ -48,15 +51,15 @@ local LOWER_PARTS = {
 -- === НОВАЯ ПЕРЕМЕННАЯ ДЛЯ CAM AIM ===
 local camAimEnabled = false
 
+-- === Instant Purchase ===
+local processedPrompts = {}
+
 -- Функция клонирования нижней части тела
 local function cloneLowerBody(char)
 	if not char then return nil end
-	
 	local cloneModel = Instance.new("Model")
 	cloneModel.Name = "DetachedLowerClone"
-	
 	local originalToClone = {}
-	
 	for _, partName in ipairs(LOWER_PARTS) do
 		local originalPart = char:FindFirstChild(partName)
 		if originalPart then
@@ -67,7 +70,6 @@ local function cloneLowerBody(char)
 			originalToClone[originalPart] = clonedPart
 		end
 	end
-	
 	for _, joint in pairs(cloneModel:GetDescendants()) do
 		if joint:IsA("Motor6D") or joint:IsA("Weld") then
 			if originalToClone[joint.Part0] then
@@ -78,10 +80,8 @@ local function cloneLowerBody(char)
 			end
 		end
 	end
-	
 	cloneModel.PrimaryPart = cloneModel:FindFirstChild("LowerTorso")
 	cloneModel.Parent = workspace
-	
 	return cloneModel
 end
 
@@ -111,16 +111,13 @@ local function findNearestPlayer()
 	local char = speaker.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return nil end
-	
 	local closestPlayer = nil
 	local closestDistance = math.huge
-	
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= speaker then
 			local playerChar = player.Character
 			local playerRoot = playerChar and playerChar:FindFirstChild("HumanoidRootPart")
 			local humanoid = playerChar and playerChar:FindFirstChild("Humanoid")
-			
 			if playerRoot and humanoid and humanoid.Health > 0 then
 				local distance = (playerRoot.Position - root.Position).Magnitude
 				if distance < closestDistance then
@@ -130,22 +127,18 @@ local function findNearestPlayer()
 			end
 		end
 	end
-	
 	return closestPlayer, closestDistance
 end
 
 local function teleportToNearest()
 	local targetPlayer = findNearestPlayer()
-	
 	if targetPlayer and targetPlayer.Character then
 		local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
 		local playerRoot = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
-		
 		if targetRoot and playerRoot then
 			local oldPos = playerRoot.Position
 			local teleportCFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
 			playerRoot.CFrame = teleportCFrame
-			
 			local beam = Instance.new("Part")
 			beam.Size = Vector3.new(2, 2, 2)
 			beam.Anchored = true
@@ -155,7 +148,6 @@ local function teleportToNearest()
 			beam.Material = Enum.Material.Neon
 			beam.Position = oldPos
 			beam.Parent = workspace
-			
 			local beam2 = Instance.new("Part")
 			beam2.Size = Vector3.new(2, 2, 2)
 			beam2.Anchored = true
@@ -165,7 +157,6 @@ local function teleportToNearest()
 			beam2.Material = Enum.Material.Neon
 			beam2.Position = teleportCFrame.Position
 			beam2.Parent = workspace
-			
 			task.spawn(function()
 				for i = 0.3, 1, 0.05 do
 					if beam and beam2 then
@@ -179,7 +170,6 @@ local function teleportToNearest()
 				if beam then beam:Destroy() end
 				if beam2 then beam2:Destroy() end
 			end)
-			
 			if teleportButton then
 				local originalText = teleportButton.Text
 				teleportButton.Text = "✅ ТЕЛЕПОРТИРОВАНО!"
@@ -188,7 +178,6 @@ local function teleportToNearest()
 					teleportButton.Text = originalText
 				end
 			end
-			
 			return true
 		end
 	end
@@ -198,21 +187,17 @@ end
 local function toggleAnimations(enable)
 	local char = speaker.Character
 	if not char then return end
-	
 	local humanoid = char:FindFirstChild("Humanoid")
 	if not humanoid then return end
-	
 	if enable then
 		local animator = humanoid:FindFirstChild("Animator")
 		if not animator then
 			local newAnimator = Instance.new("Animator")
 			newAnimator.Parent = humanoid
-			
 			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 			task.wait(0.1)
 			humanoid:ChangeState(Enum.HumanoidStateType.Running)
 			task.wait(0.05)
-			
 			humanoid.WalkSpeed = originalSpeed
 			humanoid.JumpPower = originalJump
 		end
@@ -229,28 +214,22 @@ end
 
 local function detachLowerTorso()
 	local char = speaker.Character
-	if not char then 
+	if not char then
 		print("❌ Персонаж не найден!")
-		return 
+		return
 	end
-	
 	if detachedLowerClone then return end
-	
 	detachedLowerClone = cloneLowerBody(char)
-	if not detachedLowerClone then 
+	if not detachedLowerClone then
 		print("❌ Не удалось создать клон LowerTorso")
-		return 
+		return
 	end
-	
 	hideLowerBody(char)
-	
 	detachedControlPart = detachedLowerClone:FindFirstChild("LowerTorso")
-	
 	if not detachedControlPart then
 		print("❌ LowerTorso в клоне не найден!")
 		return
 	end
-	
 	local highlight = Instance.new("Highlight")
 	highlight.Name = "DetachedHighlight"
 	highlight.FillColor = Color3.fromRGB(0, 255, 255)
@@ -258,40 +237,31 @@ local function detachLowerTorso()
 	highlight.FillTransparency = 0.3
 	highlight.Adornee = detachedLowerClone
 	highlight.Parent = detachedLowerClone
-	
 	gyro = Instance.new("BodyGyro")
 	gyro.MaxTorque = Vector3.new(400000, 400000, 400000)
 	gyro.P = 2000
 	gyro.D = 500
 	gyro.Parent = detachedControlPart
-	
 	velocityCtrl = Instance.new("BodyVelocity")
 	velocityCtrl.MaxForce = Vector3.new(400000, 400000, 400000)
 	velocityCtrl.P = 2000
 	velocityCtrl.Parent = detachedControlPart
-	
 	detachLowerTorsoActive = true
 	print("✅ LowerTorso ОТДЕЛЁН БЕЗОПАСНО!")
 end
 
 local function reattachLowerTorso()
 	if not detachedLowerClone then return end
-	
 	local char = speaker.Character
 	if not char then return end
-	
 	if gyro then gyro:Destroy() gyro = nil end
 	if velocityCtrl then velocityCtrl:Destroy() velocityCtrl = nil end
-	
 	detachedLowerClone:Destroy()
 	detachedLowerClone = nil
 	detachedControlPart = nil
-	
 	unhideLowerBody(char)
-	
 	local humanoid = char:FindFirstChild("Humanoid")
 	local root = char:FindFirstChild("HumanoidRootPart")
-	
 	if humanoid then
 		humanoid.PlatformStand = true
 		task.wait(0.05)
@@ -300,39 +270,31 @@ local function reattachLowerTorso()
 		task.wait(0.1)
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 	end
-	
 	if root then
 		root.Velocity = Vector3.new()
 		root.AssemblyLinearVelocity = Vector3.new()
 		root.AssemblyAngularVelocity = Vector3.new()
 	end
-	
 	detachLowerTorsoActive = false
 	print("✅ LowerTorso восстановлен!")
 end
 
 local function updateDetachedControl()
 	if not detachedControlPart or not detachLowerTorsoActive then return end
-	
 	local camera = workspace.CurrentCamera
 	local cameraCFrame = camera.CFrame
-	
 	local moveDirection = Vector3.new()
-	
 	if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + cameraCFrame.LookVector end
 	if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - cameraCFrame.LookVector end
 	if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - cameraCFrame.RightVector end
 	if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + cameraCFrame.RightVector end
-	
 	if moveDirection.Magnitude > 0 then
 		moveDirection = moveDirection.Unit
 	end
-	
 	local speed = 50
 	if velocityCtrl then
 		velocityCtrl.Velocity = moveDirection * speed
 	end
-	
 	if gyro then
 		if moveDirection.Magnitude > 0 then
 			gyro.CFrame = CFrame.lookAt(detachedControlPart.Position, detachedControlPart.Position + moveDirection)
@@ -346,14 +308,11 @@ local function isNearPlayerButNotUnder(part)
 	local char = speaker.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return false end
-	
 	local partPos = part.Position
 	local playerPos = root.Position
 	local distance = (partPos - playerPos).Magnitude
 	local distanceY = playerPos.Y - partPos.Y
-	
 	local isUnderFeet = distanceY > 0 and distanceY < 5 and math.abs(partPos.X - playerPos.X) < 5 and math.abs(partPos.Z - playerPos.Z) < 5
-	
 	return distance <= xrayRadius and not isUnderFeet
 end
 
@@ -366,7 +325,6 @@ local function applyXray()
 		end
 		table.clear(originalTransparencies)
 		table.clear(xrayParts)
-		
 		for _, part in pairs(workspace:GetDescendants()) do
 			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
 				local isNear = isNearPlayerButNotUnder(part)
@@ -392,21 +350,17 @@ end
 
 local function updateXray()
 	if not xrayActive then return end
-	
 	local char = speaker.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
-	
 	for _, part in pairs(workspace:GetDescendants()) do
 		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
 			local distance = (part.Position - root.Position).Magnitude
 			local isUnderFeet = false
-			
 			local distanceY = root.Position.Y - part.Position.Y
 			if distanceY > 0 and distanceY < 5 and math.abs(part.Position.X - root.Position.X) < 5 and math.abs(part.Position.Z - root.Position.Z) < 5 then
 				isUnderFeet = true
 			end
-			
 			if distance <= xrayRadius and not isUnderFeet then
 				if not originalTransparencies[part] then
 					originalTransparencies[part] = part.Transparency
@@ -430,7 +384,6 @@ end
 local function hasSomeoneText()
 	local playerGui = speaker:FindFirstChild("PlayerGui")
 	if not playerGui then return false end
-	
 	local function searchGUI(parent)
 		for _, child in pairs(parent:GetChildren()) do
 			if (child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox")) and child.Text then
@@ -446,7 +399,6 @@ local function hasSomeoneText()
 		end
 		return false
 	end
-	
 	return searchGUI(playerGui)
 end
 
@@ -454,13 +406,11 @@ local function updateTeleportInfo()
 	if teleportFrame and teleportFrame.Parent then
 		local nearestPlayer, distance = findNearestPlayer()
 		local labels = {}
-		
 		for _, child in pairs(teleportFrame:GetChildren()) do
 			if child:IsA("TextLabel") then
 				table.insert(labels, child)
 			end
 		end
-		
 		if labels[2] then
 			if nearestPlayer then
 				labels[2].Text = "🎯 Ближайший: " .. nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)"
@@ -479,10 +429,8 @@ local function createTeleportButton()
 		teleportFrame = nil
 		teleportButton = nil
 	end
-	
 	local nearestPlayer, distance = findNearestPlayer()
 	local playerInfo = nearestPlayer and (nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)") or "нет игроков рядом"
-	
 	teleportFrame = Instance.new("Frame")
 	teleportFrame.Name = "TeleportFrame"
 	teleportFrame.Parent = main
@@ -494,7 +442,6 @@ local function createTeleportButton()
 	teleportFrame.BorderSizePixel = 1
 	teleportFrame.BorderColor3 = Color3.fromRGB(255, 100, 0)
 	Instance.new("UICorner", teleportFrame).CornerRadius = UDim.new(0, 8)
-	
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
 	shadow.Parent = teleportFrame
@@ -505,7 +452,6 @@ local function createTeleportButton()
 	shadow.ZIndex = 9
 	shadow.BorderSizePixel = 0
 	Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 8)
-	
 	local infoText = Instance.new("TextLabel")
 	infoText.Parent = teleportFrame
 	infoText.Text = "⚠️ ОБНАРУЖЕНО 'SOMEONE'!"
@@ -518,7 +464,6 @@ local function createTeleportButton()
 	infoText.TextStrokeTransparency = 0.5
 	infoText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	infoText.ZIndex = 11
-	
 	local targetText = Instance.new("TextLabel")
 	targetText.Parent = teleportFrame
 	targetText.Text = "🎯 Ближайший: " .. playerInfo
@@ -531,7 +476,6 @@ local function createTeleportButton()
 	targetText.TextStrokeTransparency = 0.5
 	targetText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	targetText.ZIndex = 11
-	
 	local hotkeyText = Instance.new("TextLabel")
 	hotkeyText.Parent = teleportFrame
 	hotkeyText.Text = "⌨️ Нажмите Z для быстрой телепортации"
@@ -544,7 +488,6 @@ local function createTeleportButton()
 	hotkeyText.TextStrokeTransparency = 0.3
 	hotkeyText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	hotkeyText.ZIndex = 11
-	
 	teleportButton = Instance.new("TextButton")
 	teleportButton.Name = "TeleportBtn"
 	teleportButton.Parent = teleportFrame
@@ -558,7 +501,6 @@ local function createTeleportButton()
 	teleportButton.ZIndex = 11
 	teleportButton.BorderSizePixel = 0
 	Instance.new("UICorner", teleportButton).CornerRadius = UDim.new(0, 6)
-	
 	teleportButton.MouseButton1Click:Connect(function()
 		teleportToNearest()
 	end)
@@ -566,11 +508,9 @@ end
 
 local function checkForSomeoneGUI()
 	local wasSomeone = false
-	
 	while true do
 		if main and main.Parent then
 			local hasSomeone = hasSomeoneText()
-			
 			if hasSomeone and not wasSomeone then
 				createTeleportButton()
 				isSomeoneActive = true
@@ -591,7 +531,6 @@ end
 
 local function trackNewGUI()
 	local playerGui = speaker:WaitForChild("PlayerGui")
-	
 	playerGui.DescendantAdded:Connect(function(descendant)
 		if (descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox")) and descendant.Text then
 			if string.find(string.lower(descendant.Text), "someone") then
@@ -605,50 +544,45 @@ local function trackNewGUI()
 	end)
 end
 
--- Обработчик клавиш
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	
-	if input.KeyCode == Enum.KeyCode.Z then
-		if isSomeoneActive and teleportFrame and teleportFrame.Parent then
-			if teleportButton then
-				local originalColor = teleportButton.BackgroundColor3
-				teleportButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
-				task.spawn(function()
-					task.wait(0.1)
-					if teleportButton then teleportButton.BackgroundColor3 = originalColor end
-				end)
-			end
-			teleportToNearest()
-		end
-	end
-	
-	if input.KeyCode == Enum.KeyCode.Q then
-		detachLowerTorsoActive = not detachLowerTorsoActive
-		
-		if detachLowerTorsoActive then
-			if detachBtn then
-				detachBtn.Text = "🦿 DETACH LOWER TORSO: ON (Q)"
-				detachBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
-			end
-			detachLowerTorso()
-		else
-			if detachBtn then
-				detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF (Q)"
-				detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
-			end
-			reattachLowerTorso()
-		end
-	end
-end)
+-- ==================== INSTANT PURCHASE (НОВАЯ ФУНКЦИЯ) ====================
+local function isPurchasePrompt(prompt)
+	if not prompt or processedPrompts[prompt] then return false end
+	local actionText = (prompt.ActionText or ""):lower()
+	local objectText = (prompt.ObjectText or ""):lower()
+	return string.find(actionText, "purchase") or string.find(objectText, "purchase")
+end
 
+local function makePromptInstant(prompt)
+	if not prompt or processedPrompts[prompt] then return end
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 25
+	processedPrompts[prompt] = true
+end
+
+local function applyInstantPurchase()
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") and isPurchasePrompt(obj) then
+			makePromptInstant(obj)
+		end
+	end
+end
+
+local function toggleInstantPurchase()
+	instantPurchaseActive = not instantPurchaseActive
+	if instantPurchaseActive then
+		applyInstantPurchase()
+		print("✅ Instant Purchase: ВКЛ")
+	else
+		print("❌ Instant Purchase: ВЫКЛ")
+	end
+end
+
+-- ==================== Остальные функции ====================
 local function createLevitatePart()
 	if levitatePart then levitatePart:Destroy() levitatePart = nil end
-
 	local char = speaker.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
-
 	levitatePart = Instance.new("Part")
 	levitatePart.Name = "LevitatePart"
 	levitatePart.Size = Vector3.new(6, 0.5, 6)
@@ -659,7 +593,6 @@ local function createLevitatePart()
 	levitatePart.Color = Color3.fromRGB(0, 0, 0)
 	levitatePart.CFrame = root.CFrame * CFrame.new(0, -1.5, 0)
 	levitatePart.Parent = workspace
-
 	task.spawn(function()
 		while levitatePart and (levitatingCtrl or levitatingToggle) do
 			local char = speaker.Character
@@ -704,16 +637,12 @@ local function saveOriginalSettings()
 	end
 end
 
--- === НОВАЯ ФУНКЦИЯ ДЛЯ AIM CAMERA ===
 local function updateCamAim()
 	if not camAimEnabled then return end
-	
 	local char = speaker.Character
 	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-	
 	local closest = nil
 	local minDist = 300
-	
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr ~= speaker and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 			local hrp = plr.Character.HumanoidRootPart
@@ -724,16 +653,13 @@ local function updateCamAim()
 			end
 		end
 	end
-	
 	if closest then
 		local camera = workspace.CurrentCamera
 		camera.CFrame = CFrame.lookAt(camera.CFrame.Position, closest.Position)
 	end
 end
 
--------------------------------------------------------------------
--- GUI
--------------------------------------------------------------------
+-- ==================== GUI ====================
 main.Name = "EliteX_Fly"
 main.Parent = speaker:WaitForChild("PlayerGui")
 main.ResetOnSpawn = false
@@ -742,19 +668,20 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 240, 0, 470) -- увеличена высота под новую кнопку
+Frame.Size = UDim2.new(0, 250, 0, 510) -- увеличена высота под новую кнопку
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
 
 local title = Instance.new("TextLabel")
 title.Parent = Frame
-title.Text = "ELITEX — Lite"
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "ELITEX — Lite + Purchase"
+title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 title.TextColor3 = Color3.fromRGB(0, 255, 127)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 14
+title.TextSize = 15
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 8)
 
 local function createBtn(name, text, y, color)
 	local btn = Instance.new("TextButton")
@@ -771,19 +698,17 @@ local function createBtn(name, text, y, color)
 	return btn
 end
 
--------------------------------------------------------------------
--- КНОПКИ
--------------------------------------------------------------------
-local boostBtn = createBtn("BoostBtn", "SPEED & JUMP BOOST: OFF", 40, Color3.fromRGB(0, 150, 0))
-local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 80, Color3.fromRGB(100, 100, 255))
-local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 120, Color3.fromRGB(150, 0, 150))
-local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 160, Color3.fromRGB(0, 100, 200))
-local camAimBtn = createBtn("CamAimBtn", "🎯 AIM CAMERA: OFF", 200, Color3.fromRGB(180, 0, 180)) -- НОВАЯ КНОПКА
-
-local espBtn = createBtn("EspBtn", "ESP: OFF", 240, Color3.fromRGB(80, 80, 80))
-local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 280, Color3.fromRGB(120, 40, 200))
-local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 320, Color3.fromRGB(40, 40, 45))
-local kickBtn = createBtn("KickBtn", "KICK", 360, Color3.fromRGB(255, 50, 50))
+-- Кнопки
+local boostBtn = createBtn("BoostBtn", "SPEED & JUMP BOOST: OFF", 45, Color3.fromRGB(0, 150, 0))
+local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 85, Color3.fromRGB(100, 100, 255))
+local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 125, Color3.fromRGB(150, 0, 150))
+local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 165, Color3.fromRGB(0, 100, 200))
+local camAimBtn = createBtn("CamAimBtn", "🎯 AIM CAMERA: OFF", 205, Color3.fromRGB(180, 0, 180))
+local purchaseBtn = createBtn("PurchaseBtn", "⚡ INSTANT PURCHASE: OFF", 245, Color3.fromRGB(180, 0, 180)) -- Новая кнопка
+local espBtn = createBtn("EspBtn", "ESP: OFF", 285, Color3.fromRGB(80, 80, 80))
+local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 325, Color3.fromRGB(120, 40, 200))
+local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 365, Color3.fromRGB(40, 40, 45))
+local kickBtn = createBtn("KickBtn", "KICK", 405, Color3.fromRGB(255, 50, 50))
 
 -- Подключение кнопок
 boostBtn.MouseButton1Click:Connect(function()
@@ -820,19 +745,24 @@ xrayBtn.MouseButton1Click:Connect(function()
 	applyXray()
 end)
 
--- НОВАЯ КНОПКА AIM CAMERA
 camAimBtn.MouseButton1Click:Connect(function()
 	camAimEnabled = not camAimEnabled
 	camAimBtn.Text = camAimEnabled and "🎯 AIM CAMERA: ON" or "🎯 AIM CAMERA: OFF"
 	camAimBtn.BackgroundColor3 = camAimEnabled and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(180, 0, 180)
 end)
 
+-- Новая кнопка Instant Purchase
+purchaseBtn.MouseButton1Click:Connect(function()
+	toggleInstantPurchase()
+	purchaseBtn.Text = instantPurchaseActive and "⚡ INSTANT PURCHASE: ON" or "⚡ INSTANT PURCHASE: OFF"
+	purchaseBtn.BackgroundColor3 = instantPurchaseActive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(180, 0, 180)
+end)
+
 espBtn.MouseButton1Click:Connect(function()
 	espActive = not espActive
 	espBtn.Text = espActive and "ESP: ON" or "ESP: OFF"
 	espBtn.BackgroundColor3 = espActive and Color3.fromRGB(255, 80, 0) or Color3.fromRGB(80, 80, 80)
-	if espActive then 
-		-- обновление ESP (оставлено как было в оригинале)
+	if espActive then
 		for _, part in pairs(ESPParts or {}) do if part and part.Parent then part:Destroy() end end
 		ESPParts = {}
 		for _, player in pairs(Players:GetPlayers()) do
@@ -875,9 +805,38 @@ end)
 
 kickBtn.MouseButton1Click:Connect(function() game:Shutdown() end)
 
--- Обработка клавиш для левитации
+-- Обработчик клавиш
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.Z then
+		if isSomeoneActive and teleportFrame and teleportFrame.Parent then
+			if teleportButton then
+				local originalColor = teleportButton.BackgroundColor3
+				teleportButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+				task.spawn(function()
+					task.wait(0.1)
+					if teleportButton then teleportButton.BackgroundColor3 = originalColor end
+				end)
+			end
+			teleportToNearest()
+		end
+	end
+	if input.KeyCode == Enum.KeyCode.Q then
+		detachLowerTorsoActive = not detachLowerTorsoActive
+		if detachLowerTorsoActive then
+			if detachBtn then
+				detachBtn.Text = "🦿 DETACH LOWER TORSO: ON (Q)"
+				detachBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+			end
+			detachLowerTorso()
+		else
+			if detachBtn then
+				detachBtn.Text = "🦿 DETACH LOWER TORSO: OFF (Q)"
+				detachBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+			end
+			reattachLowerTorso()
+		end
+	end
 	if input.KeyCode == Enum.KeyCode.LeftControl then
 		levitatingCtrl = true
 		if not levitatePart then createLevitatePart() end
@@ -892,26 +851,27 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 	end
 end)
 
--------------------------------------------------------------------
 -- LOOP
--------------------------------------------------------------------
 local ESPParts = {}
-
 RunService.Stepped:Connect(function()
 	local char = speaker.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChild("Humanoid")
-	
 	if root and isAnchored then root.Anchored = true end
-	
 	if hum and boostActive then
 		hum.WalkSpeed = 30
 		hum.JumpPower = 10
 	end
-	
 	if xrayActive then updateXray() end
 	if detachLowerTorsoActive then updateDetachedControl() end
-	if camAimEnabled then updateCamAim() end  -- ← Добавлено
+	if camAimEnabled then updateCamAim() end
+end)
+
+-- Отслеживание новых промптов для Instant Purchase
+ProximityPromptService.PromptShown:Connect(function(prompt)
+	if instantPurchaseActive and isPurchasePrompt(prompt) then
+		makePromptInstant(prompt)
+	end
 end)
 
 speaker.CharacterAdded:Connect(function()
@@ -920,7 +880,6 @@ speaker.CharacterAdded:Connect(function()
 	if boostActive then applyBoost() end
 	if xrayActive then applyXray() end
 	if animationsActive then toggleAnimations(true) else toggleAnimations(false) end
-	
 	if detachLowerTorsoActive then
 		detachLowerTorsoActive = false
 		if detachBtn then
@@ -933,12 +892,9 @@ end)
 
 task.spawn(checkForSomeoneGUI)
 task.spawn(trackNewGUI)
-
 if speaker.Character then saveOriginalSettings() end
 
--------------------------------------------------------------------
 -- ЗАКРЫТИЕ
--------------------------------------------------------------------
 local closeBtn = Instance.new("TextButton")
 closeBtn.Text = "❌"
 closeBtn.Position = UDim2.new(0.92, 0, 0, 5)
@@ -956,7 +912,8 @@ closeBtn.MouseButton1Click:Connect(function()
 	if detachLowerTorsoActive then reattachLowerTorso() end
 	if not animationsActive then toggleAnimations(true) end
 	camAimEnabled = false
+	instantPurchaseActive = false
 	main:Destroy()
 end)
 
-print("✅ EliteX Lite — Полный скрипт с добавленным AIM CAMERA")
+print("✅ EliteX Lite — Полный скрипт с добавленным Instant Purchase (только Purchase)")
