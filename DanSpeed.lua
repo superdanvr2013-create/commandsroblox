@@ -1,4 +1,4 @@
--- === EliteX Lite — Full Original + Instant Purchase + Magnet (Полная версия) ===
+-- === EliteX Lite — Full Original + Instant Purchase (Оптимизировано) + Magnet ===
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -18,6 +18,7 @@ local detachLowerTorsoActive = false
 local animationsActive = true
 local camAimEnabled = false
 local instantPurchaseActive = false
+local magnetEnabled = false   -- новая переменная
 
 -- Левитация через платформу
 local levitatePart = nil
@@ -50,10 +51,9 @@ local LOWER_PARTS = {
 -- === Instant Purchase ===
 local processedPrompts = {}
 
--- === НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ MAGNET ===
+-- === MAGNET VARIABLES ===
 local magnetConnection = nil
 local magnetTargetPlayer = nil
-local magnetEnabled = false
 
 -- Функция клонирования нижней части тела
 local function cloneLowerBody(char)
@@ -305,6 +305,18 @@ end
 end
 end
 
+local function isNearPlayerButNotUnder(part)
+local char = speaker.Character
+local root = char and char:FindFirstChild("HumanoidRootPart")
+if not root then return false end
+local partPos = part.Position
+local playerPos = root.Position
+local distance = (partPos - playerPos).Magnitude
+local distanceY = playerPos.Y - partPos.Y
+local isUnderFeet = distanceY > 0 and distanceY < 5 and math.abs(partPos.X - playerPos.X) < 5 and math.abs(partPos.Z - playerPos.Z) < 5
+return distance <= xrayRadius and not isUnderFeet
+end
+
 local function applyXray()
 if xrayActive then
 for part, transparency in pairs(originalTransparencies) do
@@ -316,12 +328,14 @@ table.clear(originalTransparencies)
 table.clear(xrayParts)
 for _, part in pairs(workspace:GetDescendants()) do
 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
-local isNear = true -- упрощённо, как в оригинале
+local isNear = isNearPlayerButNotUnder(part)
+if isNear then
 if not originalTransparencies[part] then
 originalTransparencies[part] = part.Transparency
 end
 part.Transparency = 0.95
 table.insert(xrayParts, part)
+end
 end
 end
 else
@@ -343,7 +357,12 @@ if not root then return end
 for _, part in pairs(workspace:GetDescendants()) do
 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LevitatePart" then
 local distance = (part.Position - root.Position).Magnitude
-if distance <= xrayRadius then
+local isUnderFeet = false
+local distanceY = root.Position.Y - part.Position.Y
+if distanceY > 0 and distanceY < 5 and math.abs(part.Position.X - root.Position.X) < 5 and math.abs(part.Position.Z - root.Position.Z) < 5 then
+isUnderFeet = true
+end
+if distance <= xrayRadius and not isUnderFeet then
 if not originalTransparencies[part] then
 originalTransparencies[part] = part.Transparency
 part.Transparency = 0.95
@@ -528,7 +547,7 @@ print("❌ Instant Purchase: ВЫКЛ")
 end
 end
 
--- ==================== MAGNET TO PLAYER ====================
+-- ==================== MAGNET TO PLAYER (добавлено) ====================
 local function findNearestForMagnet()
 local char = speaker.Character
 local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -577,20 +596,17 @@ else
 root.Velocity = Vector3.new(0, 0, 0)
 end
 end)
-print("Magnet включён")
+print("✅ Magnet включён")
 else
-if magnetConnection then 
-magnetConnection:Disconnect() 
-magnetConnection = nil 
-end
+if magnetConnection then magnetConnection:Disconnect() magnetConnection = nil end
 magnetTargetPlayer = nil
 local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
 if root then root.Velocity = Vector3.new(0, 0, 0) end
-print("Magnet выключен")
+print("❌ Magnet выключен")
 end
 end
 
--- ==================== Остальные функции ====================
+-- ==================== Остальные оригинальные функции ====================
 local function createLevitatePart()
 if levitatePart then levitatePart:Destroy() levitatePart = nil end
 local char = speaker.Character
@@ -681,7 +697,7 @@ Frame.Name = "MainFrame"
 Frame.Parent = main
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 Frame.Position = UDim2.new(0.02, 0, 0.02, 0)
-Frame.Size = UDim2.new(0, 250, 0, 550) -- увеличена высота под Magnet кнопку
+Frame.Size = UDim2.new(0, 250, 0, 580)  -- увеличено под Magnet кнопку
 Frame.Active = true
 Frame.Draggable = true
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -711,20 +727,20 @@ Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 return btn
 end
 
--- Кнопки (всё как в оригинале + новая кнопка Magnet)
+-- Кнопки (оригинальные + новая Magnet)
 local boostBtn = createBtn("BoostBtn", "SPEED & JUMP BOOST: OFF", 45, Color3.fromRGB(0, 150, 0))
 local animBtn = createBtn("AnimBtn", "🎭 АНИМАЦИИ: ON", 85, Color3.fromRGB(100, 100, 255))
 local detachBtn = createBtn("DetachBtn", "🦿 DETACH LOWER TORSO: OFF (Q)", 125, Color3.fromRGB(150, 0, 150))
 local xrayBtn = createBtn("XrayBtn", "XRAY: OFF", 165, Color3.fromRGB(0, 100, 200))
 local camAimBtn = createBtn("CamAimBtn", "🎯 AIM CAMERA: OFF", 205, Color3.fromRGB(180, 0, 180))
 local purchaseBtn = createBtn("PurchaseBtn", "⚡ INSTANT PURCHASE: OFF", 245, Color3.fromRGB(180, 0, 180))
-local magnetBtn = createBtn("MagnetBtn", "🧲 MAGNET TO PLAYER: OFF", 285, Color3.fromRGB(0, 170, 255)) -- Новая кнопка
+local magnetBtn = createBtn("MagnetBtn", "🧲 MAGNET TO PLAYER: OFF", 285, Color3.fromRGB(0, 170, 255)) -- добавленная кнопка
 local espBtn = createBtn("EspBtn", "ESP: OFF", 325, Color3.fromRGB(80, 80, 80))
 local levitationBtn = createBtn("LevitationBtn", "ЛЕВИТАЦИЯ: OFF", 365, Color3.fromRGB(120, 40, 200))
 local anchorBtn = createBtn("AnchorBtn", "ANCHORED: OFF", 405, Color3.fromRGB(40, 40, 45))
 local kickBtn = createBtn("KickBtn", "KICK", 445, Color3.fromRGB(255, 50, 50))
 
--- Подключение кнопок
+-- Подключение кнопок (оригинальное + magnet)
 boostBtn.MouseButton1Click:Connect(function()
 boostActive = not boostActive
 boostBtn.Text = boostActive and "SPEED & JUMP BOOST: ON" or "SPEED & JUMP BOOST: OFF"
@@ -771,7 +787,7 @@ purchaseBtn.Text = instantPurchaseActive and "⚡ INSTANT PURCHASE: ON" or "⚡ 
 purchaseBtn.BackgroundColor3 = instantPurchaseActive and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(180, 0, 180)
 end)
 
--- Подключение Magnet кнопки
+-- === Подключение Magnet кнопки ===
 magnetBtn.MouseButton1Click:Connect(function()
 toggleMagnet()
 magnetBtn.Text = magnetEnabled and "🧲 MAGNET TO PLAYER: ON" or "🧲 MAGNET TO PLAYER: OFF"
@@ -887,7 +903,7 @@ if detachLowerTorsoActive then updateDetachedControl() end
 if camAimEnabled then updateCamAim() end
 end)
 
--- Отслеживание новых промптов для Instant Purchase
+-- Отслеживание новых промптов
 ProximityPromptService.PromptShown:Connect(function(prompt)
 if instantPurchaseActive and isPurchasePrompt(prompt) then
 makePromptInstant(prompt)
@@ -935,5 +951,3 @@ instantPurchaseActive = false
 if magnetConnection then magnetConnection:Disconnect() end
 main:Destroy()
 end)
-
-print("✅ EliteX Lite + Magnet загружен (полная версия)")
