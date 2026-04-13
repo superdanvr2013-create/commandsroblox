@@ -20,31 +20,32 @@ local animationsActive = true
 local camAimEnabled = false
 local instantPurchaseActive = false
 
--- Левитация
+-- Левитация через платформу
 local levitatePart = nil
 
 -- Оригинальные настройки персонажа
 local originalSpeed = 16
 local originalJump = 50
 
--- Xray
+-- Xray переменные
 local originalTransparencies = {}
 local xrayParts = {}
 local xrayRadius = 30
 
--- Teleport
+-- Переменные для телепортации
 local teleportButton = nil
 local teleportFrame = nil
 local isSomeoneActive = false
 
--- Detach LowerTorso
+-- === НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ БЕЗОПАСНОГО DETACH ===
 local detachedLowerClone = nil
 local detachedControlPart = nil
 local gyro = nil
 local velocityCtrl = nil
 local LOWER_PARTS = {
-    "LowerTorso", "LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
-    "RightUpperLeg", "RightLowerLeg", "RightFoot"
+"LowerTorso",
+"LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+"RightUpperLeg", "RightLowerLeg", "RightFoot"
 }
 
 -- === MAGNET TO PLAYER ===
@@ -52,8 +53,7 @@ local magnetConnection = nil
 local magnetTarget = nil
 local magnetEnabled = false
 
--- ==================== ФУНКЦИИ ====================
-
+-- Функция клонирования нижней части тела
 local function cloneLowerBody(char)
     if not char then return nil end
     local cloneModel = Instance.new("Model")
@@ -71,8 +71,12 @@ local function cloneLowerBody(char)
     end
     for _, joint in pairs(cloneModel:GetDescendants()) do
         if joint:IsA("Motor6D") or joint:IsA("Weld") then
-            if originalToClone[joint.Part0] then joint.Part0 = originalToClone[joint.Part0] end
-            if originalToClone[joint.Part1] then joint.Part1 = originalToClone[joint.Part1] end
+            if originalToClone[joint.Part0] then
+                joint.Part0 = originalToClone[joint.Part0]
+            end
+            if originalToClone[joint.Part1] then
+                joint.Part1 = originalToClone[joint.Part1]
+            end
         end
     end
     cloneModel.PrimaryPart = cloneModel:FindFirstChild("LowerTorso")
@@ -125,24 +129,21 @@ local function findNearestPlayer()
     return closestPlayer, closestDistance
 end
 
--- ==================== MAGNET TO PLAYER ====================
+-- ==================== MAGNET TO PLAYER (Быстрый режим) ====================
 local function toggleMagnet()
     magnetEnabled = not magnetEnabled
 
     if magnetEnabled then
         magnetTarget = findNearestPlayer()
         if not magnetTarget then
-            magnetEnabled = false
-            return
+            -- Если игроков нет — всё равно включаем (для теста)
+            magnetTarget = speaker
         end
 
         if magnetConnection then magnetConnection:Disconnect() end
 
         magnetConnection = RunService.Heartbeat:Connect(function()
-            if not magnetEnabled or not magnetTarget or not magnetTarget.Character then
-                toggleMagnet()
-                return
-            end
+            if not magnetEnabled or not magnetTarget or not magnetTarget.Character then return end
 
             local targetRoot = magnetTarget.Character:FindFirstChild("HumanoidRootPart")
             if not targetRoot then return end
@@ -158,6 +159,9 @@ local function toggleMagnet()
                 rootPart.Velocity = Vector3.new(0, 0, 0)
             end
         end)
+
+        magnetBtn.Text = "🧲 MAGNET TO PLAYER: ON"
+        magnetBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
     else
         if magnetConnection then
             magnetConnection:Disconnect()
@@ -165,8 +169,13 @@ local function toggleMagnet()
         end
         magnetTarget = nil
         if rootPart then rootPart.Velocity = Vector3.new(0, 0, 0) end
+
+        magnetBtn.Text = "🧲 MAGNET TO PLAYER: OFF"
+        magnetBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
     end
 end
+
+-- ==================== ОСТАЛЬНЫЕ ФУНКЦИИ (оригинальные) ====================
 
 local function teleportToNearest()
     local targetPlayer = findNearestPlayer()
@@ -211,6 +220,13 @@ local function teleportToNearest()
                 if beam then beam:Destroy() end
                 if beam2 then beam2:Destroy() end
             end)
+
+            if teleportButton then
+                local originalText = teleportButton.Text
+                teleportButton.Text = "✅ ТЕЛЕПОРТИРОВАНО!"
+                task.wait(0.3)
+                if teleportButton then teleportButton.Text = originalText end
+            end
             return true
         end
     end
@@ -247,7 +263,8 @@ end
 
 local function detachLowerTorso()
     local char = speaker.Character
-    if not char or detachedLowerClone then return end
+    if not char then return end
+    if detachedLowerClone then return end
     detachedLowerClone = cloneLowerBody(char)
     if not detachedLowerClone then return end
     hideLowerBody(char)
@@ -255,6 +272,7 @@ local function detachLowerTorso()
     if not detachedControlPart then return end
 
     local highlight = Instance.new("Highlight")
+    highlight.Name = "DetachedHighlight"
     highlight.FillColor = Color3.fromRGB(0, 255, 255)
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.FillTransparency = 0.3
@@ -277,15 +295,17 @@ end
 
 local function reattachLowerTorso()
     if not detachedLowerClone then return end
+    local char = speaker.Character
+    if not char then return end
     if gyro then gyro:Destroy() gyro = nil end
     if velocityCtrl then velocityCtrl:Destroy() velocityCtrl = nil end
     detachedLowerClone:Destroy()
     detachedLowerClone = nil
     detachedControlPart = nil
-    unhideLowerBody(speaker.Character)
+    unhideLowerBody(char)
 
-    local humanoid = speaker.Character and speaker.Character:FindFirstChild("Humanoid")
-    local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChild("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
     if humanoid then
         humanoid.PlatformStand = true
         task.wait(0.05)
@@ -403,10 +423,14 @@ local function hasSomeoneText()
     local function searchGUI(parent)
         for _, child in pairs(parent:GetChildren()) do
             if (child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox")) and child.Text then
-                if string.find(string.lower(child.Text), "someone") then return true end
+                if string.find(string.lower(child.Text), "someone") then
+                    return true
+                end
             end
             if child:IsA("ScreenGui") or child:IsA("Frame") or child:IsA("ScrollingFrame") then
-                if searchGUI(child) then return true end
+                if searchGUI(child) then
+                    return true
+                end
             end
         end
         return false
@@ -415,7 +439,11 @@ local function hasSomeoneText()
 end
 
 local function createTeleportButton()
-    if teleportFrame then teleportFrame:Destroy() teleportFrame = nil teleportButton = nil end
+    if teleportFrame then
+        teleportFrame:Destroy()
+        teleportFrame = nil
+        teleportButton = nil
+    end
     local nearestPlayer, distance = findNearestPlayer()
     local playerInfo = nearestPlayer and (nearestPlayer.Name .. " (" .. math.floor(distance) .. " стутней)") or "нет игроков рядом"
 
@@ -782,9 +810,7 @@ anchorBtn.MouseButton1Click:Connect(function()
     if root then root.Anchored = isAnchored end
 end)
 
-kickBtn.MouseButton1Click:Connect(function()
-    game:Shutdown()
-end)
+kickBtn.MouseButton1Click:Connect(function() game:Shutdown() end)
 
 magnetBtn.MouseButton1Click:Connect(toggleMagnet)
 
@@ -840,7 +866,6 @@ RunService.Stepped:Connect(function()
     local char = speaker.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChild("Humanoid")
-
     if root and isAnchored then root.Anchored = true end
     if hum and boostActive then
         hum.WalkSpeed = 30
@@ -851,7 +876,7 @@ RunService.Stepped:Connect(function()
     if camAimEnabled then updateCamAim() end
 end)
 
--- Instant Purchase
+-- Отслеживание новых промптов для Instant Purchase
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if instantPurchaseActive and isPurchasePrompt(prompt) then
         makePromptInstant(prompt)
@@ -902,4 +927,5 @@ end)
 task.spawn(checkForSomeoneGUI)
 task.spawn(trackNewGUI)
 
+-- Финал
 print("EliteX Lite загружен с Magnet to player")
