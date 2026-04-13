@@ -447,7 +447,7 @@ local function toggleMagnet()
             local direction = (desiredPosition - root.Position)
             local distance = direction.Magnitude
             if distance > 1 then
-                root.Velocity = direction.Unit * math.min(distance * 9, 35)
+                root.Velocity = direction.Unit * math.min(distance * 9, 55)
             else
                 root.Velocity = Vector3.new(0, 0, 0)
             end
