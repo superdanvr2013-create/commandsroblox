@@ -1,4 +1,4 @@
--- === EliteX Lite — Full + Instant Purchase + Magnet to Player ===
+-- === EliteX Lite — Full Original + Instant Purchase + Magnet to Player ===
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -44,7 +44,7 @@ local gyro = nil
 local velocityCtrl = nil
 local LOWER_PARTS = {"LowerTorso", "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot"}
 
--- Magnet to Player
+-- === MAGNET TO PLAYER ===
 local magnetConnection = nil
 local magnetTarget = nil
 local magnetEnabled = false
@@ -150,7 +150,7 @@ local function toggleMagnet()
             local distance = direction.Magnitude
 
             if distance > 1 then
-                rootPart.Velocity = direction.Unit * math.min(distance * 12, 45)  -- увеличенная скорость
+                rootPart.Velocity = direction.Unit * math.min(distance * 13, 48)  -- ещё быстрее
             else
                 rootPart.Velocity = Vector3.new(0, 0, 0)
             end
@@ -344,7 +344,6 @@ end
 
 local function updateXray()
     if not xrayActive then return end
-    -- Простая версия обновления xray (можно расширить при необходимости)
     applyXray()
 end
 
@@ -366,7 +365,7 @@ local function hasSomeoneText()
 end
 
 local function createTeleportButton()
-    if teleportFrame then teleportFrame:Destroy() end
+    if teleportFrame then teleportFrame:Destroy() teleportFrame = nil end
     teleportFrame = Instance.new("Frame")
     teleportFrame.Name = "TeleportFrame"
     teleportFrame.Parent = main
@@ -750,5 +749,4 @@ end)
 task.spawn(checkForSomeoneGUI)
 task.spawn(trackNewGUI)
 
--- Финальное сообщение
 print("EliteX Lite загружен с Magnet to player")
