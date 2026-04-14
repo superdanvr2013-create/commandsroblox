@@ -407,13 +407,16 @@ local function toggleInstantPurchase()
     end
 end
 
--- ==================== MAGNET TO PLAYER ====================
+-- ==================== MAGNET TO PLAYER (ИСПРАВЛЕНАЯ ВЕРСИЯ) ====================
+
 local function findNearestForMagnet()
     local char = speaker.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root then return nil end
+    
     local nearest = nil
     local minDist = math.huge
+    
     for _, other in ipairs(Players:GetPlayers()) do
         if other ~= speaker and other.Character then
             local otherRoot = other.Character:FindFirstChild("HumanoidRootPart")
@@ -427,6 +430,75 @@ local function findNearestForMagnet()
         end
     end
     return nearest
+end
+
+local function toggleMagnet()
+    magnetEnabled = not magnetEnabled
+    
+    if magnetEnabled then
+        magnetTargetPlayer = findNearestForMagnet()
+        if not magnetTargetPlayer then
+            print("❌ Никого рядом нет для магнита!")
+            magnetEnabled = false
+            return
+        end
+        
+        if magnetConnection then magnetConnection:Disconnect() end
+        
+        magnetConnection = RunService.Heartbeat:Connect(function()
+            if not magnetEnabled or not magnetTargetPlayer or not magnetTargetPlayer.Character then
+                toggleMagnet() -- выключаем автоматически
+                return
+            end
+            
+            local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+            local targetRoot = magnetTargetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not root or not targetRoot then return end
+            
+            -- === ГЛАВНОЕ ИСПРАВЛЕНИЕ ===
+            local controlPart = detachLowerTorsoActive and detachedControlPart or root
+            
+            if not controlPart then return end
+            
+            local desiredPosition = (targetRoot.CFrame * CFrame.new(0, 0.9, 2.4)).Position
+            local direction = (desiredPosition - controlPart.Position)
+            local distance = direction.Magnitude
+            
+            if distance > 1 then
+                local speed = math.min(distance * 9, 35)
+                
+                if detachLowerTorsoActive and velocityCtrl then
+                    -- Когда Detach включён — используем BodyVelocity на клоне
+                    velocityCtrl.Velocity = direction.Unit * speed
+                else
+                    -- Обычный режим — Velocity на RootPart
+                    controlPart.Velocity = direction.Unit * speed
+                end
+            else
+                if detachLowerTorsoActive and velocityCtrl then
+                    velocityCtrl.Velocity = Vector3.new(0, 0, 0)
+                else
+                    controlPart.Velocity = Vector3.new(0, 0, 0)
+                end
+            end
+        end)
+        
+        print("✅ Magnet включён (работает с Detach Lower Torso)")
+        
+    else
+        if magnetConnection then 
+            magnetConnection:Disconnect() 
+            magnetConnection = nil 
+        end
+        magnetTargetPlayer = nil
+        
+        -- Сброс скорости
+        local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+        if root then root.Velocity = Vector3.new(0, 0, 0) end
+        if velocityCtrl then velocityCtrl.Velocity = Vector3.new(0, 0, 0) end
+        
+        print("❌ Magnet выключен")
+    end
 end
 
 local function toggleMagnet()
