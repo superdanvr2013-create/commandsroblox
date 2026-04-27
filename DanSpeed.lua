@@ -805,6 +805,17 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             teleportToNearest()
         end
     end
+     if not gameProcessed and input.KeyCode == Enum.KeyCode.C then
+    camAimEnabled = not camAimEnabled
+    
+    -- Обновляем визуальное состояние кнопки в GUI, если она существует
+    if camAimBtn then
+        camAimBtn.Text = camAimEnabled and "🎯 AIM CAMERA: ON" or "🎯 AIM CAMERA: OFF"
+        camAimBtn.BackgroundColor3 = camAimEnabled and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(180, 0, 180)
+    end
+    
+    print("🎯 Aim Camera:", camAimEnabled and "Включен" or "Выключен")
+end
     if input.KeyCode == Enum.KeyCode.Q then
         detachLowerTorsoActive = not detachLowerTorsoActive
         if detachLowerTorsoActive then
