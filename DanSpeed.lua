@@ -290,7 +290,7 @@ local function updateDetachedControl()
     if moveDirection.Magnitude > 0 then
         moveDirection = moveDirection.Unit
     end
-    local speed = 20
+    local speed = 60
     if velocityCtrl then
         velocityCtrl.Velocity = moveDirection * speed
     end
